@@ -1,0 +1,511 @@
+[
+  {
+    "id": "p-a-mean-1",
+    "title": "Rata-rata Tersamar",
+    "track": "A",
+    "topic": "statistika",
+    "difficulty": 1,
+    "answerType": "numeric",
+    "stem": "Diberikan data: 4, 8, 6, 10, 12. Hitung mean.",
+    "answer": 8,
+    "tolerance": 0.000001,
+    "solution": "Mean = (4+8+6+10+12)/5 = 40/5 = 8."
+  },
+  {
+    "id": "p-a-median-remove",
+    "title": "Median Setelah Penghapusan",
+    "track": "A",
+    "topic": "statistika",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Data: 42,45,47,50,52,55,57,60,62,64,66,68,70,72,74,76,78,80 (n=18). Berapa minimum siswa yang harus dihapus agar median ≥ 70?",
+    "answer": 5,
+    "tolerance": 0,
+    "solution": "Untuk n genap, median = rata-rata dua tengah. Agar median ≥ 70, dua nilai tengah harus cukup besar. Menghapus 5 nilai terkecil menyisakan 13 data dengan median 70."
+  },
+  {
+    "id": "p-a-bayes-1",
+    "title": "Filter Spam Sederhana",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Prior spam = 0.2. P(kata|spam)=0.9, P(kata|ham)=0.1. Jika email mengandung kata tersebut, berapa P(spam|kata)? Bulatkan 3 desimal.",
+    "answer": 0.692,
+    "tolerance": 0.002,
+    "solution": "P(kata)=0.9*0.2+0.1*0.8=0.26. P(spam|kata)=0.18/0.26≈0.692."
+  },
+  {
+    "id": "p-a-geom",
+    "title": "Peluang Geometrik",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Peluang sukses tiap lemparan p=0.58 (i.i.d.). Berapa peluang butuh setidaknya 5 lemparan sampai sukses pertama? 3 desimal.",
+    "answer": 0.031,
+    "tolerance": 0.002,
+    "solution": "P(X≥5)=(1-p)^4=0.42^4≈0.0311."
+  },
+  {
+    "id": "p-a-matrix-power",
+    "title": "Pangkat Rotasi",
+    "track": "A",
+    "topic": "aljabar-linier",
+    "difficulty": 3,
+    "answerType": "short_string",
+    "stem": "A=[[0,-1],[1,0]] (rotasi 90° CCW). A^4 sama dengan matriks apa? Jawab: I atau -I atau A atau A^2.",
+    "answer": [
+      "I",
+      "i",
+      "[[1,0],[0,1]]"
+    ],
+    "solution": "A^4 = rotasi 360° = I."
+  },
+  {
+    "id": "p-a-matmul",
+    "title": "Perkalian Matriks-Vektor",
+    "track": "A",
+    "topic": "aljabar-linier",
+    "difficulty": 1,
+    "answerType": "short_string",
+    "stem": "A=[[0,1],[-1,0]], v=[3,-4]. Hitung Av sebagai pasangan \"a,b\".",
+    "answer": [
+      "-4,-3",
+      "(-4,-3)"
+    ],
+    "solution": "Av=[0*3+1*(-4), -1*3+0*(-4)]=[-4,-3]."
+  },
+  {
+    "id": "p-a-ls-error",
+    "title": "Kesalahan Kuadrat Harga",
+    "track": "A",
+    "topic": "optimasi",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Pelanggan: (bingkis,budget)=(30,127),(27,108),(32,127). Biaya=a+b*bingkis. Jika a=4,b=4, hitung total SSE=Σ(pred−budget)^2.",
+    "answer": 50,
+    "tolerance": 0,
+    "solution": "Prediksi: 124,112,132. Kuadrat error: 9+16+25=50."
+  },
+  {
+    "id": "p-a-python-sumsq",
+    "title": "Output Python Sum Squares",
+    "track": "A",
+    "topic": "python-dasar",
+    "difficulty": 1,
+    "answerType": "python_output",
+    "stem": "Apa output program berikut?\n```python\nprint(sum(i*i for i in range(1,6)))\n```",
+    "answer": "55",
+    "starterCode": "print(sum(i*i for i in range(1,6)))",
+    "solution": "1+4+9+16+25=55."
+  },
+  {
+    "id": "p-a-gd-step",
+    "title": "Satu Langkah Gradient Descent",
+    "track": "A",
+    "topic": "optimasi",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "L(w)= (w-3)^2. Mulai w=0, η=0.25. Setelah 1 update, berapa w?",
+    "answer": 1.5,
+    "tolerance": 0.000001,
+    "solution": "∇L=2(w-3). w ← 0 - 0.25*2(0-3)=0+1.5=1.5."
+  },
+  {
+    "id": "p-b-sigmoid",
+    "title": "Nilai Sigmoid",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 1,
+    "answerType": "numeric",
+    "stem": "σ(0) pada regresi logistik bernilai?",
+    "answer": 0.5,
+    "tolerance": 1e-9,
+    "solution": "σ(0)=1/(1+e^0)=1/2."
+  },
+  {
+    "id": "p-b-logreg-decision",
+    "title": "Keputusan Logistik",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 2,
+    "answerType": "short_string",
+    "stem": "Model P(y=1|x)=σ(2x-1). Untuk x=0, prediksi kelas dengan threshold 0.5? Jawab 0 atau 1.",
+    "answer": "0",
+    "solution": "σ(-1)≈0.269 < 0.5 → kelas 0."
+  },
+  {
+    "id": "p-b-mse",
+    "title": "Hitung MSE",
+    "track": "B",
+    "topic": "evaluasi-model",
+    "difficulty": 1,
+    "answerType": "numeric",
+    "stem": "y=[2,4,6], ŷ=[3,3,7]. Hitung MSE.",
+    "answer": 1,
+    "tolerance": 1e-9,
+    "solution": "Errors: -1,1,-1 → squares 1,1,1 → mean 1."
+  },
+  {
+    "id": "p-b-precision",
+    "title": "Precision dari CM",
+    "track": "B",
+    "topic": "evaluasi-model",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "TP=40, FP=10, FN=20, TN=30. Precision=?",
+    "answer": 0.8,
+    "tolerance": 1e-9,
+    "solution": "P=TP/(TP+FP)=40/50=0.8."
+  },
+  {
+    "id": "p-b-recall",
+    "title": "Recall dari CM",
+    "track": "B",
+    "topic": "evaluasi-model",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "TP=40, FP=10, FN=20, TN=30. Recall=?",
+    "answer": 0.6666666666666666,
+    "tolerance": 0.001,
+    "solution": "R=40/(40+20)=2/3≈0.667."
+  },
+  {
+    "id": "p-b-f1",
+    "title": "F1 Score",
+    "track": "B",
+    "topic": "evaluasi-model",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Precision=0.8, Recall=0.5. F1=?",
+    "answer": 0.615,
+    "tolerance": 0.002,
+    "solution": "F1=2*0.8*0.5/(0.8+0.5)=0.8/1.3≈0.615."
+  },
+  {
+    "id": "p-b-knn",
+    "title": "Majority Vote k-NN",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 2,
+    "answerType": "short_string",
+    "stem": "k=3. Label tetangga terurut jarak: A,B,A. Prediksi kelas?",
+    "answer": "A",
+    "solution": "Mayoritas A (2 dari 3)."
+  },
+  {
+    "id": "p-b-kmeans-assign",
+    "title": "Assign K-Means",
+    "track": "B",
+    "topic": "unsupervised-learning",
+    "difficulty": 2,
+    "answerType": "short_string",
+    "stem": "Centroid c1=0, c2=10. Titik x=3 ke klaster mana? Jawab 1 atau 2.",
+    "answer": "1",
+    "solution": "|3-0|=3 < |3-10|=7 → klaster 1."
+  },
+  {
+    "id": "p-b-pca-var",
+    "title": "PCA Varians",
+    "track": "B",
+    "topic": "unsupervised-learning",
+    "difficulty": 3,
+    "answerType": "numeric",
+    "stem": "Eigenvalue λ1=4, λ2=1, λ3=1. Berapa proporsi varians explained oleh PC1?",
+    "answer": 0.667,
+    "tolerance": 0.002,
+    "solution": "4/(4+1+1)=4/6≈0.667."
+  },
+  {
+    "id": "p-b-overfit",
+    "title": "Gejala Overfitting",
+    "track": "B",
+    "topic": "evaluasi-model",
+    "difficulty": 1,
+    "answerType": "mcq",
+    "stem": "Manakah gejala overfitting paling khas?",
+    "choices": [
+      "Train tinggi, val rendah",
+      "Train rendah, val tinggi",
+      "Train=val tinggi",
+      "Train=val rendah"
+    ],
+    "answer": "Train tinggi, val rendah",
+    "solution": "Model menghafal train, generalisasi buruk."
+  },
+  {
+    "id": "p-b-scale",
+    "title": "Urutan Scaling",
+    "track": "B",
+    "topic": "feature-engineering",
+    "difficulty": 2,
+    "answerType": "mcq",
+    "stem": "Praktik benar untuk StandardScaler?",
+    "choices": [
+      "Fit di train saja",
+      "Fit di train+test",
+      "Fit di test saja",
+      "Tidak perlu fit"
+    ],
+    "answer": "Fit di train saja",
+    "solution": "Hindari leakage statistik test."
+  },
+  {
+    "id": "p-b-linsep",
+    "title": "Akurasi Classifier Linier",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 3,
+    "answerType": "numeric",
+    "stem": "Data 2D: sehat jika −1.5x+2y+120≥0. Titik (88,10): prediksi sehat=1 tidak=0. Output angka prediksi.",
+    "answer": 1,
+    "tolerance": 0,
+    "solution": "−1.5·88 + 2·10 + 120 = −132 + 20 + 120 = 8 ≥ 0 → prediksi sehat (1)."
+  },
+  {
+    "id": "p-c-relu",
+    "title": "ReLU Batch",
+    "track": "C",
+    "topic": "aktivasi-loss",
+    "difficulty": 1,
+    "answerType": "short_string",
+    "stem": "ReLU pada vektor [-2,0,3]? Tulis sebagai a,b,c.",
+    "answer": [
+      "0,0,3",
+      "0, 0, 3"
+    ],
+    "solution": "max(0,·) → 0,0,3."
+  },
+  {
+    "id": "p-c-softmax",
+    "title": "Argmax Softmax",
+    "track": "C",
+    "topic": "aktivasi-loss",
+    "difficulty": 1,
+    "answerType": "numeric",
+    "stem": "Logits [1,3,0]. Kelas prediksi (0-index)?",
+    "answer": 1,
+    "tolerance": 0,
+    "solution": "Softmax monotonic thd logits → argmax=1."
+  },
+  {
+    "id": "p-c-ce",
+    "title": "Cross Entropy 2-kelas",
+    "track": "C",
+    "topic": "aktivasi-loss",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "y=1, p=0.8. Binary CE = −[y log p +(1−y)log(1−p)]. Hitung (natural log), 3 desimal.",
+    "answer": 0.223,
+    "tolerance": 0.002,
+    "solution": "−ln(0.8)≈0.22314."
+  },
+  {
+    "id": "p-c-perceptron-update",
+    "title": "Update Perceptron",
+    "track": "C",
+    "topic": "perceptron",
+    "difficulty": 3,
+    "answerType": "short_string",
+    "stem": "w=[0,0], η=1, x=[1,1], label y=+1, prediksi −1 (salah). w baru? Format a,b.",
+    "answer": [
+      "1,1",
+      "1, 1"
+    ],
+    "solution": "w ← w + η y x = [1,1]."
+  },
+  {
+    "id": "p-c-chain",
+    "title": "Chain Rule Skalar",
+    "track": "C",
+    "topic": "backpropagation",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "L=(2w)^2. dL/dw di w=3?",
+    "answer": 24,
+    "tolerance": 0,
+    "solution": "L=4w^2, dL/dw=8w=24."
+  },
+  {
+    "id": "p-c-gd-nn",
+    "title": "Update Bobot NN",
+    "track": "C",
+    "topic": "backpropagation",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "w=0.5, grad=0.2, η=0.1. w baru?",
+    "answer": 0.48,
+    "tolerance": 1e-9,
+    "solution": "w←0.5−0.1*0.2=0.48."
+  },
+  {
+    "id": "p-c-dropout",
+    "title": "Expected Aktivasi Dropout",
+    "track": "C",
+    "topic": "regularisasi",
+    "difficulty": 3,
+    "answerType": "numeric",
+    "stem": "Unit output 10, dropout p_drop=0.3 (keep 0.7). Expected output saat training jika tanpa scaling?",
+    "answer": 7,
+    "tolerance": 0,
+    "solution": "E[mask]*10=0.7*10=7."
+  },
+  {
+    "id": "p-c-l2",
+    "title": "Loss + L2",
+    "track": "C",
+    "topic": "regularisasi",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Data loss=2.0, λ=0.1, ||w||^2=5. Total loss = data + λ||w||^2?",
+    "answer": 2.5,
+    "tolerance": 1e-9,
+    "solution": "2+0.1*5=2.5."
+  },
+  {
+    "id": "p-c-mlp-param",
+    "title": "Jumlah Parameter Dense",
+    "track": "C",
+    "topic": "mlp",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Layer Dense: input 4, output 3, dengan bias. Jumlah parameter?",
+    "answer": 15,
+    "tolerance": 0,
+    "solution": "4*3 + 3 = 15."
+  },
+  {
+    "id": "p-c-xor",
+    "title": "XOR Linear?",
+    "track": "C",
+    "topic": "perceptron",
+    "difficulty": 1,
+    "answerType": "mcq",
+    "stem": "Apakah XOR linearly separable?",
+    "choices": [
+      "Ya",
+      "Tidak"
+    ],
+    "answer": "Tidak",
+    "solution": "Perceptron tunggal gagal pada XOR."
+  },
+  {
+    "id": "p-d-conv-out",
+    "title": "Ukuran Output Konvolusi",
+    "track": "D",
+    "topic": "konvolusi",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Input 7×7, kernel 3×3, stride 1, padding 0. Ukuran spasial output (satu angka sisi)?",
+    "answer": 5,
+    "tolerance": 0,
+    "solution": "(7-3)/1+1=5."
+  },
+  {
+    "id": "p-d-pool",
+    "title": "Max Pool 2×2",
+    "track": "D",
+    "topic": "konvolusi",
+    "difficulty": 1,
+    "answerType": "numeric",
+    "stem": "Jendela [[1,5],[2,3]]. Max-pool?",
+    "answer": 5,
+    "tolerance": 0,
+    "solution": "max=5."
+  },
+  {
+    "id": "p-d-tfidf",
+    "title": "TF Sederhana",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 1,
+    "answerType": "numeric",
+    "stem": "Dokumen: \"ai ai ml\". TF(\"ai\") = count/length?",
+    "answer": 0.6666666666666666,
+    "tolerance": 0.001,
+    "solution": "2/3."
+  },
+  {
+    "id": "p-d-attention",
+    "title": "Softmax Attention Weights",
+    "track": "D",
+    "topic": "transformer-dasar",
+    "difficulty": 2,
+    "answerType": "short_string",
+    "stem": "Skor attention [0,0]. Softmax weights? Format a,b dengan 1 desimal.",
+    "answer": [
+      "0.5,0.5",
+      "0.5, 0.5"
+    ],
+    "solution": "Softmax seragam → 0.5,0.5."
+  },
+  {
+    "id": "p-d-emb",
+    "title": "Dimensi Embedding Matrix",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 2,
+    "answerType": "short_string",
+    "stem": "Vocab 1000, dim 64. Bentuk matriks embedding? Format rows,x,cols.",
+    "answer": [
+      "1000x64",
+      "1000,64",
+      "1000 x 64"
+    ],
+    "solution": "|V| × d = 1000×64."
+  },
+  {
+    "id": "p-d-transfer",
+    "title": "Freeze Backbone",
+    "track": "D",
+    "topic": "klasifikasi-citra",
+    "difficulty": 1,
+    "answerType": "mcq",
+    "stem": "Pada transfer learning dengan data kecil, praktik umum awal?",
+    "choices": [
+      "Latih semua dari scratch",
+      "Bekukan backbone, latih head",
+      "Hapus pooling",
+      "Naikkan learning rate ekstrem"
+    ],
+    "answer": "Bekukan backbone, latih head",
+    "solution": "Manfaatkan fitur pretrained, hindari overfit."
+  },
+  {
+    "id": "p-d-conv-param",
+    "title": "Parameter Layer Konvolusi",
+    "track": "D",
+    "topic": "konvolusi",
+    "difficulty": 3,
+    "answerType": "numeric",
+    "stem": "Sebuah layer Conv2D memiliki 16 filter berukuran 3×3, menerima input dengan 3 channel, dan menggunakan satu bias per filter. Berapa jumlah parameter trainable?",
+    "answer": 448,
+    "tolerance": 0,
+    "solution": "Setiap filter memiliki 3×3×3 = 27 bobot dan 1 bias. Total = 16×(27+1) = 448."
+  },
+  {
+    "id": "p-d-idf",
+    "title": "Hitung Inverse Document Frequency",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "Dalam korpus berisi N=100 dokumen, kata \"model\" muncul pada df=10 dokumen. Gunakan IDF = ln(N/df). Berapa IDF kata tersebut? Bulatkan 3 desimal.",
+    "answer": 2.303,
+    "tolerance": 0.002,
+    "solution": "IDF = ln(100/10) = ln(10) ≈ 2.302585, sehingga dibulatkan menjadi 2.303."
+  },
+  {
+    "id": "p-d-attention-scale",
+    "title": "Scaled Dot-Product Attention",
+    "track": "D",
+    "topic": "transformer-dasar",
+    "difficulty": 3,
+    "answerType": "numeric",
+    "stem": "Pada scaled dot-product attention, skor mentah q·k = 12 dan dimensi key d_k = 16. Berapa skor setelah scaling sebelum softmax?",
+    "answer": 3,
+    "tolerance": 0.000001,
+    "solution": "Skor dibagi √d_k. Karena √16 = 4, skor hasil scaling = 12/4 = 3."
+  }
+]

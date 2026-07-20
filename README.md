@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Simulasi OSN AI 2026
 
-## Getting Started
+Platform latihan **EKKA / OSN AI** untuk siswa SMA/SMK: materi silabus, latihan soal, simulasi berwaktu, pelacak performa, dan tutor AI (BYOK OpenAI-compatible).
 
-First, run the development server:
+## Fitur
+
+- Akun email/password (Better Auth)
+- Modul belajar track A–D (fokus ML & neural nets)
+- Bank soal curated (~37) + generate soal AI
+- 2 simulasi realistis: 40 soal, 2 jam, semua soal dalam satu halaman
+- Laporan skor per track/topik, akurasi, gap, dan waktu pengerjaan
+- Dashboard mastery & gap rekomendasi
+- Review chat AI scoped ke soal
+- Pengaturan API key terenkripsi (AES-GCM)
+- Admin login, CRUD pengguna, dan laporan belajar detail
+- LLM bersama dari admin dengan BYOK siswa sebagai prioritas
+
+## Stack
+
+Next.js · Tailwind · Drizzle · PostgreSQL/PGlite · Better Auth · AI SDK · KaTeX · Pyodide · Recharts
+
+## Lokal (tanpa Docker)
+
+Default memakai **PGlite** (Postgres embedded) agar bisa langsung jalan:
 
 ```bash
+cp .env.example .env.local
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka http://localhost:3000 — daftar akun, lalu mulai latihan.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Admin lokal otomatis dibuat dari `.env.local`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- URL: http://localhost:3000/admin/login
+- Email: `admin@osnai.local`
+- Password: `admin12345`
 
-## Learn More
+Ganti kredensial tersebut sebelum aplikasi dapat diakses publik.
 
-To learn more about Next.js, take a look at the following resources:
+## Lokal / server dengan Postgres Docker
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+# set di .env.local:
+# USE_PGLITE=false
+# DATABASE_URL=postgresql://osnai:osnai@localhost:5432/osnai
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+docker compose up -d db
+npm run db:push
+npm run dev
+```
 
-## Deploy on Vercel
+## Deploy Docker penuh
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+export USE_PGLITE=false
+export DATABASE_URL=postgresql://osnai:osnai@db:5432/osnai
+export BETTER_AUTH_SECRET='long-random-secret'
+export CREDENTIALS_ENCRYPTION_KEY='64-hex-chars...'
+export BETTER_AUTH_URL='https://your.domain'
+export NEXT_PUBLIC_APP_URL='https://your.domain'
+export ADMIN_EMAIL='admin@your.domain'
+export ADMIN_PASSWORD='use-a-strong-unique-password'
+export ADMIN_EMAILS='admin@your.domain'
+export MINIMAX_API_KEY='your-minimax-api-key'
+docker compose up -d --build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Atau Vercel + managed Postgres dengan env yang sama (`USE_PGLITE=false`).
+
+## Catatan AI
+
+- Default LLM untuk semua pengguna: **MiniMax M3** — cukup set `MINIMAX_API_KEY` di env (opsional: `MINIMAX_BASE_URL`, `MINIMAX_MODEL_ID`)
+- Admin dapat menyediakan base URL + model + API key bersama (mengalahkan default env)
+- Siswa dapat memakai AI admin/default atau memasang BYOK; BYOK selalu diprioritaskan
+- Key hanya disimpan terenkripsi di DB
+- Generate & chat tersedia setelah konfigurasi diuji
+- Tutor AI tidak dipakai selama mock aktif (hanya di halaman review setelah submit)

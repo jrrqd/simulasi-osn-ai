@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784487276503,
+      "tag": "0000_colorful_mulholland_black",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784517600000,
+      "tag": "0001_shared_ai_pool",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784538000000,
+      "tag": "0002_curated_mock_kind",
+      "breakpoints": true
+    }
+  ]
+}

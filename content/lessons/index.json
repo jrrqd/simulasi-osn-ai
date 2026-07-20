@@ -1,0 +1,320 @@
+[
+  {
+    "id": "a-python-list-dict",
+    "track": "A",
+    "topic": "python-dasar",
+    "title": "List, Dict, dan Pemrosesan Data",
+    "summary": "Struktur data Python yang sering dipakai untuk soal output-only.",
+    "body": "## Tujuan\nMenguasai list comprehension, dictionary, dan agregasi sederhana.\n\n## Contoh\n```python\nxs = [1,2,3,4]\nsq = [x*x for x in xs if x%2==0]\nprint(sum(sq))  # 4+16=20\n```\n\n## Tips kontes\n- Gunakan `round` dengan hati-hati; prefer format eksak jika diminta.\n- Untuk matriks, list of lists atau NumPy-style indexing manual.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Hasil dari sum([i for i in range(5) if i%2==0])?",
+        "answer": "6",
+        "explanation": "0+2+4=6"
+      },
+      {
+        "id": "q2",
+        "prompt": "Metode dict untuk mengambil nilai dengan default jika key hilang?",
+        "answer": "get",
+        "explanation": "dict.get(key, default)"
+      }
+    ]
+  },
+  {
+    "id": "a-statistika-deskriptif",
+    "track": "A",
+    "topic": "statistika",
+    "title": "Mean, Median, Varians",
+    "summary": "Statistika deskriptif sebagai fondasi evaluasi model.",
+    "body": "## Definisi\n- Mean: $\\bar{x}=\\frac{1}{n}\\sum x_i$\n- Median: nilai tengah data terurut\n- Varians populasi: $\\sigma^2=\\frac{1}{n}\\sum (x_i-\\bar{x})^2$\n- Varians sampel: bagi $n-1$\n\n## Insight ML\nMSE adalah rata-rata kuadrat error — saudara dekat dari varians residual.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Median dari 1,3,8,10,12?",
+        "answer": "8",
+        "explanation": "Nilai tengah setelah diurutkan"
+      },
+      {
+        "id": "q2",
+        "prompt": "Mean dari 2,4,6?",
+        "answer": "4",
+        "explanation": "(2+4+6)/3=4"
+      }
+    ]
+  },
+  {
+    "id": "a-probabilitas-bayes",
+    "track": "A",
+    "topic": "probabilitas",
+    "title": "Peluang Bersyarat & Bayes",
+    "summary": "Aturan perkalian, independen, dan Teorema Bayes.",
+    "body": "## Bayes\n$$P(A|B)=\\frac{P(B|A)P(A)}{P(B)}$$\n\n## Contoh klasifikasi\nJika prior spam 0.3, $P(\\text{kata}|\\text{spam})=0.8$, $P(\\text{kata}|\\text{ham})=0.1$, maka posterior dapat dihitung setelah menghitung $P(\\text{kata})$.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Jika A dan B independen, P(A∩B)=?",
+        "answer": "P(A)P(B)",
+        "explanation": "Definisi independen"
+      }
+    ]
+  },
+  {
+    "id": "a-aljabar-linier",
+    "track": "A",
+    "topic": "aljabar-linier",
+    "title": "Operasi Matriks & Sistem Linear",
+    "summary": "Perkalian matriks, transpose, dan solusi sistem sederhana.",
+    "body": "## Perkalian\n$(AB)_{ij}=\\sum_k A_{ik}B_{kj}$\n\n## Insight ML\nRegresi linier: $\\hat{y}=Xw$. Gradien MSE melibatkan $X^\\top Xw$.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Ukuran hasil perkalian matriks 2x3 dengan 3x4?",
+        "answer": "2x4",
+        "explanation": "Baris kiri × kolom kanan"
+      }
+    ]
+  },
+  {
+    "id": "a-optimasi-gradien",
+    "track": "A",
+    "topic": "optimasi",
+    "title": "Titik Kritis & Gradient Descent",
+    "summary": "Turunan, minimum lokal, dan update parameter.",
+    "body": "## Update GD\n$$w \\leftarrow w - \\eta \\nabla L(w)$$\n\nLearning rate $\\eta$ terlalu besar → osilasi; terlalu kecil → lambat.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Pada minimum lokal, gradien idealnya mendekati?",
+        "answer": "0",
+        "explanation": "Titik kritis"
+      }
+    ]
+  },
+  {
+    "id": "b-supervised-dasar",
+    "track": "B",
+    "topic": "supervised-learning",
+    "title": "Regresi & Klasifikasi",
+    "summary": "Linear regression, logistic regression, decision boundary.",
+    "body": "## Regresi linier\nMinimalkan MSE.\n\n## Regresi logistik\n$$P(y=1|x)=\\sigma(w^\\top x),\\quad \\sigma(z)=\\frac{1}{1+e^{-z}}$$\n\nPrediksi kelas: threshold 0.5 (default).",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Fungsi aktivasi pada regresi logistik?",
+        "answer": "sigmoid",
+        "explanation": "σ(z)"
+      },
+      {
+        "id": "q2",
+        "prompt": "Target regresi biasanya kontinu atau diskrit?",
+        "answer": "kontinu",
+        "explanation": "Regresi memprediksi nilai kontinu"
+      }
+    ]
+  },
+  {
+    "id": "b-unsupervised",
+    "track": "B",
+    "topic": "unsupervised-learning",
+    "title": "K-Means & PCA",
+    "summary": "Klasterisasi dan reduksi dimensi.",
+    "body": "## K-Means\n1. Inisialisasi centroid\n2. Assign titik ke centroid terdekat\n3. Update centroid = mean anggota\n4. Ulangi sampai konvergen\n\n## PCA\nArah varians maksimum = eigenvector kovarian dengan eigenvalue terbesar.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Dalam K-Means, K menyatakan?",
+        "answer": "jumlah klaster",
+        "explanation": "Hyperparameter jumlah cluster"
+      }
+    ]
+  },
+  {
+    "id": "b-evaluasi",
+    "track": "B",
+    "topic": "evaluasi-model",
+    "title": "Akurasi, Precision, Recall, F1, ROC",
+    "summary": "Metrik klasifikasi dan bahaya class imbalance.",
+    "body": "## Confusion matrix\nTP, FP, FN, TN\n\n- Precision $= TP/(TP+FP)$\n- Recall $= TP/(TP+FN)$\n- F1 $= 2\\cdot P\\cdot R/(P+R)$\n\nAkurasi menyesatkan jika kelas tidak seimbang.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Recall menekankan pengurangan apa?",
+        "answer": "FN",
+        "explanation": "False negative"
+      },
+      {
+        "id": "q2",
+        "prompt": "Precision menekankan pengurangan apa?",
+        "answer": "FP",
+        "explanation": "False positive"
+      }
+    ]
+  },
+  {
+    "id": "b-feature",
+    "track": "B",
+    "topic": "feature-engineering",
+    "title": "Scaling & Encoding",
+    "summary": "Standardisasi, one-hot, dan kebocoran data.",
+    "body": "## StandardScaler\n$z=(x-\\mu)/\\sigma$\n\nFit scaler **hanya** pada train, lalu transform train/test — hindari data leakage.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "One-hot encoding dipakai untuk fitur?",
+        "answer": "kategorikal",
+        "explanation": "Nominal/categorical features"
+      }
+    ]
+  },
+  {
+    "id": "c-perceptron",
+    "track": "C",
+    "topic": "perceptron",
+    "title": "Perceptron & Linear Separability",
+    "summary": "Unit linier dengan threshold dan update rule.",
+    "body": "## Prediksi\n$\\hat{y}=\\mathrm{sign}(w^\\top x+b)$\n\n## Update\nJika salah: $w \\leftarrow w + \\eta y x$\n\nXOR tidak linearly separable → butuh MLP.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Fungsi yang tidak bisa dipelajari perceptron tunggal?",
+        "answer": "XOR",
+        "explanation": "Tidak linearly separable"
+      }
+    ]
+  },
+  {
+    "id": "c-backprop",
+    "track": "C",
+    "topic": "backpropagation",
+    "title": "Rantai Turunan & Backprop",
+    "summary": "Menghitung gradien layer demi layer.",
+    "body": "## Chain rule\nJika $L=f(g(w))$, maka $\\frac{\\partial L}{\\partial w}=f'(g)g'(w)$.\n\nBackprop = aplikasi sistematis chain rule dari loss ke parameter.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Backprop mengandalkan aturan apa?",
+        "answer": "chain rule",
+        "explanation": "Turunan berantai"
+      }
+    ]
+  },
+  {
+    "id": "c-aktivasi-loss",
+    "track": "C",
+    "topic": "aktivasi-loss",
+    "title": "ReLU, Softmax, Cross-Entropy",
+    "summary": "Fungsi aktivasi dan loss umum.",
+    "body": "## ReLU\n$\\mathrm{ReLU}(z)=\\max(0,z)$\n\n## Softmax + CE\nUntuk klasifikasi multi-kelas, pasangan alami adalah softmax dan cross-entropy.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "ReLU(−3)=?",
+        "answer": "0",
+        "explanation": "max(0,-3)=0"
+      },
+      {
+        "id": "q2",
+        "prompt": "Loss umum klasifikasi multi-kelas?",
+        "answer": "cross-entropy",
+        "explanation": "CE dengan softmax"
+      }
+    ]
+  },
+  {
+    "id": "c-mlp",
+    "track": "C",
+    "topic": "mlp",
+    "title": "Multilayer Perceptron",
+    "summary": "Kapasitas jaringan dangkal vs dalam.",
+    "body": "MLP dengan aktivasi nonlinier adalah universal approximator (cukup lebar).\nLebih dalam membantu hierarki fitur, tapi butuh regularisasi & inisialisasi baik.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Tanpa nonlinier, MLP setara dengan?",
+        "answer": "model linier",
+        "explanation": "Komposisi linier tetap linier"
+      }
+    ]
+  },
+  {
+    "id": "c-regularisasi",
+    "track": "C",
+    "topic": "regularisasi",
+    "title": "L2, Dropout, Early Stopping",
+    "summary": "Melawan overfitting pada neural nets.",
+    "body": "## L2\nTambah $\\lambda\\|w\\|^2$ ke loss.\n\n## Dropout\nMatikan unit secara acak saat training.\n\n## Early stopping\nStop saat val loss naik.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Dropout aktif terutama saat?",
+        "answer": "training",
+        "explanation": "Saat inference biasanya off"
+      }
+    ]
+  },
+  {
+    "id": "d-konvolusi",
+    "track": "D",
+    "topic": "konvolusi",
+    "title": "Filter Konvolusi & Pooling",
+    "summary": "Dasar CNN: kernel, stride, pooling.",
+    "body": "Kernel 3×3 menggeser di atas citra; tiap posisi = dot product lokal.\nMax-pooling mengambil nilai maksimum di jendela (mis. 2×2).",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Operasi yang mengurangi resolusi spasial umum?",
+        "answer": "pooling",
+        "explanation": "Max/average pooling"
+      }
+    ]
+  },
+  {
+    "id": "d-nlp-dasar",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "title": "TF-IDF & Word Embedding",
+    "summary": "Representasi teks sebelum transformer.",
+    "body": "## TF-IDF\nMenekankan kata penting di dokumen tapi jarang di korpus.\n\n## Embedding\nVektor padat yang menangkap kemiripan semantik (king-queen ≈ man-woman).",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "TF pada TF-IDF berarti?",
+        "answer": "term frequency",
+        "explanation": "Frekuensi istilah"
+      }
+    ]
+  },
+  {
+    "id": "d-attention",
+    "track": "D",
+    "topic": "transformer-dasar",
+    "title": "Attention Dasar",
+    "summary": "Query, Key, Value secara intuitif.",
+    "body": "Attention membandingkan query dengan keys, lalu menggabungkan values dengan bobot softmax.\nSelf-attention: Q,K,V berasal dari urutan yang sama.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Bobot attention biasanya dinormalisasi dengan?",
+        "answer": "softmax",
+        "explanation": "Softmax atas skor QK"
+      }
+    ]
+  },
+  {
+    "id": "d-klasifikasi-citra",
+    "track": "D",
+    "topic": "klasifikasi-citra",
+    "title": "Pipeline Klasifikasi Citra",
+    "summary": "Preprocess, CNN backbone, head klasifikasi.",
+    "body": "Pipeline tipikal: resize → normalisasi → CNN → global pool → dense → softmax.\nTransfer learning: bekukan backbone pretrained, latih head.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Transfer learning biasanya memakai model?",
+        "answer": "pretrained",
+        "explanation": "Bobot dari dataset besar"
+      }
+    ]
+  }
+]
