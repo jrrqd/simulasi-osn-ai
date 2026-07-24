@@ -11,7 +11,13 @@ import {
   resolveDifficulty,
   labelDifficultyMode,
 } from "@/lib/ai/generate-problem";
-import { TRACKS, type TrackId } from "@/lib/content/types";
+import {
+  matchTopicsFromPrompt,
+  normalizeTopicPrompt,
+  topicPairsFromPrompt,
+  TOPIC_PROMPT_MIN_LEN,
+} from "@/lib/ai/topic-prompt";
+import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
 
 const MOCK_QUESTION_COUNT = 10;
 const MOCK_DURATION_MINUTES = 30;
@@ -28,12 +34,24 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const track = String(body.track ?? "B") as TrackId;
+  const generationMode =
+    body.generationMode === "custom" ? "custom" : "standard";
   const difficultyMode = parseDifficultyMode(body.difficultyMode);
+  const topicPrompt = normalizeTopicPrompt(body.topicPrompt);
   const preferredTopic =
     body.topic != null ? String(body.topic) : undefined;
 
-  if (!TRACKS[track]) {
+  let track = String(body.track ?? "B") as TrackId;
+  if (generationMode === "custom") {
+    if (!topicPrompt || topicPrompt.length < TOPIC_PROMPT_MIN_LEN) {
+      return Response.json(
+        {
+          error: `Jelaskan topik/brief kuis yang diinginkan (minimal ${TOPIC_PROMPT_MIN_LEN} karakter).`,
+        },
+        { status: 400 },
+      );
+    }
+  } else if (!TRACKS[track]) {
     return Response.json({ error: "Track tidak valid" }, { status: 400 });
   }
 
@@ -48,19 +66,42 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const topicPairs =
+    generationMode === "custom" && topicPrompt
+      ? topicPairsFromPrompt(topicPrompt, TRACKS[track] ? track : "B")
+      : null;
+
+  if (topicPairs && topicPairs.length > 0) {
+    track = topicPairs[0]!.track;
+  }
+
   try {
     const problemIds: string[] = [];
     const difficulties: number[] = [];
+    const usedTopics = new Set<string>();
 
     for (let i = 0; i < MOCK_QUESTION_COUNT; i++) {
       const difficulty = resolveDifficulty(difficultyMode);
-      const topic = pickTopicForTrack(track, preferredTopic);
+      let questionTrack = track;
+      let topic: string;
+
+      if (topicPairs && topicPairs.length > 0) {
+        const pair = topicPairs[i % topicPairs.length]!;
+        questionTrack = pair.track;
+        topic = pair.topic;
+      } else {
+        topic = pickTopicForTrack(track, preferredTopic);
+      }
+      usedTopics.add(topic);
+
       const problem = await generateAndStoreProblem({
         userId: authResult.user.id,
-        track,
+        track: questionTrack,
         topic,
         difficultyMode,
         difficulty,
+        focusPrompt:
+          generationMode === "custom" ? topicPrompt : undefined,
         answerType: ["numeric", "mcq", "short_string", "python_output"][
           i % 4
         ],
@@ -72,9 +113,26 @@ export async function POST(req: NextRequest) {
       difficulties.push(problem.difficulty);
     }
 
+    const preferred = topicPrompt
+      ? matchTopicsFromPrompt(topicPrompt)
+      : [];
+    const topicLabel =
+      preferred.length > 0
+        ? preferred
+            .slice(0, 3)
+            .map((t) => TOPIC_LABELS[t] ?? t)
+            .join(", ")
+        : null;
+
     const id = `aimock-${nanoid(10)}`;
-    const title = `Simulasi AI · Track ${track} · ${labelDifficultyMode(difficultyMode)}`;
-    const description = `10 soal AI bersama (${MOCK_DURATION_MINUTES} menit). Dibuat otomatis; dapat dikerjakan semua siswa.`;
+    const title =
+      generationMode === "custom"
+        ? `Simulasi AI · Custom${topicLabel ? ` · ${topicLabel}` : " topik"}`
+        : `Simulasi AI · Track ${track} · ${labelDifficultyMode(difficultyMode)}`;
+    const description =
+      generationMode === "custom" && topicPrompt
+        ? `10 soal AI bersama (${MOCK_DURATION_MINUTES} menit) mengikuti brief: ${topicPrompt.slice(0, 180)}`
+        : `10 soal AI bersama (${MOCK_DURATION_MINUTES} menit). Dibuat otomatis; dapat dikerjakan semua siswa.`;
 
     const db = await getDb();
     await db.insert(generatedMocks).values({
@@ -85,7 +143,7 @@ export async function POST(req: NextRequest) {
       durationMinutes: MOCK_DURATION_MINUTES,
       difficultyMode,
       problemIds,
-      track,
+      track: generationMode === "custom" ? "ALL" : track,
       kind: "ai",
     });
 
@@ -96,10 +154,12 @@ export async function POST(req: NextRequest) {
         description,
         durationMinutes: MOCK_DURATION_MINUTES,
         problemIds,
-        track,
+        track: generationMode === "custom" ? "ALL" : track,
         difficultyMode,
         source: "ai" as const,
         difficulties,
+        generationMode,
+        topics: [...usedTopics],
       },
       providerSource: settings.source,
     });

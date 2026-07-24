@@ -49,19 +49,23 @@ export async function POST(req: NextRequest) {
   }
 
   const id = nanoid();
-  const endsAt = new Date(Date.now() + mock.durationMinutes * 60_000);
+  const startedAt = new Date();
+  const endsAt = new Date(
+    startedAt.getTime() + mock.durationMinutes * 60_000,
+  );
   await db.insert(mockSessions).values({
     id,
     userId: authResult.user.id,
     mockId,
     status: "in_progress",
     answers: {},
+    startedAt,
     endsAt,
   });
 
   return Response.json({
     sessionId: id,
-    startedAt: new Date(),
+    startedAt,
     endsAt,
     answers: {},
     resumed: false,
@@ -144,13 +148,15 @@ export async function PUT(req: NextRequest) {
   > = {};
   const byTrack: Record<string, { score: number; maxScore: number }> = {};
   const byTopic: Record<string, { score: number; maxScore: number }> = {};
-  const elapsedMs = Math.max(
-    0,
-    Math.min(
-      Date.now() - session.startedAt.getTime(),
-      session.endsAt.getTime() - session.startedAt.getTime(),
-    ),
-  );
+
+  // Use one clock for elapsed time. Cap by planned mock duration when endsAt
+  // is valid; if endsAt is corrupt (e.g. tz mismatch), fall back to mock meta.
+  const startedMs = session.startedAt.getTime();
+  const rawElapsedMs = Math.max(0, Date.now() - startedMs);
+  const plannedMs = session.endsAt.getTime() - startedMs;
+  const fallbackCapMs = (mockMeta?.durationMinutes ?? 150) * 60_000;
+  const capMs = plannedMs > 0 ? plannedMs : fallbackCapMs;
+  const elapsedMs = Math.min(rawElapsedMs, capMs);
   const durationPerQuestion = Math.round(elapsedMs / problems.length);
 
   for (const p of problems) {

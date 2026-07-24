@@ -173,7 +173,7 @@ export function MockExamClient({
           onClick={start}
           disabled={starting}
         >
-          {starting ? "Menyiapkan…" : "Mulai simulasi 2 jam"}
+          {starting ? "Menyiapkan…" : `Mulai simulasi ${durationMinutes} menit`}
         </button>
       </section>
     );

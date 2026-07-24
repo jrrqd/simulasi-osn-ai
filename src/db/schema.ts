@@ -20,6 +20,12 @@ export const user = pgTable("user", {
   banned: boolean("banned").notNull().default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
+  birthDate: text("birth_date"),
+  schoolName: text("school_name"),
+  grade: text("grade"),
+  city: text("city"),
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
+  profilePromptSnoozedUntil: timestamp("profile_prompt_snoozed_until"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

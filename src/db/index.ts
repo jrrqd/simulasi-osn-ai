@@ -10,8 +10,12 @@ type AppDb =
   | ReturnType<typeof drizzlePg<typeof schema>>
   | ReturnType<typeof drizzlePglite<typeof schema>>;
 
-let _db: AppDb | null = null;
-let _initPromise: Promise<AppDb> | null = null;
+// Next may evaluate this module more than once per process. PGlite only
+// supports one live instance per data dir, so pin the singleton on globalThis.
+const globalForDb = globalThis as typeof globalThis & {
+  __osnaiDb?: AppDb;
+  __osnaiDbInit?: Promise<AppDb>;
+};
 
 async function migratePglite(client: PGlite) {
   await client.exec(`
@@ -32,6 +36,12 @@ async function migratePglite(client: PGlite) {
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS banned boolean NOT NULL DEFAULT false;
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS ban_reason text;
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS ban_expires timestamptz;
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS birth_date text;
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS school_name text;
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS grade text;
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS city text;
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS onboarding_completed_at timestamptz;
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS profile_prompt_snoozed_until timestamptz;
     CREATE TABLE IF NOT EXISTS session (
       id text PRIMARY KEY,
       expires_at timestamptz NOT NULL,
@@ -208,19 +218,19 @@ async function createDb(): Promise<AppDb> {
 }
 
 export async function getDb() {
-  if (_db) return _db;
-  if (!_initPromise) {
-    _initPromise = createDb().then((db) => {
-      _db = db;
+  if (globalForDb.__osnaiDb) return globalForDb.__osnaiDb;
+  if (!globalForDb.__osnaiDbInit) {
+    globalForDb.__osnaiDbInit = createDb().then((db) => {
+      globalForDb.__osnaiDb = db;
       return db;
     });
   }
-  return _initPromise;
+  return globalForDb.__osnaiDbInit;
 }
 
 export function getDbSync() {
-  if (!_db) {
+  if (!globalForDb.__osnaiDb) {
     throw new Error("Database not initialized. Call await getDb() first.");
   }
-  return _db;
+  return globalForDb.__osnaiDb;
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
+import { AdminAssistant } from "@/components/admin-assistant";
 import { SiteHeader } from "@/components/site-header";
 import { requireAdmin } from "@/lib/session";
 
@@ -38,6 +39,7 @@ export default async function AdminLayout({
         </div>
       </div>
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <AdminAssistant />
     </div>
   );
 }

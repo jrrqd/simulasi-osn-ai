@@ -7,7 +7,7 @@ Platform latihan **EKKA / OSN AI** untuk siswa SMA/SMK: materi silabus, latihan 
 - Akun email/password (Better Auth)
 - Modul belajar track A–D (fokus ML & neural nets)
 - Bank soal curated (~37) + generate soal AI
-- 2 simulasi realistis: 40 soal, 2 jam, semua soal dalam satu halaman
+- 2 simulasi realistis: 40 soal, 3 jam, semua soal dalam satu halaman
 - Laporan skor per track/topik, akurasi, gap, dan waktu pengerjaan
 - Dashboard mastery & gap rekomendasi
 - Review chat AI scoped ke soal
@@ -31,13 +31,9 @@ npm run dev
 
 Buka http://localhost:3000 — daftar akun, lalu mulai latihan.
 
-Admin lokal otomatis dibuat dari `.env.local`:
+Admin lokal otomatis dibuat dari nilai `ADMIN_EMAIL` / `ADMIN_PASSWORD` di `.env.local` (lihat `.env.example`). Buka http://localhost:3000/admin/login.
 
-- URL: http://localhost:3000/admin/login
-- Email: `admin@osnai.local`
-- Password: `admin12345`
-
-Ganti kredensial tersebut sebelum aplikasi dapat diakses publik.
+Jangan pakai password contoh di produksi; ganti semua secret sebelum deploy publik.
 
 ## Lokal / server dengan Postgres Docker
 

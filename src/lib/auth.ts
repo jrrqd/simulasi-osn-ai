@@ -7,16 +7,19 @@ import { getDb } from "@/db";
 import * as schema from "@/db/schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _auth: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _authPromise: Promise<any> | null = null;
-let _bootstrapped = false;
+type AuthInstance = any;
+
+const globalForAuth = globalThis as typeof globalThis & {
+  __osnaiAuth?: AuthInstance;
+  __osnaiAuthInit?: Promise<AuthInstance>;
+  __osnaiAuthBootstrapped?: boolean;
+};
 
 export async function getAuth() {
-  if (_auth) return _auth;
-  if (_authPromise) return _authPromise;
+  if (globalForAuth.__osnaiAuth) return globalForAuth.__osnaiAuth;
+  if (globalForAuth.__osnaiAuthInit) return globalForAuth.__osnaiAuthInit;
 
-  _authPromise = (async () => {
+  globalForAuth.__osnaiAuthInit = (async () => {
     const db = await getDb();
     const adminEmails = (process.env.ADMIN_EMAILS ?? "")
       .split(",")
@@ -83,10 +86,10 @@ export async function getAuth() {
       ],
     });
 
-    _auth = auth;
+    globalForAuth.__osnaiAuth = auth;
 
-    if (!_bootstrapped) {
-      _bootstrapped = true;
+    if (!globalForAuth.__osnaiAuthBootstrapped) {
+      globalForAuth.__osnaiAuthBootstrapped = true;
       const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
       const password = process.env.ADMIN_PASSWORD;
       if (email && password && password.length >= 8) {
@@ -116,10 +119,10 @@ export async function getAuth() {
 
     return auth;
   })().catch((err) => {
-    _authPromise = null;
-    _auth = null;
+    globalForAuth.__osnaiAuthInit = undefined;
+    globalForAuth.__osnaiAuth = undefined;
     throw err;
   });
 
-  return _authPromise;
+  return globalForAuth.__osnaiAuthInit;
 }

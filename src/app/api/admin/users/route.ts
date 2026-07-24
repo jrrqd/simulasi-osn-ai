@@ -115,7 +115,13 @@ export async function GET(req: NextRequest) {
 
   const summary = userSummary(selected, allAttempts, allMocks);
   return Response.json({
-    user: summary,
+    user: {
+      ...summary,
+      birthDate: selected.birthDate,
+      schoolName: selected.schoolName,
+      grade: selected.grade,
+      city: selected.city,
+    },
     totals: {
       ...summary,
       totalSessions: userMocks.length,

@@ -9,6 +9,10 @@ import {
   assembleCuratedMockWithLlm,
   type CuratedMockSize,
 } from "@/lib/ai/assemble-curated-mock";
+import {
+  normalizeTopicPrompt,
+  TOPIC_PROMPT_MIN_LEN,
+} from "@/lib/ai/topic-prompt";
 import { TRACKS, type TrackId } from "@/lib/content/types";
 
 function parseSize(raw: unknown): CuratedMockSize {
@@ -28,11 +32,28 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const difficultyMode = parseDifficultyMode(body.difficultyMode);
   const size = parseSize(body.size);
+  const generationMode =
+    body.generationMode === "custom" ? "custom" : "standard";
+  const topicPrompt = normalizeTopicPrompt(body.topicPrompt);
+
+  if (generationMode === "custom") {
+    if (!topicPrompt || topicPrompt.length < TOPIC_PROMPT_MIN_LEN) {
+      return Response.json(
+        {
+          error: `Jelaskan topik yang diinginkan (minimal ${TOPIC_PROMPT_MIN_LEN} karakter).`,
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   const trackRaw = body.track != null ? String(body.track) : "ALL";
   const trackFilter =
-    trackRaw !== "ALL" && TRACKS[trackRaw as TrackId]
-      ? (trackRaw as TrackId)
-      : undefined;
+    generationMode === "custom"
+      ? undefined
+      : trackRaw !== "ALL" && TRACKS[trackRaw as TrackId]
+        ? (trackRaw as TrackId)
+        : undefined;
 
   const settings = await getEffectiveAiSettings(authResult.user.id);
   if (!settings) {
@@ -50,6 +71,7 @@ export async function POST(req: NextRequest) {
       difficultyMode,
       size,
       trackFilter,
+      topicPrompt: generationMode === "custom" ? topicPrompt : undefined,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,
@@ -81,6 +103,8 @@ export async function POST(req: NextRequest) {
         kind: "curated_assembled" as const,
         source: "ai" as const,
         usedFallback: assembled.usedFallback,
+        preferredTopics: assembled.preferredTopics,
+        generationMode,
       },
       providerSource: settings.source,
     });

@@ -9,12 +9,20 @@ import {
   CURATED_MOCK_SIZES,
   type CuratedMockSize,
 } from "@/lib/ai/curated-mock-size";
+import { matchTopicsFromPrompt } from "@/lib/ai/topic-prompt";
 import { getProblems } from "@/lib/content/load";
 import type { Problem, TrackId } from "@/lib/content/types";
 import { TOPIC_LABELS } from "@/lib/content/types";
 
 export type { CuratedMockSize } from "@/lib/ai/curated-mock-size";
 export { CURATED_MOCK_SIZES } from "@/lib/ai/curated-mock-size";
+export {
+  matchTopicsFromPrompt,
+  normalizeTopicPrompt,
+  TOPIC_PROMPT_MAX_LEN,
+  TOPIC_PROMPT_MIN_LEN,
+} from "@/lib/ai/topic-prompt";
+
 const assemblySchema = z.object({
   title: z.string().min(3).max(120),
   description: z.string().min(10).max(400),
@@ -33,23 +41,44 @@ function scoreForMode(p: Problem, mode: DifficultyMode) {
   return p.difficulty === 2 ? 2 : 1;
 }
 
+function topicPreferenceScore(p: Problem, preferredTopics: string[]) {
+  if (preferredTopics.length === 0) return 0;
+  return preferredTopics.includes(p.topic) ? 10 : 0;
+}
+
 /** Deterministic fallback if LLM output is incomplete/invalid. */
 export function assembleCuratedFallback(
   count: number,
   mode: DifficultyMode,
   trackFilter?: TrackId,
+  preferredTopics: string[] = [],
 ): string[] {
   let pool = getProblems();
   if (trackFilter) pool = pool.filter((p) => p.track === trackFilter);
   const ranked = [...pool].sort((a, b) => {
+    const ts =
+      topicPreferenceScore(b, preferredTopics) -
+      topicPreferenceScore(a, preferredTopics);
+    if (ts !== 0) return ts;
     const ds = scoreForMode(b, mode) - scoreForMode(a, mode);
     if (ds !== 0) return ds;
-    // spread tracks: A,B,C,D round-robin preference via id
     return a.id.localeCompare(b.id);
   });
 
   const picked: Problem[] = [];
   const used = new Set<string>();
+
+  // Prefer requested topics first when present
+  if (preferredTopics.length > 0) {
+    for (const p of ranked) {
+      if (picked.length >= count) break;
+      if (preferredTopics.includes(p.topic) && !used.has(p.id)) {
+        picked.push(p);
+        used.add(p.id);
+      }
+    }
+  }
+
   const tracks: TrackId[] = trackFilter
     ? [trackFilter]
     : (["A", "B", "C", "D"] as TrackId[]);
@@ -86,6 +115,7 @@ function sanitizeProblemIds(
   count: number,
   mode: DifficultyMode,
   trackFilter?: TrackId,
+  preferredTopics: string[] = [],
 ) {
   const valid = new Set(getProblems().map((p) => p.id));
   const allowedTrack = trackFilter;
@@ -100,9 +130,12 @@ function sanitizeProblemIds(
     if (unique.length >= count) break;
   }
   if (unique.length < count) {
-    const fill = assembleCuratedFallback(count, mode, trackFilter).filter(
-      (id) => !unique.includes(id),
-    );
+    const fill = assembleCuratedFallback(
+      count,
+      mode,
+      trackFilter,
+      preferredTopics,
+    ).filter((id) => !unique.includes(id));
     unique.push(...fill);
   }
   return unique.slice(0, count);
@@ -112,6 +145,7 @@ export async function assembleCuratedMockWithLlm(params: {
   difficultyMode: DifficultyMode;
   size: CuratedMockSize;
   trackFilter?: TrackId;
+  topicPrompt?: string;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -121,6 +155,10 @@ export async function assembleCuratedMockWithLlm(params: {
     CURATED_MOCK_SIZES[0]!;
   const count = sizeMeta.count;
   const durationMinutes = sizeMeta.durationMinutes;
+  const topicPrompt = params.topicPrompt?.trim() || undefined;
+  const preferredTopics = topicPrompt
+    ? matchTopicsFromPrompt(topicPrompt)
+    : [];
 
   let pool = getProblems();
   if (params.trackFilter) {
@@ -137,6 +175,9 @@ export async function assembleCuratedMockWithLlm(params: {
   const trackScope = params.trackFilter
     ? `Hanya track ${params.trackFilter}`
     : "Lintas track A–D (seimbang)";
+  const topicCatalogHint = Object.entries(TOPIC_LABELS)
+    .map(([id, label]) => `${id} (${label})`)
+    .join(", ");
 
   const model = createUserProvider({
     baseUrl: params.baseUrl,
@@ -145,6 +186,30 @@ export async function assembleCuratedMockWithLlm(params: {
     jsonOutput: true,
   });
 
+  const topicBlock = topicPrompt
+    ? `
+Preferensi topik dari siswa (WAJIB diutamakan):
+"""
+${topicPrompt}
+"""
+Topik resmi di bank (untuk mapping): ${topicCatalogHint}
+${
+  preferredTopics.length > 0
+    ? `Topik yang terdeteksi dari preferensi: ${preferredTopics.join(", ")}.`
+    : "Tidak ada id topik yang terdeteksi pasti — interpretasikan preferensi siswa secara semantik."
+}
+
+Aturan preferensi topik:
+- Utamakan soal yang relevan dengan preferensi di atas (target ≥60% dari paket bila bank topik itu cukup).
+- Jika bank topik yang diminta terlalu tipis untuk mengisi ${count} soal, lengkapi sisa dari topik terdekat / track terkait.
+- Jangan mengabaikan preferensi hanya demi keseimbangan track.
+- Di description, sebutkan singkat fokus topik yang dipilih.
+`
+    : `
+Aturan cakupan:
+- Sebar topik/track agar tidak menumpuk di satu area (kecuali filter track aktif).
+`;
+
   const prompt = `Susun SATU paket simulasi olimpiade AI dari bank soal curated berikut.
 
 Target:
@@ -152,12 +217,11 @@ Target:
 - Durasi: ${durationMinutes} menit
 - Tingkat kesulitan target: ${modeLabel} (${params.difficultyMode})
 - Cakupan: ${trackScope}
-
-Aturan:
+${topicBlock}
+Aturan umum:
 - Pilih HANYA id dari katalog. Jangan invent id baru.
 - Tidak boleh duplikat.
 - Urutkan dari lebih mudah ke lebih sulit secara bertahap jika memungkinkan.
-- Sebar topik/track agar tidak menumpuk di satu area (kecuali filter track aktif).
 - Untuk mode easy: utamakan D1, sedikit D2.
 - Untuk mode medium: utamakan D2.
 - Untuk mode hard: utamakan D3 (dan D2 jika perlu).
@@ -173,7 +237,7 @@ Balas JSON dengan field: title, description, problemIds (array string sepanjang 
       model,
       output: Output.object({ schema: assemblySchema }),
       system:
-        "Kamu adalah penyusun ujian EKKA/OSN AI. Pilih dan urutkan soal curated. Balas hanya JSON valid sesuai skema.",
+        "Kamu adalah penyusun ujian EKKA/OSN AI. Pilih dan urutkan soal curated sesuai preferensi topik bila ada. Balas hanya JSON valid sesuai skema.",
       prompt,
       abortSignal: AbortSignal.timeout(120_000),
     });
@@ -183,6 +247,7 @@ Balas JSON dengan field: title, description, problemIds (array string sepanjang 
       count,
       params.difficultyMode,
       params.trackFilter,
+      preferredTopics,
     );
     return {
       title: parsed.title,
@@ -191,22 +256,36 @@ Balas JSON dengan field: title, description, problemIds (array string sepanjang 
       durationMinutes,
       count,
       usedFallback: problemIds.length < count,
+      preferredTopics,
     };
   } catch {
     const problemIds = assembleCuratedFallback(
       count,
       params.difficultyMode,
       params.trackFilter,
+      preferredTopics,
     );
+    const topicSuffix =
+      preferredTopics.length > 0
+        ? ` · Fokus: ${preferredTopics
+            .slice(0, 3)
+            .map((t) => TOPIC_LABELS[t] ?? t)
+            .join(", ")}`
+        : topicPrompt
+          ? " · Fokus topik kustom"
+          : "";
     return {
       title: `Simulasi curated · ${modeLabel}${
         params.trackFilter ? ` · Track ${params.trackFilter}` : ""
-      }`,
-      description: `Paket ${count} soal dari bank curated (disusun otomatis, ${durationMinutes} menit). Siap dikerjakan semua siswa.`,
+      }${topicSuffix}`,
+      description: topicPrompt
+        ? `Paket ${count} soal curated (${durationMinutes} menit) disusun otomatis mengikuti preferensi: ${topicPrompt.slice(0, 160)}`
+        : `Paket ${count} soal dari bank curated (disusun otomatis, ${durationMinutes} menit). Siap dikerjakan semua siswa.`,
       problemIds,
       durationMinutes,
       count,
       usedFallback: true,
+      preferredTopics,
     };
   }
 }

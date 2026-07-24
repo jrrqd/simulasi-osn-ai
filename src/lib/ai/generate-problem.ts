@@ -104,6 +104,8 @@ export async function generateAndStoreProblem(params: {
   answerType?: string;
   /** Pre-resolved difficulty (for mock batch normal distribution). */
   difficulty?: 1 | 2 | 3 | 4 | 5;
+  /** Free-text student focus for custom mock generation. */
+  focusPrompt?: string;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -133,6 +135,16 @@ export async function generateAndStoreProblem(params: {
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
+  const focusBlock = params.focusPrompt?.trim()
+    ? `
+Preferensi / brief siswa untuk paket kuis ini:
+"""
+${params.focusPrompt.trim()}
+"""
+- Sesuaikan sudut soal dengan preferensi di atas, tetap di dalam topic "${params.topic}".
+- Jika preferensi menyebut beberapa topik, fokuskan bagian yang relevan dengan topic saat ini.
+`
+    : "";
 
   const prompt = `Buat SATU soal baru yang SELARAS SILABUS.
 
@@ -142,7 +154,7 @@ Difficulty: ${difficulty} (1 mudah .. 5 sulit)
 AnswerType: ${answerType}
 
 ${syllabus}
-
+${focusBlock}
 Instruksi akhir:
 - Soal harus dapat diselesaikan hanya dengan materi di atas + prasyarat sangat dasar.
 - Jangan menguji topic lain di luar "${params.topic}".

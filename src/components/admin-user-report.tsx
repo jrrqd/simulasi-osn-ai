@@ -20,6 +20,10 @@ type Report = {
     role: string;
     createdAt: string;
     lastActiveAt: string;
+    birthDate: string | null;
+    schoolName: string | null;
+    grade: string | null;
+    city: string | null;
   };
   totals: {
     attemptsCount: number;
@@ -112,6 +116,34 @@ export function AdminUserReport({ userId }: { userId: string }) {
           terakhir aktif{" "}
           {new Date(data.user.lastActiveAt).toLocaleString("id-ID")}
         </p>
+      </div>
+
+      <div className="panel rounded-3xl p-5">
+        <h2 className="display mb-4 text-2xl">Profil siswa</h2>
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {[
+            {
+              label: "Tanggal lahir",
+              value: data.user.birthDate
+                ? new Date(`${data.user.birthDate}T00:00:00`).toLocaleDateString(
+                    "id-ID",
+                    { day: "numeric", month: "long", year: "numeric" },
+                  )
+                : null,
+            },
+            { label: "Sekolah", value: data.user.schoolName },
+            {
+              label: "Kelas",
+              value: data.user.grade ? `Kelas ${data.user.grade}` : null,
+            },
+            { label: "Kota", value: data.user.city },
+          ].map((item) => (
+            <div key={item.label}>
+              <dt className="text-xs text-[var(--muted)]">{item.label}</dt>
+              <dd className="mt-1 font-medium">{item.value || "—"}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

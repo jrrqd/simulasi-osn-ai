@@ -1,0 +1,28 @@
+[Unit]
+Description=Simulasi OSN AI (Next.js)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=osnai
+Group=osnai
+WorkingDirectory=/var/www/osnai
+EnvironmentFile=/etc/osnai/env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+Environment=NODE_OPTIONS=--max-old-space-size=768
+ExecStart=/usr/bin/node /var/www/osnai/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/osnai
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

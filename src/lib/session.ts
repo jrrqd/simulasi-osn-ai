@@ -8,18 +8,30 @@ export async function getSession() {
     const incoming = await headers();
     const cookieStore = await cookies();
 
-    // Prefer the raw Cookie header; fall back to Next's cookie store.
+    // Next may omit/empty the Cookie header in RSC while still populating
+    // cookies(). Rebuild from the store when needed, re-encoding values so
+    // signed Better Auth cookies stay valid.
+    const fromHeader = incoming.get("cookie");
+    const fromStore = cookieStore
+      .getAll()
+      .map((c) => `${c.name}=${encodeURIComponent(c.value)}`)
+      .join("; ");
     const cookieHeader =
-      incoming.get("cookie") ??
-      cookieStore
-        .getAll()
-        .map((c) => `${c.name}=${c.value}`)
-        .join("; ");
+      fromHeader && fromHeader.trim().length > 0 ? fromHeader : fromStore;
 
     if (!cookieHeader) return null;
 
+    const sessionHeaders = new Headers();
+    sessionHeaders.set("cookie", cookieHeader);
+    const host = incoming.get("host");
+    const xfHost = incoming.get("x-forwarded-host");
+    const xfProto = incoming.get("x-forwarded-proto");
+    if (host) sessionHeaders.set("host", host);
+    if (xfHost) sessionHeaders.set("x-forwarded-host", xfHost);
+    if (xfProto) sessionHeaders.set("x-forwarded-proto", xfProto);
+
     const session = await auth.api.getSession({
-      headers: new Headers({ cookie: cookieHeader }),
+      headers: sessionHeaders,
     });
     if (!session?.user) return null;
     return session;

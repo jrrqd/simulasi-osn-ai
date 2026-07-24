@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Plus_Jakarta_Sans, Source_Serif_4, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+const GA_MEASUREMENT_ID = "G-7FQWW64Z2Q";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -43,7 +46,21 @@ export default function RootLayout({
       lang="id"
       className={`${jakarta.variable} ${display.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_MEASUREMENT_ID}');
+          `}
+        </Script>
+      </body>
     </html>
   );
 }

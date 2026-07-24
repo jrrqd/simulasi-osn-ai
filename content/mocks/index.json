@@ -3,7 +3,7 @@
     "id": "mock-semifinal-01",
     "title": "Simulasi Seleksi 01",
     "description": "40 soal lintas silabus: fondasi, ML klasik, neural network, computer vision, dan NLP.",
-    "durationMinutes": 120,
+    "durationMinutes": 150,
     "problemIds": [
       "p-a-mean-1",
       "p-a-median-remove",
@@ -50,8 +50,8 @@
   {
     "id": "mock-semifinal-02",
     "title": "Simulasi Seleksi 02",
-    "description": "Paket 40 soal dengan urutan alternatif untuk simulasi penuh 2 jam.",
-    "durationMinutes": 120,
+    "description": "Paket 40 soal dengan urutan alternatif untuk simulasi penuh 150 menit.",
+    "durationMinutes": 150,
     "problemIds": [
       "p-d-attention-scale",
       "p-c-xor",
