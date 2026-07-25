@@ -16,7 +16,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ### Boot / verify
 1. Dependencies install via `.cursor/environment.json` (`npm ci || npm install`).
-2. Prefer PGlite for cloud: set `USE_PGLITE=true` (see `.env.example`). Do not require VPS Postgres unless secrets are configured.
+2. Prefer PGlite for cloud: set `USE_PGLITE=true` (see `.env.example`). Do not require VPS Postgres unless secrets are configured. The app self-migrates the PGlite schema on first `getDb()` (`src/db/index.ts`) — no `db:push`/`db:migrate` needed. PGlite is **in-memory by default**, so the seeded admin and any registered users are wiped on every dev-server restart unless you set `PGLITE_DATA_DIR` (e.g. `PGLITE_DATA_DIR=.data/pglite`) to persist.
+   - `.env.local` is required and gitignored; copy `.env.example` and fill `BETTER_AUTH_SECRET` + `CREDENTIALS_ENCRYPTION_KEY` (`openssl rand -hex 32`). No external services (DB/Redis) are needed to boot.
 3. Dev server: `npm run dev -- --hostname 0.0.0.0 --port 3000` (also started as a terminal in environment.json).
 4. Before claiming a fix: `npx tsc --noEmit` and/or `npm run lint`. For UI changes, exercise the flow in the browser when possible.
 
