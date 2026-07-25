@@ -53,6 +53,9 @@ export function PracticeProblemCard({
         done ? "border-[rgba(15,110,86,0.28)]" : ""
       }`}
     >
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+        Side quest
+      </p>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
           <h3 className="font-semibold">{title}</h3>

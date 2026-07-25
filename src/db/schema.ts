@@ -139,6 +139,28 @@ export const topicMastery = pgTable(
   ],
 );
 
+export const lessonProgress = pgTable(
+  "lesson_progress",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    lessonId: text("lesson_id").notNull(),
+    status: text("status").notNull().default("in_progress"),
+    checksPassed: jsonb("checks_passed")
+      .$type<Record<string, boolean>>()
+      .notNull()
+      .default({}),
+    completedAt: timestamp("completed_at"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("lesson_progress_user_lesson_uidx").on(t.userId, t.lessonId),
+    index("lesson_progress_user_idx").on(t.userId),
+  ],
+);
+
 export const aiProviderSettings = pgTable("ai_provider_settings", {
   id: text("id").primaryKey(),
   userId: text("user_id")

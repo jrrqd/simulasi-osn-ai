@@ -36,6 +36,13 @@
       "when": 1784940000000,
       "tag": "0004_assistant_pet",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785026400000,
+      "tag": "0005_lesson_progress",
+      "breakpoints": true
     }
   ]
 }

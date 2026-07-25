@@ -191,6 +191,17 @@ async function migratePglite(client: PGlite) {
       content text NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS lesson_progress (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      lesson_id text NOT NULL,
+      status text NOT NULL DEFAULT 'in_progress',
+      checks_passed jsonb NOT NULL DEFAULT '{}',
+      completed_at timestamptz,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS lesson_progress_user_lesson_uidx ON lesson_progress(user_id, lesson_id);
+    CREATE INDEX IF NOT EXISTS lesson_progress_user_idx ON lesson_progress(user_id);
   `);
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import { attempts, mockSessions, topicMastery } from "@/db/schema";
 import { requireApiUser } from "@/lib/api";
@@ -10,6 +10,8 @@ import {
 } from "@/lib/analytics/readiness";
 import { TOPIC_LABELS, TRACKS } from "@/lib/content/types";
 import { getLessons, getProblems } from "@/lib/content/load";
+import { resolveProblem } from "@/lib/content/shared";
+import { getUserLessonProgress } from "@/lib/lesson-progress";
 
 export async function GET(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -17,7 +19,13 @@ export async function GET(req: NextRequest) {
   const db = await getDb();
   const userId = authResult.user.id;
 
-  const [masteryRows, recentAttempts, userMocks] = await Promise.all([
+  const [
+    masteryRows,
+    recentAttempts,
+    practiceAttempts,
+    userMocks,
+    lessonProgressMap,
+  ] = await Promise.all([
     db.select().from(topicMastery).where(eq(topicMastery.userId, userId)),
     db
       .select()
@@ -27,9 +35,16 @@ export async function GET(req: NextRequest) {
       .limit(30),
     db
       .select()
+      .from(attempts)
+      .where(and(eq(attempts.userId, userId), isNull(attempts.mockSessionId)))
+      .orderBy(desc(attempts.createdAt))
+      .limit(40),
+    db
+      .select()
       .from(mockSessions)
       .where(eq(mockSessions.userId, userId))
       .orderBy(asc(mockSessions.startedAt)),
+    getUserLessonProgress(userId),
   ]);
 
   const allTopics = Object.entries(TRACKS).flatMap(([track, meta]) =>
@@ -86,7 +101,7 @@ export async function GET(req: NextRequest) {
       m.maxScore != null &&
       m.maxScore > 0,
   );
-  const avgLifetimeScore = submitted.length
+  const avgMockScore = submitted.length
     ? submitted.reduce((sum, m) => sum + m.score! / m.maxScore!, 0) /
       submitted.length
     : 0;
@@ -117,7 +132,7 @@ export async function GET(req: NextRequest) {
         attemptsCount: m.attemptsCount,
       })),
     ),
-    avgMockScoreRatio: avgLifetimeScore,
+    avgMockScoreRatio: avgMockScore,
     completedMocks: submitted.length,
     attemptsCount,
   });
@@ -125,6 +140,59 @@ export async function GET(req: NextRequest) {
   const recentMocks = [...userMocks]
     .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
     .slice(0, 10);
+
+  const practiceTitleCache = new Map<string, string>();
+  const recentPractice = [];
+  for (const a of practiceAttempts) {
+    let title = practiceTitleCache.get(a.problemId);
+    if (!title) {
+      const problem = await resolveProblem(a.problemId);
+      title = problem?.title?.trim() || a.problemId;
+      practiceTitleCache.set(a.problemId, title);
+    }
+    recentPractice.push({
+      id: a.id,
+      problemId: a.problemId,
+      title,
+      topic: a.topic,
+      topicLabel: TOPIC_LABELS[a.topic] ?? a.topic,
+      track: a.track,
+      source: a.source,
+      isCorrect: a.isCorrect,
+      score: a.score,
+      maxScore: a.maxScore,
+      durationMs: a.durationMs,
+      createdAt: a.createdAt,
+    });
+  }
+
+  const practiceCorrect = practiceAttempts.filter((a) => a.isCorrect).length;
+  const practiceSummary = {
+    attempts: practiceAttempts.length,
+    correct: practiceCorrect,
+    accuracy:
+      practiceAttempts.length === 0
+        ? 0
+        : practiceCorrect / practiceAttempts.length,
+    avgScore:
+      practiceAttempts.length === 0
+        ? 0
+        : practiceAttempts.reduce(
+            (s, a) => s + a.score / Math.max(a.maxScore || 1, 1),
+            0,
+          ) / practiceAttempts.length,
+  };
+
+  const allLessons = getLessons();
+  const levelsCompleted = allLessons.filter(
+    (l) => lessonProgressMap.get(l.id)?.status === "completed",
+  ).length;
+  const campaign = {
+    levelsCompleted,
+    totalLevels: allLessons.length,
+    sideQuestAttempts: practiceSummary.attempts,
+    sideQuestCorrect: practiceSummary.correct,
+  };
 
   return Response.json({
     overall: overallMastery(allTopics),
@@ -134,6 +202,7 @@ export async function GET(req: NextRequest) {
     typeBreakdown,
     readiness,
     sessionScores,
+    campaign,
     recentMocks: recentMocks.map((m) => ({
       id: m.id,
       mockId: m.mockId,
@@ -143,6 +212,8 @@ export async function GET(req: NextRequest) {
       startedAt: m.startedAt,
       submittedAt: m.submittedAt,
     })),
+    recentPractice,
+    practiceSummary,
     totals: {
       attempts: recentAttempts.length,
       attemptsTotal: attemptsCount,
@@ -159,7 +230,7 @@ export async function GET(req: NextRequest) {
                 recentAttempts.length,
             ),
       completedMocks: submitted.length,
-      avgLifetimeScore,
+      avgMockScore,
       avgScorePoints,
       avgMaxPoints,
     },

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getProblems } from "@/lib/content/load";
+import { getLessons, getProblems } from "@/lib/content/load";
 import { listSharedProblems } from "@/lib/content/shared";
 import { TOPIC_LABELS } from "@/lib/content/types";
 import { getUserProblemProgress } from "@/lib/attempts";
@@ -40,28 +40,64 @@ export default async function PracticePage({
         )
       : 0;
 
+  const linkedLesson = sp.topic
+    ? getLessons().find(
+        (l) =>
+          l.topic === sp.topic && (!sp.track || l.track === sp.track),
+      )
+    : undefined;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="display text-4xl">Latihan</h1>
         <p className="text-[var(--muted)]">
-          Bank soal curated + bank AI bersama yang dibuat siswa.
+          Side quests — bank soal curated + bank AI bersama untuk memperkuat
+          level tutorial.
         </p>
         {problemIds.length > 0 ? (
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Progressmu: {doneCount}/{problemIds.length} soal dikerjakan
+            Progressmu: {doneCount}/{problemIds.length} quest dikerjakan
             {doneCount > 0
               ? ` · rata-rata skor terbaik ${avgBestPct}%`
               : ""}
           </p>
         ) : null}
       </div>
+
+      {linkedLesson ? (
+        <div className="panel flex flex-wrap items-center justify-between gap-3 rounded-3xl p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+              Side quests untuk level
+            </p>
+            <p className="font-medium">{linkedLesson.title}</p>
+            <p className="text-sm text-[var(--muted)]">
+              Track {linkedLesson.track} ·{" "}
+              {TOPIC_LABELS[linkedLesson.topic] ?? linkedLesson.topic}
+            </p>
+          </div>
+          <Link
+            href={`/study/${linkedLesson.id}`}
+            className="btn btn-secondary !py-1.5 text-sm"
+          >
+            Kembali ke tutorial
+          </Link>
+        </div>
+      ) : null}
+
       <GenerateChallenge />
       <div className="flex flex-wrap gap-2 text-sm">
         {["", "A", "B", "C", "D"].map((t) => (
           <Link
             key={t || "all"}
-            href={t ? `/practice?track=${t}` : "/practice"}
+            href={
+              t
+                ? `/practice?track=${t}${sp.topic ? `&topic=${encodeURIComponent(sp.topic)}` : ""}`
+                : sp.topic
+                  ? `/practice?topic=${encodeURIComponent(sp.topic)}`
+                  : "/practice"
+            }
             className="rounded-full bg-white/70 px-3 py-1"
           >
             {t || "Semua"}
