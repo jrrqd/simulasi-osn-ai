@@ -12,10 +12,9 @@ import { CollapsiblePanel } from "@/components/collapsible-panel";
 import {
   INITIAL_GENERATION_PROGRESS,
   GenerationProgressPanel,
-  applyGenerationProgressEvent,
-  readGenerationNdjsonStream,
   type GenerationProgressState,
 } from "@/components/generation-progress";
+import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
 
 type GenerationMode = "standard" | "custom";
 
@@ -50,123 +49,20 @@ export function GenerateMockChallenge() {
   async function generate() {
     setLoading(true);
     setError("");
-    setProgress({
-      ...INITIAL_GENERATION_PROGRESS,
-      message:
-        generationMode === "custom"
-          ? "Menyusun rencana 10 soal dari brief topik…"
-          : "Menyusun rencana 10 soal AI…",
-      phase: "planning",
-    });
+    setProgress(INITIAL_GENERATION_PROGRESS);
     try {
-      const planRes = await fetch("/api/ai/generate-mock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phase: "plan",
+      const { mockId } = await runAiMockGeneration({
+        request: {
           generationMode,
           track: generationMode === "standard" ? track : undefined,
           difficultyMode,
+          size: "quick",
           topicPrompt:
             generationMode === "custom" ? topicPrompt.trim() : undefined,
-        }),
+        },
+        onProgress: setProgress,
       });
-      const planData = await planRes.json();
-      if (!planRes.ok) {
-        throw new Error(planData.error || "Gagal menyusun rencana simulasi");
-      }
-
-      const planId = String(planData.planId);
-      const total = Number(planData.total) || 10;
-      const planSlots = Array.isArray(planData.slots) ? planData.slots : [];
-
-      setProgress((prev) => ({
-        ...prev,
-        total,
-        phase: "generating",
-        message:
-          generationMode === "custom"
-            ? `Rencana siap. LLM menulis soal 1/${total} sesuai brief…`
-            : `Rencana siap. Menghasilkan soal 1/${total}…`,
-      }));
-
-      for (let index = 0; index < total; index++) {
-        const planned = planSlots[index] as
-          | { topic?: string; track?: string; difficulty?: number }
-          | undefined;
-        const topicLabel =
-          (planned?.topic && (TOPIC_LABELS[planned.topic] ?? planned.topic)) ||
-          "";
-        setProgress((prev) => ({
-          ...prev,
-          index: index + 1,
-          total,
-          topicLabel: topicLabel || prev.topicLabel,
-          thinking: "",
-          attempt: 0,
-          phase: "generating",
-          message:
-            generationMode === "custom"
-              ? `LLM menulis soal ${index + 1}/${total}${topicLabel ? `: ${topicLabel}` : ""}…`
-              : `Menghasilkan soal ${index + 1}/${total}${topicLabel ? `: ${topicLabel}` : ""}…`,
-        }));
-
-        let lastError = "Gagal generate soal";
-        let ok = false;
-        for (let attempt = 0; attempt < 2 && !ok; attempt++) {
-          const slotRes = await fetch("/api/ai/generate-mock", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              phase: "slot",
-              planId,
-              index,
-            }),
-          });
-
-          const contentType = slotRes.headers.get("content-type") ?? "";
-          if (!contentType.includes("ndjson")) {
-            const slotData = await slotRes.json().catch(() => ({}));
-            lastError =
-              (slotData as { error?: string }).error || lastError;
-            continue;
-          }
-
-          try {
-            await readGenerationNdjsonStream(slotRes, (event) => {
-              setProgress((prev) => applyGenerationProgressEvent(prev, event));
-            });
-            ok = true;
-          } catch (e) {
-            lastError = e instanceof Error ? e.message : lastError;
-          }
-        }
-        if (!ok) {
-          throw new Error(`Soal ${index + 1}/${total}: ${lastError}`);
-        }
-      }
-
-      setProgress((prev) => ({
-        ...prev,
-        phase: "saving",
-        completedCount: total,
-        message: "Menyimpan paket simulasi…",
-        thinking: "",
-      }));
-      const commitRes = await fetch("/api/ai/generate-mock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phase: "commit",
-          planId,
-        }),
-      });
-      const commitData = await commitRes.json();
-      if (!commitRes.ok) {
-        throw new Error(commitData.error || "Gagal menyimpan simulasi");
-      }
-
-      router.push(`/mock/${commitData.mock.id}`);
+      router.push(`/mock/${mockId}`);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -178,7 +74,7 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary="Buat 10 soal baru / 30 menit (batas 2× per jam)."
+      summary="Buat 10 soal baru / 30 menit (batas 2× per jam). Untuk 20/40 soal, pakai Generate AI penuh di panel atas."
       accent="accent"
     >
       <div className="flex flex-wrap gap-2">

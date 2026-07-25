@@ -8,7 +8,8 @@ type AiMockSession = {
   expiresAt: number;
 };
 
-const SESSION_TTL_MS = 45 * 60_000;
+// Full 40-soal AI generation can run for well over an hour.
+const SESSION_TTL_MS = 3 * 60 * 60_000;
 const sessions = new Map<string, AiMockSession>();
 
 function pruneExpired() {

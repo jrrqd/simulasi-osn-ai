@@ -1,8 +1,64 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { attempts, topicMastery } from "@/db/schema";
 import { computeTopicMastery } from "@/lib/analytics/mastery";
+
+export type ProblemProgress = {
+  problemId: string;
+  attemptCount: number;
+  /** Best score across attempts, 0–1. */
+  bestScore: number;
+  /** Most recent attempt score, 0–1. */
+  lastScore: number;
+  lastCorrect: boolean;
+  everCorrect: boolean;
+};
+
+/** Aggregate practice progress for a student, keyed by problemId. */
+export async function getUserProblemProgress(
+  userId: string,
+  problemIds?: string[],
+): Promise<Map<string, ProblemProgress>> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      problemId: attempts.problemId,
+      score: attempts.score,
+      isCorrect: attempts.isCorrect,
+      createdAt: attempts.createdAt,
+    })
+    .from(attempts)
+    .where(
+      problemIds && problemIds.length > 0
+        ? and(
+            eq(attempts.userId, userId),
+            inArray(attempts.problemId, problemIds),
+          )
+        : eq(attempts.userId, userId),
+    )
+    .orderBy(desc(attempts.createdAt));
+
+  const map = new Map<string, ProblemProgress>();
+  for (const row of rows) {
+    const existing = map.get(row.problemId);
+    if (!existing) {
+      map.set(row.problemId, {
+        problemId: row.problemId,
+        attemptCount: 1,
+        bestScore: row.score,
+        lastScore: row.score,
+        lastCorrect: row.isCorrect,
+        everCorrect: row.isCorrect,
+      });
+      continue;
+    }
+    existing.attemptCount += 1;
+    existing.bestScore = Math.max(existing.bestScore, row.score);
+    if (row.isCorrect) existing.everCorrect = true;
+  }
+  return map;
+}
 
 export async function recordAttempt(input: {
   userId: string;

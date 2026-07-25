@@ -13,8 +13,15 @@ import {
   type CuratedMockSize,
 } from "@/lib/ai/curated-mock-size";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
+import {
+  INITIAL_GENERATION_PROGRESS,
+  GenerationProgressPanel,
+  type GenerationProgressState,
+} from "@/components/generation-progress";
+import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
 
 type GenerationMode = "standard" | "custom";
+type SourceMode = "curated" | "ai";
 
 const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
   id,
@@ -23,6 +30,7 @@ const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
 
 export function GenerateCuratedMockChallenge() {
   const router = useRouter();
+  const [sourceMode, setSourceMode] = useState<SourceMode>("curated");
   const [generationMode, setGenerationMode] =
     useState<GenerationMode>("standard");
   const [track, setTrack] = useState<"ALL" | "A" | "B" | "C" | "D">("ALL");
@@ -32,7 +40,13 @@ export function GenerateCuratedMockChallenge() {
   const [topicPrompt, setTopicPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [progress, setProgress] = useState("");
+  const [progressText, setProgressText] = useState("");
+  const [progress, setProgress] = useState<GenerationProgressState>(
+    INITIAL_GENERATION_PROGRESS,
+  );
+
+  const sizeMeta =
+    CURATED_MOCK_SIZES.find((s) => s.value === size) ?? CURATED_MOCK_SIZES[1]!;
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -43,10 +57,10 @@ export function GenerateCuratedMockChallenge() {
     });
   }
 
-  async function generate() {
+  async function generateCurated() {
     setLoading(true);
     setError("");
-    setProgress(
+    setProgressText(
       generationMode === "custom"
         ? "LLM sedang menyusun paket sesuai preferensi topik…"
         : "LLM sedang menyusun paket dari bank curated…",
@@ -72,16 +86,74 @@ export function GenerateCuratedMockChallenge() {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setLoading(false);
-      setProgress("");
+      setProgressText("");
+    }
+  }
+
+  async function generateAiFull() {
+    setLoading(true);
+    setError("");
+    setProgress(INITIAL_GENERATION_PROGRESS);
+    try {
+      const { mockId } = await runAiMockGeneration({
+        request: {
+          generationMode,
+          track: generationMode === "standard" ? track : "ALL",
+          difficultyMode,
+          size,
+          topicPrompt:
+            generationMode === "custom" ? topicPrompt.trim() : undefined,
+        },
+        onProgress: setProgress,
+      });
+      router.push(`/mock/${mockId}`);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function generate() {
+    if (sourceMode === "ai") {
+      await generateAiFull();
+    } else {
+      await generateCurated();
     }
   }
 
   return (
     <CollapsiblePanel
-      title="Susun simulasi curated"
-      summary="Pilih & urutkan soal dari bank curated (20/40 soal)."
+      title="Susun simulasi curated / AI penuh"
+      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt).`}
       accent="primary"
     >
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={`btn !px-3 !py-1.5 text-sm ${sourceMode === "curated" ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => setSourceMode("curated")}
+          disabled={loading}
+        >
+          Bank curated
+        </button>
+        <button
+          type="button"
+          className={`btn !px-3 !py-1.5 text-sm ${sourceMode === "ai" ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => setSourceMode("ai")}
+          disabled={loading}
+        >
+          Generate AI penuh
+        </button>
+      </div>
+
+      <p className="text-xs text-[var(--muted)]">
+        {sourceMode === "curated"
+          ? "Memilih & mengurutkan soal dari bank curated (bukan menulis soal baru)."
+          : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
+      </p>
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -207,12 +279,21 @@ export function GenerateCuratedMockChallenge() {
         disabled={loading}
       >
         {loading
-          ? "Menyusun…"
-          : generationMode === "custom"
-            ? "Susun dari preferensi topik"
-            : "Susun simulasi curated"}
+          ? sourceMode === "ai"
+            ? "Menghasilkan…"
+            : "Menyusun…"
+          : sourceMode === "ai"
+            ? `Generate ${sizeMeta.count} soal AI`
+            : generationMode === "custom"
+              ? "Susun dari preferensi topik"
+              : "Susun simulasi curated"}
       </button>
-      {progress && <p className="text-xs text-[var(--muted)]">{progress}</p>}
+      {sourceMode === "ai" && (loading || (error && progress.message)) ? (
+        <GenerationProgressPanel state={progress} />
+      ) : null}
+      {sourceMode === "curated" && progressText ? (
+        <p className="text-xs text-[var(--muted)]">{progressText}</p>
+      ) : null}
       {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
     </CollapsiblePanel>
   );

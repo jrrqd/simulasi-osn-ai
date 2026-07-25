@@ -16,6 +16,7 @@ import {
   buildAiMockPlan,
   isAiMockSlot,
   MOCK_QUESTION_COUNT,
+  parseAiMockSize,
   type AiMockAnswerType,
   type AiMockSlot,
 } from "@/lib/ai/ai-mock-plan";
@@ -139,8 +140,16 @@ export async function POST(req: NextRequest) {
     const topicPrompt = normalizeTopicPrompt(body.topicPrompt);
     const preferredTopic =
       body.topic != null ? String(body.topic) : undefined;
+    const size = parseAiMockSize(body.size);
 
-    let track = String(body.track ?? "B") as TrackId;
+    const rawTrack = String(body.track ?? "B");
+    const track: TrackId | "ALL" =
+      rawTrack === "ALL"
+        ? "ALL"
+        : TRACKS[rawTrack as TrackId]
+          ? (rawTrack as TrackId)
+          : "B";
+
     if (generationMode === "custom") {
       if (!topicPrompt || topicPrompt.length < TOPIC_PROMPT_MIN_LEN) {
         return Response.json(
@@ -150,7 +159,7 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         );
       }
-    } else if (!TRACKS[track]) {
+    } else if (track !== "ALL" && !TRACKS[track]) {
       return Response.json({ error: "Track tidak valid" }, { status: 400 });
     }
 
@@ -167,10 +176,11 @@ export async function POST(req: NextRequest) {
 
     const { slots, meta } = buildAiMockPlan({
       generationMode,
-      track: TRACKS[track] ? track : "B",
+      track,
       difficultyMode,
       topicPrompt,
       preferredTopic,
+      size,
     });
 
     const planId = createAiMockSession({
@@ -189,14 +199,17 @@ export async function POST(req: NextRequest) {
         description: meta.description,
         generationMode: meta.generationMode,
         mockTrack: meta.mockTrack,
+        questionCount: meta.questionCount,
+        durationMinutes: meta.durationMinutes,
+        size: meta.size,
       },
       providerSource: settings.source,
     });
   }
 
   if (phase === "slot") {
-    // Allow retries across a mock (10 slots × a few attempts).
-    if (!rateLimit(`gen-mock-slot:${authResult.user.id}`, 40, 60 * 60_000)) {
+    // Allow retries across a full mock (40 slots × a few attempts).
+    if (!rateLimit(`gen-mock-slot:${authResult.user.id}`, 120, 60 * 60_000)) {
       return Response.json(
         { error: "Terlalu banyak permintaan generate soal simulasi" },
         { status: 429 },
@@ -325,13 +338,14 @@ export async function POST(req: NextRequest) {
     }
 
     const id = `aimock-${nanoid(10)}`;
+    const durationMinutes = session.meta.durationMinutes ?? 30;
     const db = await getDb();
     await db.insert(generatedMocks).values({
       id,
       createdBy: authResult.user.id,
       title: session.meta.title,
       description: session.meta.description,
-      durationMinutes: 30,
+      durationMinutes,
       difficultyMode: session.meta.difficultyMode,
       problemIds: problemIds as string[],
       track: session.meta.mockTrack,
@@ -343,7 +357,7 @@ export async function POST(req: NextRequest) {
         id,
         title: session.meta.title,
         description: session.meta.description,
-        durationMinutes: 30,
+        durationMinutes,
         problemIds,
         track: session.meta.mockTrack,
         difficultyMode: session.meta.difficultyMode,
@@ -396,12 +410,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const size = parseAiMockSize(body.size);
     const { slots, meta } = buildAiMockPlan({
       generationMode,
       track: TRACKS[track] ? track : "B",
       difficultyMode,
       topicPrompt,
       preferredTopic,
+      size,
     });
 
     const problemIds: string[] = [];
@@ -421,13 +437,15 @@ export async function POST(req: NextRequest) {
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
+        progressIndex: slot.index + 1,
+        progressTotal: slots.length,
       });
       problemIds.push(problem.id);
       difficulties.push(problem.difficulty);
       usedTopics.add(problem.topic);
     }
 
-    if (problemIds.length !== MOCK_QUESTION_COUNT) {
+    if (problemIds.length !== meta.questionCount) {
       throw new Error("Jumlah soal simulasi tidak lengkap");
     }
 
@@ -438,7 +456,7 @@ export async function POST(req: NextRequest) {
       createdBy: authResult.user.id,
       title: meta.title,
       description: meta.description,
-      durationMinutes: 30,
+      durationMinutes: meta.durationMinutes,
       difficultyMode,
       problemIds,
       track: meta.mockTrack,
@@ -450,7 +468,7 @@ export async function POST(req: NextRequest) {
         id,
         title: meta.title,
         description: meta.description,
-        durationMinutes: 30,
+        durationMinutes: meta.durationMinutes,
         problemIds,
         track: meta.mockTrack,
         difficultyMode,

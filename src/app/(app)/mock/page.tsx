@@ -109,7 +109,7 @@ export default async function MockListPage() {
           <div>
             <h2 className="display text-2xl">Simulasi AI bersama</h2>
             <p className="text-xs text-[var(--muted)]">
-              10 soal baru dari LLM / 30 menit.
+              Soal baru dari LLM (10 / 20 / 40).
             </p>
           </div>
           <div className="space-y-2">

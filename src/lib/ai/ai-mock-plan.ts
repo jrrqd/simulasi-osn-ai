@@ -4,6 +4,10 @@ import {
   type DifficultyMode,
 } from "@/lib/ai/difficulty";
 import {
+  CURATED_MOCK_SIZES,
+  type CuratedMockSize,
+} from "@/lib/ai/curated-mock-size";
+import {
   matchTopicsFromPrompt,
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
@@ -17,6 +21,32 @@ function pickTopicForTrack(track: TrackId, preferred?: string) {
 
 export const MOCK_QUESTION_COUNT = 10;
 export const MOCK_DURATION_MINUTES = 30;
+
+export type AiMockSize = "quick" | CuratedMockSize;
+
+export const AI_MOCK_SIZES: {
+  value: AiMockSize;
+  label: string;
+  count: number;
+  durationMinutes: number;
+}[] = [
+  {
+    value: "quick",
+    label: "10 soal · 30 menit",
+    count: MOCK_QUESTION_COUNT,
+    durationMinutes: MOCK_DURATION_MINUTES,
+  },
+  ...CURATED_MOCK_SIZES,
+];
+
+export function parseAiMockSize(raw: unknown): AiMockSize {
+  if (raw === "half" || raw === "full" || raw === "quick") return raw;
+  return "quick";
+}
+
+export function aiMockSizeMeta(size: AiMockSize) {
+  return AI_MOCK_SIZES.find((s) => s.value === size) ?? AI_MOCK_SIZES[0]!;
+}
 
 export type AiMockAnswerType = "numeric" | "mcq" | "short_string";
 
@@ -36,6 +66,9 @@ export type AiMockPlanMeta = {
   mockTrack: TrackId | "ALL";
   title: string;
   description: string;
+  questionCount: number;
+  durationMinutes: number;
+  size: AiMockSize;
 };
 
 const ANSWER_TYPES: AiMockAnswerType[] = [
@@ -45,14 +78,23 @@ const ANSWER_TYPES: AiMockAnswerType[] = [
   "numeric",
 ];
 
+const TRACK_CYCLE = Object.keys(TRACKS) as TrackId[];
+
 export function buildAiMockPlan(params: {
   generationMode: "standard" | "custom";
-  track: TrackId;
+  track: TrackId | "ALL";
   difficultyMode: DifficultyMode;
   topicPrompt?: string;
   preferredTopic?: string;
+  size?: AiMockSize;
 }): { slots: AiMockSlot[]; meta: AiMockPlanMeta } {
-  let track = params.track;
+  const size = params.size ?? "quick";
+  const sizeMeta = aiMockSizeMeta(size);
+  const count = sizeMeta.count;
+  const durationMinutes = sizeMeta.durationMinutes;
+
+  let track: TrackId =
+    params.track !== "ALL" && TRACKS[params.track] ? params.track : "B";
   const topicPairs =
     params.generationMode === "custom" && params.topicPrompt
       ? topicPairsFromPrompt(
@@ -66,7 +108,7 @@ export function buildAiMockPlan(params: {
   }
 
   const slots: AiMockSlot[] = [];
-  for (let i = 0; i < MOCK_QUESTION_COUNT; i++) {
+  for (let i = 0; i < count; i++) {
     const difficulty = resolveDifficulty(params.difficultyMode);
     let questionTrack = track;
     let topic: string;
@@ -75,6 +117,9 @@ export function buildAiMockPlan(params: {
       const pair = topicPairs[i % topicPairs.length]!;
       questionTrack = pair.track;
       topic = pair.topic;
+    } else if (params.track === "ALL" && params.generationMode === "standard") {
+      questionTrack = TRACK_CYCLE[i % TRACK_CYCLE.length]!;
+      topic = pickTopicForTrack(questionTrack, params.preferredTopic);
     } else {
       topic = pickTopicForTrack(track, params.preferredTopic);
     }
@@ -100,15 +145,19 @@ export function buildAiMockPlan(params: {
       : null;
 
   const mockTrack =
-    params.generationMode === "custom" ? "ALL" : track;
+    params.generationMode === "custom" || params.track === "ALL"
+      ? "ALL"
+      : track;
   const title =
     params.generationMode === "custom"
-      ? `Simulasi AI · Custom${topicLabel ? ` · ${topicLabel}` : " topik"}`
-      : `Simulasi AI · Track ${track} · ${labelDifficultyMode(params.difficultyMode)}`;
+      ? `Simulasi AI · ${count} soal · Custom${topicLabel ? ` · ${topicLabel}` : " topik"}`
+      : params.track === "ALL"
+        ? `Simulasi AI · ${count} soal · Semua track · ${labelDifficultyMode(params.difficultyMode)}`
+        : `Simulasi AI · ${count} soal · Track ${track} · ${labelDifficultyMode(params.difficultyMode)}`;
   const description =
     params.generationMode === "custom" && params.topicPrompt
-      ? `10 soal AI bersama (${MOCK_DURATION_MINUTES} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
-      : `10 soal AI bersama (${MOCK_DURATION_MINUTES} menit). Dibuat otomatis; dapat dikerjakan semua siswa.`;
+      ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
+      : `${count} soal AI baru (${durationMinutes} menit). Dibuat otomatis; dapat dikerjakan semua siswa.`;
 
   return {
     slots,
@@ -119,6 +168,9 @@ export function buildAiMockPlan(params: {
       mockTrack,
       title,
       description,
+      questionCount: count,
+      durationMinutes,
+      size,
     },
   };
 }
