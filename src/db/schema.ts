@@ -26,6 +26,8 @@ export const user = pgTable("user", {
   city: text("city"),
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   profilePromptSnoozedUntil: timestamp("profile_prompt_snoozed_until"),
+  /** Floating AI assistant mascot: none | cat (Jacky) | dog (Ichi) */
+  assistantPet: text("assistant_pet").notNull().default("cat"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

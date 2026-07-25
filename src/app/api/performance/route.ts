@@ -1,9 +1,13 @@
 import { NextRequest } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { attempts, mockSessions, topicMastery } from "@/db/schema";
 import { requireApiUser } from "@/lib/api";
 import { overallMastery, rankGaps } from "@/lib/analytics/mastery";
+import {
+  computeOsnReadiness,
+  syllabusTopicsFromMastery,
+} from "@/lib/analytics/readiness";
 import { TOPIC_LABELS, TRACKS } from "@/lib/content/types";
 import { getLessons, getProblems } from "@/lib/content/load";
 
@@ -13,10 +17,20 @@ export async function GET(req: NextRequest) {
   const db = await getDb();
   const userId = authResult.user.id;
 
-  const masteryRows = await db
-    .select()
-    .from(topicMastery)
-    .where(eq(topicMastery.userId, userId));
+  const [masteryRows, recentAttempts, userMocks] = await Promise.all([
+    db.select().from(topicMastery).where(eq(topicMastery.userId, userId)),
+    db
+      .select()
+      .from(attempts)
+      .where(eq(attempts.userId, userId))
+      .orderBy(desc(attempts.createdAt))
+      .limit(30),
+    db
+      .select()
+      .from(mockSessions)
+      .where(eq(mockSessions.userId, userId))
+      .orderBy(asc(mockSessions.startedAt)),
+  ]);
 
   const allTopics = Object.entries(TRACKS).flatMap(([track, meta]) =>
     meta.topics.map((topic) => {
@@ -42,20 +56,6 @@ export async function GET(req: NextRequest) {
     practiceId: problems.find((p) => p.topic === g.topic)?.id,
   }));
 
-  const recentAttempts = await db
-    .select()
-    .from(attempts)
-    .where(eq(attempts.userId, userId))
-    .orderBy(desc(attempts.createdAt))
-    .limit(30);
-
-  const recentMocks = await db
-    .select()
-    .from(mockSessions)
-    .where(eq(mockSessions.userId, userId))
-    .orderBy(desc(mockSessions.startedAt))
-    .limit(10);
-
   const byDay: Record<string, { correct: number; total: number }> = {};
   for (const a of recentAttempts) {
     const day = new Date(a.createdAt).toISOString().slice(0, 10);
@@ -79,12 +79,61 @@ export async function GET(req: NextRequest) {
     if (a.isCorrect) typeBreakdown[a.answerType].correct += 1;
   }
 
+  const submitted = userMocks.filter(
+    (m) =>
+      m.status === "submitted" &&
+      m.score != null &&
+      m.maxScore != null &&
+      m.maxScore > 0,
+  );
+  const avgLifetimeScore = submitted.length
+    ? submitted.reduce((sum, m) => sum + m.score! / m.maxScore!, 0) /
+      submitted.length
+    : 0;
+  const avgScorePoints = submitted.length
+    ? submitted.reduce((sum, m) => sum + m.score!, 0) / submitted.length
+    : 0;
+  const avgMaxPoints = submitted.length
+    ? submitted.reduce((sum, m) => sum + m.maxScore!, 0) / submitted.length
+    : 0;
+
+  const sessionScores = submitted.map((m, index) => ({
+    index: index + 1,
+    label: `Sesi ${index + 1}`,
+    mockId: m.mockId,
+    score: m.score!,
+    maxScore: m.maxScore!,
+    percent: Math.round((m.score! / m.maxScore!) * 1000) / 10,
+    startedAt: m.startedAt,
+    submittedAt: m.submittedAt,
+  }));
+
+  const attemptsCount = allTopics.reduce((sum, t) => sum + t.attemptsCount, 0);
+  const readiness = computeOsnReadiness({
+    topics: syllabusTopicsFromMastery(
+      masteryRows.map((m) => ({
+        topic: m.topic,
+        mastery: m.mastery,
+        attemptsCount: m.attemptsCount,
+      })),
+    ),
+    avgMockScoreRatio: avgLifetimeScore,
+    completedMocks: submitted.length,
+    attemptsCount,
+  });
+
+  const recentMocks = [...userMocks]
+    .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+    .slice(0, 10);
+
   return Response.json({
     overall: overallMastery(allTopics),
     topics: allTopics,
     gaps: recommendations,
     trend,
     typeBreakdown,
+    readiness,
+    sessionScores,
     recentMocks: recentMocks.map((m) => ({
       id: m.id,
       mockId: m.mockId,
@@ -96,6 +145,7 @@ export async function GET(req: NextRequest) {
     })),
     totals: {
       attempts: recentAttempts.length,
+      attemptsTotal: attemptsCount,
       accuracy:
         recentAttempts.length === 0
           ? 0
@@ -108,6 +158,10 @@ export async function GET(req: NextRequest) {
               recentAttempts.reduce((s, a) => s + a.durationMs, 0) /
                 recentAttempts.length,
             ),
+      completedMocks: submitted.length,
+      avgLifetimeScore,
+      avgScorePoints,
+      avgMaxPoints,
     },
   });
 }

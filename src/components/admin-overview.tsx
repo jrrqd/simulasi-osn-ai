@@ -9,7 +9,9 @@ type UserSummary = {
   email: string;
   role: string;
   attemptsCount: number;
-  accuracy: number;
+  avgLifetimeScore: number;
+  avgScorePoints: number;
+  avgMaxPoints: number;
   practiceTimeMs: number;
   mocksCompleted: number;
   lastActiveAt: string;
@@ -96,8 +98,8 @@ export function AdminOverview() {
           </div>
           <ul className="mt-3 space-y-2 text-sm">
             {students
-              .filter((item) => item.attemptsCount > 0)
-              .sort((a, b) => a.accuracy - b.accuracy)
+              .filter((item) => item.mocksCompleted > 0)
+              .sort((a, b) => a.avgLifetimeScore - b.avgLifetimeScore)
               .slice(0, 5)
               .map((item) => (
                 <li
@@ -105,11 +107,15 @@ export function AdminOverview() {
                   className="flex items-center justify-between border-b border-[var(--line)] py-2"
                 >
                   <Link href={`/admin/users/${item.id}`}>{item.name}</Link>
-                  <span>{Math.round(item.accuracy * 100)}%</span>
+                  <span>
+                    {item.avgScorePoints.toFixed(1)}/
+                    {Math.round(item.avgMaxPoints)} (
+                    {Math.round(item.avgLifetimeScore * 100)}%)
+                  </span>
                 </li>
               ))}
-            {!students.some((item) => item.attemptsCount > 0) && (
-              <li className="text-[var(--muted)]">Belum ada data latihan.</li>
+            {!students.some((item) => item.mocksCompleted > 0) && (
+              <li className="text-[var(--muted)]">Belum ada mock selesai.</li>
             )}
           </ul>
         </div>

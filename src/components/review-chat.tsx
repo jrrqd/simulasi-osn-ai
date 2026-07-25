@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { Markdown } from "@/components/markdown";
+import { AssistantMessageBubble } from "@/components/assistant-message";
 
 export function ReviewChat({
   problemId,
@@ -39,20 +39,11 @@ export function ReviewChat({
           </p>
         )}
         {messages.map((m) => (
-          <div
+          <AssistantMessageBubble
             key={m.id}
-            className={`rounded-2xl px-3 py-2 text-sm ${
-              m.role === "user"
-                ? "ml-8 bg-[rgba(15,110,86,0.12)]"
-                : "mr-8 bg-white/80"
-            }`}
-          >
-            {m.parts.map((part, i) =>
-              part.type === "text" ? (
-                <Markdown key={i} content={part.text} />
-              ) : null,
-            )}
-          </div>
+            role={m.role}
+            parts={m.parts}
+          />
         ))}
         {error && (
           <p className="text-sm text-[var(--bad)]">{error.message}</p>

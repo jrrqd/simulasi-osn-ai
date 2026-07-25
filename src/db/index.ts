@@ -42,6 +42,7 @@ async function migratePglite(client: PGlite) {
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS city text;
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS onboarding_completed_at timestamptz;
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS profile_prompt_snoozed_until timestamptz;
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS assistant_pet text NOT NULL DEFAULT 'cat';
     CREATE TABLE IF NOT EXISTS session (
       id text PRIMARY KEY,
       expires_at timestamptz NOT NULL,

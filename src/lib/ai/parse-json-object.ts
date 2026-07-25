@@ -1,0 +1,203 @@
+/**
+ * Extract and repair a JSON object from model text.
+ * MiniMax often emits near-JSON with LaTeX backslashes, raw newlines,
+ * trailing commas, or truncated closing braces.
+ */
+
+export function extractJsonObjectText(text: string): string | null {
+  const trimmed = text
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/, "")
+    .trim();
+
+  const start = trimmed.indexOf("{");
+  if (start === -1) return null;
+
+  // Prefer balanced extraction; fall back to last "}" for truncated payloads.
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < trimmed.length; i++) {
+    const ch = trimmed[i]!;
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return trimmed.slice(start, i + 1);
+    }
+  }
+
+  const end = trimmed.lastIndexOf("}");
+  if (end > start) return trimmed.slice(start, end + 1);
+  return trimmed.slice(start);
+}
+
+function isHex(ch: string | undefined) {
+  return typeof ch === "string" && /[0-9a-fA-F]/.test(ch);
+}
+
+/**
+ * Walk JSON text and fix common LLM mistakes inside string literals:
+ * - raw control characters / newlines
+ * - LaTeX-like escapes that collide with JSON (\frac, \begin, \(, \), …)
+ * Keeps real JSON escapes: \", \\, \/, \n, \r, \t, \uXXXX
+ * Treats \b and \f as literal backslash (almost never intentional; breaks \begin/\frac).
+ */
+function escapeInvalidStringEscapes(json: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i]!;
+    const code = ch.charCodeAt(0);
+
+    if (!inString) {
+      if (ch === '"') inString = true;
+      out += ch;
+      continue;
+    }
+
+    if (escaped) {
+      out += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === "\\") {
+      const next = json[i + 1];
+      if (
+        next === '"' ||
+        next === "\\" ||
+        next === "/" ||
+        next === "n" ||
+        next === "r" ||
+        next === "t"
+      ) {
+        out += ch;
+        escaped = true;
+        continue;
+      }
+      if (
+        next === "u" &&
+        isHex(json[i + 2]) &&
+        isHex(json[i + 3]) &&
+        isHex(json[i + 4]) &&
+        isHex(json[i + 5])
+      ) {
+        out += ch;
+        escaped = true;
+        continue;
+      }
+      // \b / \f / \( / \frac / etc. → keep as literal backslash
+      out += "\\\\";
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = false;
+      out += ch;
+      continue;
+    }
+
+    // Raw controls inside strings are invalid JSON
+    if (code <= 0x1f) {
+      if (ch === "\n") out += "\\n";
+      else if (ch === "\r") out += "\\r";
+      else if (ch === "\t") out += "\\t";
+      else out += `\\u${code.toString(16).padStart(4, "0")}`;
+      continue;
+    }
+
+    out += ch;
+  }
+
+  return out;
+}
+
+function stripTrailingCommas(json: string): string {
+  return json.replace(/,\s*([}\]])/g, "$1");
+}
+
+/** Close open strings / braces / brackets when the model truncated output. */
+export function closeTruncatedJson(text: string): string {
+  let inString = false;
+  let escaped = false;
+  const stack: Array<"{" | "["> = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+
+  let out = text;
+  if (inString) out += '"';
+  while (stack.length > 0) {
+    out += stack.pop() === "{" ? "}" : "]";
+  }
+  return out;
+}
+
+export function repairJsonObjectText(text: string): string {
+  return stripTrailingCommas(escapeInvalidStringEscapes(text));
+}
+
+export function parseJsonObject(text: string): unknown {
+  const extracted = extractJsonObjectText(text);
+  if (!extracted) {
+    throw new SyntaxError("No JSON object found in model response");
+  }
+
+  const candidates = [
+    repairJsonObjectText(extracted),
+    repairJsonObjectText(closeTruncatedJson(extracted)),
+    extracted,
+    closeTruncatedJson(extracted),
+  ];
+
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new SyntaxError("Could not parse JSON object from model response");
+}

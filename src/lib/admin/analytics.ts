@@ -21,12 +21,21 @@ function summarizeUser(
 ) {
   const userAttempts = allAttempts.filter((a) => a.userId === item.id);
   const userMocks = allMocks.filter((m) => m.userId === item.id);
-  const totalScore = userAttempts.reduce((sum, a) => sum + a.score, 0);
-  const totalMax = userAttempts.reduce((sum, a) => sum + a.maxScore, 0);
   const practiceTimeMs = userAttempts.reduce(
     (sum, a) => sum + a.durationMs,
     0,
   );
+  const submitted = userMocks.filter(
+    (m) =>
+      m.status === "submitted" &&
+      m.score != null &&
+      m.maxScore != null &&
+      m.maxScore > 0,
+  );
+  const avgLifetimeScore = submitted.length
+    ? submitted.reduce((sum, m) => sum + m.score! / m.maxScore!, 0) /
+      submitted.length
+    : 0;
   const latestAttempt = userAttempts[0]?.createdAt;
   const latestMock = userMocks[0]?.startedAt;
   const lastActiveAt =
@@ -48,9 +57,9 @@ function summarizeUser(
     createdAt: item.createdAt,
     lastActiveAt,
     attemptsCount: userAttempts.length,
-    accuracy: totalMax ? totalScore / totalMax : 0,
+    avgLifetimeScore,
     practiceTimeMs,
-    mocksCompleted: userMocks.filter((m) => m.status === "submitted").length,
+    mocksCompleted: submitted.length,
   };
 }
 
@@ -81,11 +90,11 @@ export async function buildAdminAssistantContext(focusUserId?: string) {
   );
 
   const weakStudents = [...activeStudents]
-    .sort((a, b) => a.accuracy - b.accuracy)
+    .sort((a, b) => a.avgLifetimeScore - b.avgLifetimeScore)
     .slice(0, 8)
     .map(
       (s) =>
-        `- ${s.name} <${s.email}> · akurasi ${Math.round(s.accuracy * 100)}% · ${s.attemptsCount} attempt · mock selesai ${s.mocksCompleted} · terakhir aktif ${s.lastActiveAt.toISOString()}`,
+        `- ${s.name} <${s.email}> · avg skor mock ${Math.round(s.avgLifetimeScore * 100)}% · ${s.attemptsCount} attempt · mock selesai ${s.mocksCompleted} · terakhir aktif ${s.lastActiveAt.toISOString()}`,
     )
     .join("\n");
 
@@ -94,7 +103,7 @@ export async function buildAdminAssistantContext(focusUserId?: string) {
     .slice(0, 8)
     .map(
       (s) =>
-        `- ${s.name} · ${s.attemptsCount} attempt · akurasi ${Math.round(s.accuracy * 100)}% · waktu ${formatMinutes(s.practiceTimeMs)}`,
+        `- ${s.name} · ${s.attemptsCount} attempt · avg skor mock ${Math.round(s.avgLifetimeScore * 100)}% · waktu ${formatMinutes(s.practiceTimeMs)}`,
     )
     .join("\n");
 
@@ -171,7 +180,7 @@ Nama: ${summary.name}
 Email: ${summary.email}
 Role: ${summary.role}
 Profil: sekolah=${summary.schoolName ?? "—"}, kelas=${summary.grade ?? "—"}, kota=${summary.city ?? "—"}
-Akurasi: ${Math.round(summary.accuracy * 100)}%
+Rata-rata skor mock (lifetime): ${Math.round(summary.avgLifetimeScore * 100)}%
 Attempt: ${summary.attemptsCount}
 Waktu latihan: ${formatMinutes(summary.practiceTimeMs)}
 Mock selesai: ${summary.mocksCompleted} / sesi mock ${userMocks.length}
@@ -197,7 +206,7 @@ Admin accounts: ${summaries.filter((s) => s.role === "admin").length}
 Siswa paling aktif:
 ${topActive || "(belum ada)"}
 
-Siswa perlu perhatian (akurasi terendah di antara yang aktif):
+Siswa perlu perhatian (avg skor mock terendah di antara yang aktif):
 ${weakStudents || "(belum ada)"}
 
 Topik paling lemah (platform-wide):

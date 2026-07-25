@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/session";
 import { AiSettingsForm } from "@/components/ai-settings-form";
+import { AssistantPetSettings } from "@/components/assistant-pet-settings";
 
 export default async function SettingsPage() {
   const user = await requireUser();
@@ -11,6 +12,7 @@ export default async function SettingsPage() {
           {user.name} · {user.email}
         </p>
       </div>
+      <AssistantPetSettings />
       <AiSettingsForm />
     </div>
   );

@@ -1,4 +1,4 @@
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { generatedProblems } from "@/db/schema";
@@ -6,12 +6,14 @@ import {
   GENERATION_SYSTEM_PROMPT,
   createUserProvider,
   generatedProblemSchema,
+  normalizeGeneratedProblem,
   type GeneratedProblemPayload,
 } from "@/lib/ai/provider";
 import {
   type DifficultyMode,
   resolveDifficulty,
 } from "@/lib/ai/difficulty";
+import { parseJsonObject } from "@/lib/ai/parse-json-object";
 import { getLessonsForTopic } from "@/lib/content/load";
 import type { Lesson } from "@/lib/content/types";
 import {
@@ -20,6 +22,9 @@ import {
   type Problem,
   type TrackId,
 } from "@/lib/content/types";
+
+const MAX_GENERATION_ATTEMPTS = 4;
+const MAX_OUTPUT_TOKENS = 2500;
 
 export type { DifficultyMode } from "@/lib/ai/difficulty";
 export {
@@ -127,11 +132,13 @@ export async function generateAndStoreProblem(params: {
     ? params.answerType!
     : "numeric";
 
+  // Plain chat JSON (no response_format). MiniMax-M3 often breaks with
+  // Output.object / json_schema; we parse + repair locally instead.
   const model = createUserProvider({
     baseUrl: params.baseUrl,
     apiKey: params.apiKey,
     modelId: params.modelId,
-    jsonOutput: true,
+    jsonOutput: false,
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
@@ -146,7 +153,7 @@ ${params.focusPrompt.trim()}
 `
     : "";
 
-  const prompt = `Buat SATU soal baru yang SELARAS SILABUS.
+  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS.
 
 Track: ${params.track} (${TRACKS[params.track].name})
 Topic: ${params.topic} (${TOPIC_LABELS[params.topic] ?? params.topic})
@@ -159,38 +166,82 @@ Instruksi akhir:
 - Soal harus dapat diselesaikan hanya dengan materi di atas + prasyarat sangat dasar.
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
-- Solusi detail langkah demi langkah, merujuk konsep dari materi silabus.`;
+- Solusi 3–8 kalimat, plain text (tanpa LaTeX/backslash).
+- Balas HANYA satu objek JSON valid.`;
 
-  let payload: GeneratedProblemPayload;
-  for (let attempt = 0; ; attempt++) {
+  let payload: GeneratedProblemPayload | null = null;
+  let lastError: unknown;
+  let previousRaw = "";
+
+  for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
+    const prompt =
+      attempt === 0 || !previousRaw
+        ? basePrompt
+        : `JSON berikut INVALID dan gagal di-parse. Perbaiki menjadi SATU objek JSON valid sesuai skema (tanpa markdown, tanpa LaTeX, tanpa komentar). Pertahankan isi soal sebisa mungkin.
+
+JSON rusak:
+${previousRaw.slice(0, 5000)}`;
+
     try {
       const result = await generateText({
         model,
-        output: Output.object({ schema: generatedProblemSchema }),
         system: GENERATION_SYSTEM_PROMPT,
         prompt,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        temperature: attempt === 0 ? 0.4 : 0.2,
         abortSignal: AbortSignal.timeout(180_000),
       });
-      payload = generatedProblemSchema.parse(result.output);
-      payload = {
-        ...payload,
+      previousRaw = result.text ?? "";
+      payload = normalizeGeneratedProblem(
+        generatedProblemSchema.parse(parseJsonObject(previousRaw)),
+      );
+    } catch (err) {
+      lastError = err;
+      payload = null;
+      if (!previousRaw && err instanceof Error) {
+        previousRaw = err.message;
+      }
+    }
+
+    if (!payload) continue;
+
+    payload = {
+      ...payload,
+      track: params.track,
+      topic: params.topic,
+      difficulty,
+      answerType: answerType as GeneratedProblemPayload["answerType"],
+    };
+    if (payload.answerType === "mcq") {
+      if (!payload.choices || payload.choices.length < 2) {
+        lastError = new Error("Soal MCQ harus punya choices");
+        payload = null;
+        continue;
+      }
+      if (!payload.choices.map(String).includes(String(payload.answer))) {
+        lastError = new Error("Jawaban MCQ harus salah satu choices");
+        payload = null;
+        continue;
+      }
+    }
+    break;
+  }
+
+  if (!payload) {
+    console.error(
+      "[generate-problem] failed",
+      {
         track: params.track,
         topic: params.topic,
-        difficulty,
-        answerType: answerType as GeneratedProblemPayload["answerType"],
-      };
-      if (payload.answerType === "mcq") {
-        if (!payload.choices || payload.choices.length < 2) {
-          throw new Error("Soal MCQ harus punya choices");
-        }
-        if (!payload.choices.map(String).includes(String(payload.answer))) {
-          throw new Error("Jawaban MCQ harus salah satu choices");
-        }
-      }
-      break;
-    } catch (err) {
-      if (attempt >= 1) throw err;
-    }
+        answerType,
+        attemptError:
+          lastError instanceof Error ? lastError.message : String(lastError),
+        rawPreview: previousRaw.slice(0, 400),
+      },
+    );
+    throw new Error(
+      "Model AI mengembalikan JSON tidak valid. Silakan coba lagi.",
+    );
   }
 
   const id = `ai-${nanoid(10)}`;

@@ -5,12 +5,16 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { z } from "zod";
+import {
+  extractJsonObjectText,
+  repairJsonObjectText,
+} from "@/lib/ai/parse-json-object";
 
 export const generatedProblemSchema = z.object({
-  title: z.string().min(3).max(160),
+  title: z.string().min(3).max(240),
   track: z.enum(["A", "B", "C", "D"]),
-  topic: z.string().min(2).max(64),
-  difficulty: z.number().int().min(1).max(5),
+  topic: z.string().min(1).max(64),
+  difficulty: z.coerce.number().int().min(1).max(5),
   answerType: z.enum([
     "numeric",
     "short_string",
@@ -18,16 +22,57 @@ export const generatedProblemSchema = z.object({
     "python_output",
     "mcq",
   ]),
-  stem: z.string().min(20),
-  answer: z.union([z.string(), z.number(), z.array(z.string())]),
-  tolerance: z.number().optional(),
-  choices: z.array(z.string()).optional(),
-  solution: z.string().min(20),
+  stem: z.string().min(10),
+  answer: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.union([z.string(), z.number()])),
+  ]),
+  tolerance: z.coerce.number().optional(),
+  choices: z.array(z.union([z.string(), z.number()])).optional(),
+  solution: z.string().min(10),
   tags: z.array(z.string()).optional(),
   starterCode: z.string().optional(),
 });
 
-export type GeneratedProblemPayload = z.infer<typeof generatedProblemSchema>;
+export type GeneratedProblemPayload = {
+  title: string;
+  track: "A" | "B" | "C" | "D";
+  topic: string;
+  difficulty: number;
+  answerType:
+    | "numeric"
+    | "short_string"
+    | "multi_part"
+    | "python_output"
+    | "mcq";
+  stem: string;
+  answer: string | number | string[];
+  tolerance?: number;
+  choices?: string[];
+  solution: string;
+  tags?: string[];
+  starterCode?: string;
+};
+
+export function normalizeGeneratedProblem(
+  raw: z.infer<typeof generatedProblemSchema>,
+): GeneratedProblemPayload {
+  const answer = raw.answer;
+  return {
+    ...raw,
+    title: raw.title.trim().slice(0, 160),
+    answer: Array.isArray(answer)
+      ? answer.map(String)
+      : typeof answer === "boolean"
+        ? answer
+          ? "true"
+          : "false"
+        : answer,
+    choices: raw.choices?.map(String),
+  };
+}
 
 export function createUserProvider(params: {
   baseUrl: string;
@@ -50,30 +95,34 @@ export function createUserProvider(params: {
     name: "user-provider",
     baseURL: params.baseUrl.replace(/\/$/, ""),
     apiKey: params.apiKey,
+    // Keep false: MiniMax-M3 (and many OpenAI-compatible hosts) only support
+    // response_format=json_object, not json_schema structured outputs.
+    supportsStructuredOutputs: false,
     ...(isMiniMax && {
-      transformRequestBody: (body: Record<string, unknown>) => ({
-        ...body,
-        reasoning_split: true,
-      }),
+      transformRequestBody: (body: Record<string, unknown>) => {
+        // MiniMax-M3 frequently returns unparsable payloads when
+        // response_format/json_schema is requested; force plain chat JSON.
+        const next: Record<string, unknown> = {
+          ...body,
+          reasoning_split: true,
+        };
+        delete next.response_format;
+        return next;
+      },
     }),
   });
   // Some reasoning models emit <think>...</think> before the answer; strip it
   // so structured output parsing and chat replies stay clean.
   const middleware = [extractReasoningMiddleware({ tagName: "think" })];
   if (params.jsonOutput) {
-    // Models often wrap JSON in markdown fences or leak leading characters
-    // into reasoning; slice from the first "{" to the last "}" when possible.
+    // Models often wrap JSON in markdown fences or emit invalid LaTeX escapes;
+    // extract + repair before the SDK's JSON.parse.
     middleware.push(
       extractJsonMiddleware({
         transform: (text) => {
-          const start = text.indexOf("{");
-          const end = text.lastIndexOf("}");
-          if (start !== -1 && end > start) return text.slice(start, end + 1);
-          return text
-            .trim()
-            .replace(/^```(?:json)?\s*\n?/, "")
-            .replace(/\n?```\s*$/, "")
-            .trim();
+          const extracted = extractJsonObjectText(text);
+          if (!extracted) return text.trim();
+          return repairJsonObjectText(extracted);
         },
       }),
     );
@@ -135,6 +184,10 @@ Kualitas soal:
 - Solusi harus menjelaskan langkah demi langkah secara detail, merujuk konsep dari materi silabus.
 
 PENTING: Balas HANYA dengan satu objek JSON valid, tanpa teks lain, tanpa markdown, tanpa penjelasan.
+- JANGAN pakai LaTeX/backslash math (\\frac, \\(, $...$). Tulis rumus plain text, mis. "1/2", "x^2", "P(A|B)".
+- Di dalam string JSON, hindari tanda kutip ganda; untuk kode/contoh pakai kutip tunggal.
+- Escape newline sebagai \\n. Jangan trailing comma. Jangan komentar.
+- Solusi cukup 3–8 kalimat; jangan terlalu panjang.
 JSON harus sesuai skema berikut:
 ${JSON.stringify(z.toJSONSchema(generatedProblemSchema))}`;
 
@@ -159,3 +212,11 @@ Bantu admin memahami perilaku siswa: aktivitas, akurasi, topik lemah, mock, siap
 Berikan insight yang actionable (misalnya siswa mana yang perlu di-follow-up, topik yang perlu dikuatkan).
 Jangan membocorkan password atau API key. Email siswa boleh disebut karena ini konteks admin.
 Jika ditanya hal di luar data platform, jawab singkat lalu arahkan kembali ke analisis platform.`;
+
+export const PERFORMANCE_ASSISTANT_SYSTEM_PROMPT = `Kamu adalah konselor performa untuk siswa SMA/SMK yang sedang menyiapkan seleksi EKKA / OSN AI.
+Jawab dalam Bahasa Indonesia yang hangat, jelas, ringkas, dan berbasis data performa siswa di konteks.
+Gunakan HANYA data performa yang diberikan. Jika data kurang, katakan demikian — jangan mengarang skor.
+Bantu siswa memahami kesiapan OSN AI, skor mock, mastery topik, dan gap prioritas.
+Berikan saran actionable: topik mana yang dilatih dulu, apakah perlu mock lagi, cara memperbaiki tren skor.
+Dorong motivasi tanpa menekan; fokus pada langkah konkret berikutnya.
+Jangan memberikan kunci jawaban soal spesifik; arahkan ke modul belajar / latihan / simulasi di platform.`;

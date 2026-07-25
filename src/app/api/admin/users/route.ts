@@ -10,6 +10,25 @@ import {
 import { requireApiAdmin } from "@/lib/api";
 import { getAuth } from "@/lib/auth";
 import { TOPIC_LABELS } from "@/lib/content/types";
+import {
+  computeOsnReadiness,
+  syllabusTopicsFromMastery,
+} from "@/lib/analytics/readiness";
+
+function submittedMockScores(
+  userMocks: (typeof mockSessions.$inferSelect)[],
+) {
+  return userMocks
+    .filter(
+      (m) =>
+        m.status === "submitted" &&
+        m.score != null &&
+        m.maxScore != null &&
+        m.maxScore > 0,
+    )
+    .slice()
+    .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+}
 
 function userSummary(
   item: typeof user.$inferSelect,
@@ -18,12 +37,21 @@ function userSummary(
 ) {
   const userAttempts = allAttempts.filter((a) => a.userId === item.id);
   const userMocks = allMocks.filter((m) => m.userId === item.id);
-  const totalScore = userAttempts.reduce((sum, a) => sum + a.score, 0);
-  const totalMax = userAttempts.reduce((sum, a) => sum + a.maxScore, 0);
   const practiceTimeMs = userAttempts.reduce(
     (sum, a) => sum + a.durationMs,
     0,
   );
+  const submitted = submittedMockScores(userMocks);
+  const avgLifetimeScore = submitted.length
+    ? submitted.reduce((sum, m) => sum + m.score! / m.maxScore!, 0) /
+      submitted.length
+    : 0;
+  const avgScorePoints = submitted.length
+    ? submitted.reduce((sum, m) => sum + m.score!, 0) / submitted.length
+    : 0;
+  const avgMaxPoints = submitted.length
+    ? submitted.reduce((sum, m) => sum + m.maxScore!, 0) / submitted.length
+    : 0;
   const latestAttempt = userAttempts[0]?.createdAt;
   const latestMock = userMocks[0]?.startedAt;
   const lastActiveAt =
@@ -42,9 +70,11 @@ function userSummary(
     createdAt: item.createdAt,
     lastActiveAt,
     attemptsCount: userAttempts.length,
-    accuracy: totalMax ? totalScore / totalMax : 0,
+    avgLifetimeScore,
+    avgScorePoints,
+    avgMaxPoints,
     practiceTimeMs,
-    mocksCompleted: userMocks.filter((m) => m.status === "submitted").length,
+    mocksCompleted: submitted.length,
   };
 }
 
@@ -114,6 +144,32 @@ export async function GET(req: NextRequest) {
   }
 
   const summary = userSummary(selected, allAttempts, allMocks);
+  const submitted = submittedMockScores(userMocks);
+  const sessionScores = submitted.map((m, index) => ({
+    index: index + 1,
+    label: `Sesi ${index + 1}`,
+    mockId: m.mockId,
+    score: m.score!,
+    maxScore: m.maxScore!,
+    percent: Math.round((m.score! / m.maxScore!) * 1000) / 10,
+    startedAt: m.startedAt,
+    submittedAt: m.submittedAt,
+  }));
+
+  const readinessTopics = syllabusTopicsFromMastery(
+    mastery.map((m) => ({
+      topic: m.topic,
+      mastery: m.mastery,
+      attemptsCount: m.attemptsCount,
+    })),
+  );
+  const readiness = computeOsnReadiness({
+    topics: readinessTopics,
+    avgMockScoreRatio: summary.avgLifetimeScore,
+    completedMocks: summary.mocksCompleted,
+    attemptsCount: summary.attemptsCount,
+  });
+
   return Response.json({
     user: {
       ...summary,
@@ -125,8 +181,10 @@ export async function GET(req: NextRequest) {
     totals: {
       ...summary,
       totalSessions: userMocks.length,
-      completedMocks: userMocks.filter((m) => m.status === "submitted").length,
+      completedMocks: submitted.length,
     },
+    readiness,
+    sessionScores,
     topics: Array.from(topicStats, ([topic, stats]) => ({
       topic,
       label: TOPIC_LABELS[topic] ?? topic,

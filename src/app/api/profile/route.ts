@@ -9,8 +9,9 @@ import {
   PROFILE_FIELDS,
   type ProfileField,
 } from "@/lib/profile";
+import { parseAssistantPet } from "@/lib/assistant-pet";
 
-const SNOOZE_MS = 24 * 60 * 60 * 1000;
+const SNOOZE_MS = 24 * 60 * 60_000;
 
 function profilePayload(row: typeof user.$inferSelect) {
   const profile = {
@@ -29,6 +30,7 @@ function profilePayload(row: typeof user.$inferSelect) {
     schoolName: row.schoolName,
     grade: row.grade,
     city: row.city,
+    assistantPet: parseAssistantPet(row.assistantPet),
     onboardingCompleted: Boolean(row.onboardingCompletedAt),
     onboardingCompletedAt: row.onboardingCompletedAt,
     profilePromptSnoozedUntil: snoozedUntil,
@@ -112,18 +114,34 @@ export async function PATCH(req: Request) {
     updates.city = value || null;
   }
 
+  let assistantPetUpdated = false;
+  if ("assistantPet" in body) {
+    if (
+      body.assistantPet !== "none" &&
+      body.assistantPet !== "cat" &&
+      body.assistantPet !== "dog"
+    ) {
+      return Response.json(
+        { error: "Pilihan pet tidak valid" },
+        { status: 400 },
+      );
+    }
+    updates.assistantPet = parseAssistantPet(body.assistantPet);
+    assistantPetUpdated = true;
+  }
+
   const profileKeys = PROFILE_FIELDS.filter((field) => field in body);
   const actionKeys = [
     body.completeOnboarding === true,
     body.snoozeProfilePrompt === true,
     profileKeys.length > 0,
+    assistantPetUpdated,
   ].some(Boolean);
 
   if (!actionKeys) {
     return Response.json({ error: "Tidak ada perubahan" }, { status: 400 });
   }
 
-  // Clear snooze after a successful field save so next missing field can show later
   if (profileKeys.length > 0) {
     updates.profilePromptSnoozedUntil = null;
   }

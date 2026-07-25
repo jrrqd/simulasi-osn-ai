@@ -10,7 +10,9 @@ type ManagedUser = {
   email: string;
   role: string;
   attemptsCount: number;
-  accuracy: number;
+  avgLifetimeScore: number;
+  avgScorePoints: number;
+  avgMaxPoints: number;
   practiceTimeMs: number;
   mocksCompleted: number;
   lastActiveAt: string;
@@ -104,7 +106,7 @@ export function AdminUserManager() {
                 "Pengguna",
                 "Role",
                 "Attempt",
-                "Akurasi",
+                "Avg skor",
                 "Waktu",
                 "Mock",
                 "Aksi",
@@ -143,7 +145,9 @@ export function AdminUserManager() {
                 </td>
                 <td className="px-4 py-3">{item.attemptsCount}</td>
                 <td className="px-4 py-3">
-                  {Math.round(item.accuracy * 100)}%
+                  {item.mocksCompleted
+                    ? `${item.avgScorePoints.toFixed(1)}/${Math.round(item.avgMaxPoints)} (${Math.round(item.avgLifetimeScore * 100)}%)`
+                    : "—"}
                 </td>
                 <td className="px-4 py-3">
                   {formatDuration(item.practiceTimeMs)}

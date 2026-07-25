@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/session";
 import { PerformanceDashboard } from "@/components/performance-dashboard";
+import { PerformanceAssistant } from "@/components/performance-assistant";
 
 export default async function PerformancePage() {
   await requireUser();
@@ -12,6 +13,7 @@ export default async function PerformancePage() {
         </p>
       </div>
       <PerformanceDashboard />
+      <PerformanceAssistant />
     </div>
   );
 }

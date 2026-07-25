@@ -79,6 +79,8 @@ export async function POST(req: NextRequest) {
     const problemIds: string[] = [];
     const difficulties: number[] = [];
     const usedTopics = new Set<string>();
+    // Prefer types that stay JSON-safe; python_output often breaks MiniMax JSON.
+    const answerTypes = ["numeric", "mcq", "short_string", "numeric"] as const;
 
     for (let i = 0; i < MOCK_QUESTION_COUNT; i++) {
       const difficulty = resolveDifficulty(difficultyMode);
@@ -92,23 +94,40 @@ export async function POST(req: NextRequest) {
       } else {
         topic = pickTopicForTrack(track, preferredTopic);
       }
-      usedTopics.add(topic);
 
-      const problem = await generateAndStoreProblem({
-        userId: authResult.user.id,
-        track: questionTrack,
-        topic,
-        difficultyMode,
-        difficulty,
-        focusPrompt:
-          generationMode === "custom" ? topicPrompt : undefined,
-        answerType: ["numeric", "mcq", "short_string", "python_output"][
-          i % 4
-        ],
-        baseUrl: settings.baseUrl,
-        apiKey: settings.apiKey,
-        modelId: settings.modelId,
-      });
+      let problem = null as Awaited<
+        ReturnType<typeof generateAndStoreProblem>
+      > | null;
+      let lastSlotError: unknown;
+      for (let slotAttempt = 0; slotAttempt < 3 && !problem; slotAttempt++) {
+        const attemptTopic =
+          slotAttempt === 0
+            ? topic
+            : pickTopicForTrack(questionTrack, preferredTopic);
+        try {
+          problem = await generateAndStoreProblem({
+            userId: authResult.user.id,
+            track: questionTrack,
+            topic: attemptTopic,
+            difficultyMode,
+            difficulty,
+            focusPrompt:
+              generationMode === "custom" ? topicPrompt : undefined,
+            answerType: answerTypes[(i + slotAttempt) % answerTypes.length],
+            baseUrl: settings.baseUrl,
+            apiKey: settings.apiKey,
+            modelId: settings.modelId,
+          });
+          usedTopics.add(attemptTopic);
+        } catch (err) {
+          lastSlotError = err;
+        }
+      }
+      if (!problem) {
+        throw lastSlotError instanceof Error
+          ? lastSlotError
+          : new Error("Gagal menghasilkan soal untuk simulasi AI");
+      }
       problemIds.push(problem.id);
       difficulties.push(problem.difficulty);
     }

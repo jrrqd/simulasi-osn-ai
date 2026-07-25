@@ -5,6 +5,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,6 +14,7 @@ import {
   LineChart,
 } from "recharts";
 import Link from "next/link";
+import { masteryFill } from "@/lib/charts/mastery-color";
 
 type Perf = {
   overall: number;
@@ -32,7 +34,28 @@ type Perf = {
     practiceId?: string;
   }[];
   trend: { day: string; accuracy: number; attempts: number }[];
-  totals: { attempts: number; accuracy: number; avgDurationMs: number };
+  readiness: {
+    score: number;
+    label: string;
+    color: string;
+    topGaps: { topic: string; label: string; mastery: number }[];
+  };
+  sessionScores: {
+    index: number;
+    label: string;
+    score: number;
+    maxScore: number;
+    percent: number;
+  }[];
+  totals: {
+    attempts: number;
+    accuracy: number;
+    avgDurationMs: number;
+    completedMocks: number;
+    avgLifetimeScore: number;
+    avgScorePoints: number;
+    avgMaxPoints: number;
+  };
   recentMocks: {
     id: string;
     mockId: string;
@@ -41,6 +64,11 @@ type Perf = {
     maxScore: number | null;
   }[];
 };
+
+function formatAvgMockScore(totals: Perf["totals"]) {
+  if (!totals.completedMocks) return "—";
+  return `${totals.avgScorePoints.toFixed(1)}/${Math.round(totals.avgMaxPoints)} · ${Math.round(totals.avgLifetimeScore * 100)}%`;
+}
 
 export function PerformanceDashboard() {
   const [data, setData] = useState<Perf | null>(null);
@@ -65,34 +93,124 @@ export function PerformanceDashboard() {
       name: t.label.slice(0, 12),
       mastery: Math.round(t.mastery * 100),
     }));
+  const sessionChart = data.sessionScores.map((item) => ({
+    name: item.label,
+    skor: item.percent,
+    detail: `${item.score}/${item.maxScore}`,
+  }));
+  const focusLine = data.readiness.topGaps.length
+    ? `Fokus: ${data.readiness.topGaps.map((g) => g.label).join(", ")}`
+    : null;
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="panel rounded-3xl p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="display text-2xl">Kesiapan OSN AI</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Ringkasan kesiapanmu berdasarkan mastery, skor mock, dan cakupan
+              topik.
+            </p>
+            {focusLine && (
+              <p className="mt-2 text-sm text-[var(--muted)]">{focusLine}</p>
+            )}
+          </div>
+          <div className="w-56 max-w-full">
+            <div className="flex items-baseline gap-2">
+              <span
+                className="display text-5xl leading-none"
+                style={{ color: data.readiness.color }}
+              >
+                {data.readiness.score}
+              </span>
+              <span
+                className="text-base font-semibold"
+                style={{ color: data.readiness.color }}
+              >
+                {data.readiness.label}
+              </span>
+            </div>
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-black/10">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${data.readiness.score}%`,
+                  background: data.readiness.color,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
         {[
           {
             label: "Mastery keseluruhan",
             value: `${Math.round(data.overall * 100)}%`,
           },
           {
+            label: "Rata-rata skor mock",
+            value: formatAvgMockScore(data.totals),
+          },
+          {
             label: "Akurasi terkini",
             value: `${Math.round(data.totals.accuracy * 100)}%`,
           },
           {
-            label: "Rata-rata waktu",
-            value: `${Math.round(data.totals.avgDurationMs / 1000)}s`,
+            label: "Mock selesai",
+            value: data.totals.completedMocks,
           },
         ].map((c) => (
           <div key={c.label} className="panel rounded-3xl p-5">
             <p className="text-sm text-[var(--muted)]">{c.label}</p>
-            <p className="display mt-2 text-4xl">{c.value}</p>
+            <p className="display mt-2 text-3xl">{c.value}</p>
           </div>
         ))}
       </div>
 
+      <div className="panel rounded-3xl p-5">
+        <h2 className="display mb-1 text-2xl">Skor per sesi mock</h2>
+        <p className="mb-4 text-sm text-[var(--muted)]">
+          Tren skor submit (persen) dari sesi tertua ke terbaru.
+        </p>
+        {sessionChart.length ? (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={sessionChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} unit="%" />
+                <Tooltip
+                  formatter={(value, _name, props) => [
+                    `${value}% (${props.payload.detail})`,
+                    "Skor",
+                  ]}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="skor"
+                  stroke="#0f6e56"
+                  strokeWidth={2.5}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--muted)]">
+            Belum ada simulasi yang disubmit. Kerjakan mock berwaktu untuk melihat tren.
+          </p>
+        )}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="panel rounded-3xl p-5">
-          <h2 className="display mb-4 text-2xl">Mastery per topik</h2>
+          <h2 className="display mb-1 text-2xl">Mastery per topik</h2>
+          <p className="mb-4 text-xs text-[var(--muted)]">
+            Merah = lemah · hijau = kuat
+          </p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartTopics}>
@@ -100,7 +218,14 @@ export function PerformanceDashboard() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis domain={[0, 100]} />
                 <Tooltip />
-                <Bar dataKey="mastery" fill="#0f6e56" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="mastery" radius={[8, 8, 0, 0]}>
+                  {chartTopics.map((entry) => (
+                    <Cell
+                      key={entry.name}
+                      fill={masteryFill(entry.mastery)}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -167,8 +292,8 @@ export function PerformanceDashboard() {
             <li key={m.id} className="flex justify-between border-b border-[var(--line)] py-2">
               <span>{m.mockId}</span>
               <span>
-                {m.status === "submitted"
-                  ? `${m.score}/${m.maxScore}`
+                {m.status === "submitted" && m.score != null && m.maxScore
+                  ? `${m.score}/${m.maxScore} (${Math.round((m.score / m.maxScore) * 100)}%)`
                   : m.status}
               </span>
             </li>

@@ -29,6 +29,13 @@
       "when": 1784580000000,
       "tag": "0003_user_profile_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784940000000,
+      "tag": "0004_assistant_pet",
+      "breakpoints": true
     }
   ]
 }

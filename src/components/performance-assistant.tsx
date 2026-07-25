@@ -1,7 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { FormEvent, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { X } from "lucide-react";
@@ -12,29 +11,17 @@ import {
   useAssistantPet,
 } from "@/components/assistant-fab";
 
-export function StudyAssistant() {
-  const pathname = usePathname();
+export function PerformanceAssistant() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const pet = useAssistantPet();
 
-  const lessonId = useMemo(() => {
-    const match = pathname?.match(/^\/study\/([^/?#]+)/);
-    return match?.[1] ?? "";
-  }, [pathname]);
-
   const { messages, sendMessage, status, error, setMessages } = useChat({
-    id: `study-assistant:${lessonId || "index"}`,
+    id: "performance-assistant",
     transport: new DefaultChatTransport({
-      api: "/api/ai/study-assistant",
-      body: { lessonId: lessonId || undefined },
+      api: "/api/ai/performance-assistant",
     }),
   });
-
-  useEffect(() => {
-    setMessages([]);
-    setOpen(false);
-  }, [lessonId, setMessages]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -51,15 +38,17 @@ export function StudyAssistant() {
           <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-                Asisten belajar
+                Konselor performa
               </p>
-              <h2 className="display text-lg leading-tight">Tanya materi</h2>
+              <h2 className="display text-lg leading-tight">
+                Tanya kesiapanmu
+              </h2>
             </div>
             <button
               type="button"
               className="rounded-full p-2 text-[var(--muted)] hover:bg-black/5"
               onClick={() => setOpen(false)}
-              aria-label="Tutup asisten"
+              aria-label="Tutup konselor performa"
             >
               <X size={18} />
             </button>
@@ -67,11 +56,16 @@ export function StudyAssistant() {
 
           <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
             {messages.length === 0 && (
-              <p className="text-sm text-[var(--muted)]">
-                {lessonId
-                  ? "Tanyakan penjelasan konsep dari modul ini, contoh, atau analogi."
-                  : "Pilih modul, atau tanya gambaran silabus track A–D."}
-              </p>
+              <div className="space-y-2 text-sm text-[var(--muted)]">
+                <p>
+                  Diskusikan skor kesiapan OSN AI, tren mock, dan topik yang perlu
+                  diperkuat. AI memakai data performamu saat ini.
+                </p>
+                <p className="text-xs">
+                  Contoh: “Apa yang harus saya latih minggu ini?” atau “Kenapa
+                  skor mock saya stagnan?”
+                </p>
+              </div>
             )}
             {messages.map((m) => (
               <AssistantMessageBubble
@@ -93,7 +87,7 @@ export function StudyAssistant() {
               className="input !py-2 text-sm"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Tulis pertanyaan…"
+              placeholder="Tanya tentang performamu…"
               disabled={status === "streaming" || status === "submitted"}
             />
             <button
@@ -120,7 +114,9 @@ export function StudyAssistant() {
         type="button"
         className={assistantFabButtonClass(pet)}
         onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Tutup asisten belajar" : "Buka asisten belajar"}
+        aria-label={
+          open ? "Tutup konselor performa" : "Buka konselor performa"
+        }
       >
         <AssistantFabIcon open={open} pet={pet} />
       </button>
