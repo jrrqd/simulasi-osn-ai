@@ -1,4 +1,4 @@
-import { generateText } from "ai";
+import { streamText } from "ai";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { generatedProblems } from "@/db/schema";
@@ -13,6 +13,7 @@ import {
   type DifficultyMode,
   resolveDifficulty,
 } from "@/lib/ai/difficulty";
+import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
 import { parseJsonObject } from "@/lib/ai/parse-json-object";
 import { getLessonsForTopic } from "@/lib/content/load";
 import type { Lesson } from "@/lib/content/types";
@@ -27,6 +28,7 @@ import {
 const MAX_GENERATION_ATTEMPTS = 3;
 const MAX_OUTPUT_TOKENS = 2500;
 const GENERATION_ATTEMPT_TIMEOUT_MS = 70_000;
+const THINKING_EMIT_MS = 160;
 
 export type { DifficultyMode } from "@/lib/ai/difficulty";
 export {
@@ -116,6 +118,9 @@ export async function generateAndStoreProblem(params: {
   baseUrl: string;
   apiKey: string;
   modelId: string;
+  /** 1-based index when generating a batch (mock). */
+  progressIndex?: number;
+  onProgress?: GenerationProgressHandler;
 }): Promise<Problem> {
   if (!TRACKS[params.track]) {
     throw new Error("Track tidak valid");
@@ -133,6 +138,8 @@ export async function generateAndStoreProblem(params: {
   )
     ? params.answerType!
     : "numeric";
+  const progressIndex = params.progressIndex ?? 1;
+  const onProgress = params.onProgress;
 
   // Plain chat JSON (no response_format). MiniMax-M3 often breaks with
   // Output.object / json_schema; we parse + repair locally instead.
@@ -176,16 +183,25 @@ Instruksi akhir:
   let previousRaw = "";
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
+    const isRepair = attempt > 0 && Boolean(previousRaw);
     const prompt =
-      attempt === 0 || !previousRaw
+      !isRepair
         ? basePrompt
         : `JSON berikut INVALID dan gagal di-parse. Perbaiki menjadi SATU objek JSON valid sesuai skema (tanpa markdown, tanpa LaTeX, tanpa komentar). Pertahankan isi soal sebisa mungkin.
 
 JSON rusak:
 ${previousRaw.slice(0, 5000)}`;
 
+    await onProgress?.({
+      type: "attempt",
+      index: progressIndex,
+      attempt: attempt + 1,
+      maxAttempts: MAX_GENERATION_ATTEMPTS,
+      phase: isRepair ? "repairing" : "generating",
+    });
+
     try {
-      const result = await generateText({
+      const result = streamText({
         model,
         system: GENERATION_SYSTEM_PROMPT,
         prompt,
@@ -193,10 +209,61 @@ ${previousRaw.slice(0, 5000)}`;
         temperature: attempt === 0 ? 0.4 : 0.2,
         abortSignal: AbortSignal.timeout(GENERATION_ATTEMPT_TIMEOUT_MS),
       });
-      previousRaw = result.text ?? "";
+
+      let text = "";
+      let reasoning = "";
+      let lastThinkingEmit = 0;
+
+      for await (const part of result.fullStream) {
+        if (part.type === "reasoning-delta") {
+          reasoning += part.text;
+          const now = Date.now();
+          if (
+            onProgress &&
+            reasoning.length > 0 &&
+            now - lastThinkingEmit >= THINKING_EMIT_MS
+          ) {
+            lastThinkingEmit = now;
+            await onProgress({
+              type: "thinking",
+              index: progressIndex,
+              attempt: attempt + 1,
+              text: reasoning,
+            });
+          }
+        } else if (part.type === "text-delta") {
+          text += part.text;
+        } else if (part.type === "error") {
+          const msg =
+            part.error instanceof Error
+              ? part.error.message
+              : typeof part.error === "string"
+                ? part.error
+                : "Model AI gagal menghasilkan teks";
+          throw new Error(msg);
+        }
+      }
+
+      if (onProgress && reasoning.length > 0) {
+        await onProgress({
+          type: "thinking",
+          index: progressIndex,
+          attempt: attempt + 1,
+          text: reasoning,
+        });
+      }
+
+      previousRaw = text.trim() || (await result.text).trim();
       if (!previousRaw.trim()) {
         throw new Error("Model AI mengembalikan respons kosong");
       }
+      await onProgress?.({
+        type: "attempt",
+        index: progressIndex,
+        attempt: attempt + 1,
+        maxAttempts: MAX_GENERATION_ATTEMPTS,
+        phase: "validating",
+      });
       payload = normalizeGeneratedProblem(
         generatedProblemSchema.parse(parseJsonObject(previousRaw)),
       );

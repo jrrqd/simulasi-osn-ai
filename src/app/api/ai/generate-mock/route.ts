@@ -9,6 +9,10 @@ import {
   parseDifficultyMode,
 } from "@/lib/ai/generate-problem";
 import {
+  createNdjsonStreamResponse,
+  type GenerationProgressHandler,
+} from "@/lib/ai/generation-progress";
+import {
   buildAiMockPlan,
   isAiMockSlot,
   MOCK_QUESTION_COUNT,
@@ -25,7 +29,7 @@ import {
   normalizeTopicPrompt,
   TOPIC_PROMPT_MIN_LEN,
 } from "@/lib/ai/topic-prompt";
-import { TRACKS, type TrackId } from "@/lib/content/types";
+import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
 
 type Phase = "plan" | "slot" | "commit" | "legacy";
 
@@ -42,6 +46,9 @@ async function generateSlotProblem(params: {
   baseUrl: string;
   apiKey: string;
   modelId: string;
+  progressIndex?: number;
+  progressTotal?: number;
+  onProgress?: GenerationProgressHandler;
 }) {
   const answerRotation: AiMockAnswerType[] = [
     params.slot.answerType,
@@ -52,6 +59,8 @@ async function generateSlotProblem(params: {
   let lastSlotError: unknown;
   let problem: Awaited<ReturnType<typeof generateAndStoreProblem>> | null =
     null;
+  const progressIndex = params.progressIndex ?? 1;
+  const progressTotal = params.progressTotal ?? MOCK_QUESTION_COUNT;
 
   for (let slotAttempt = 0; slotAttempt < 3 && !problem; slotAttempt++) {
     const attemptTopic =
@@ -63,6 +72,24 @@ async function generateSlotProblem(params: {
     // Last attempt drops focusPrompt — brief conflicts are a common JSON-fail trigger.
     const focusPrompt =
       slotAttempt < 2 ? params.focusPrompt : undefined;
+    if (slotAttempt > 0) {
+      await params.onProgress?.({
+        type: "status",
+        message: `Mencoba ulang soal ${progressIndex} dengan topik lain…`,
+        index: progressIndex,
+        total: progressTotal,
+      });
+      await params.onProgress?.({
+        type: "question_start",
+        index: progressIndex,
+        total: progressTotal,
+        track: params.slot.track,
+        topic: attemptTopic,
+        topicLabel: TOPIC_LABELS[attemptTopic] ?? attemptTopic,
+        difficulty: params.slot.difficulty,
+        attempt: slotAttempt + 1,
+      });
+    }
     try {
       problem = await generateAndStoreProblem({
         userId: params.userId,
@@ -75,6 +102,8 @@ async function generateSlotProblem(params: {
         baseUrl: params.baseUrl,
         apiKey: params.apiKey,
         modelId: params.modelId,
+        progressIndex,
+        onProgress: params.onProgress,
       });
     } catch (err) {
       lastSlotError = err;
@@ -188,13 +217,23 @@ export async function POST(req: NextRequest) {
     }
 
     const existing = session.problemIds[index];
+    const slot = session.slots[index]!;
+    const total = session.slots.length;
+
     if (existing) {
-      return Response.json({
-        phase: "slot",
-        planId,
-        index,
-        problemId: existing,
-        reused: true,
+      return createNdjsonStreamResponse(async (send) => {
+        await send({
+          type: "slot_done",
+          phase: "slot",
+          planId,
+          index,
+          problemId: existing,
+          title: `Soal ${index + 1}`,
+          topic: slot.topic,
+          topicLabel: TOPIC_LABELS[slot.topic] ?? slot.topic,
+          difficulty: slot.difficulty,
+          reused: true,
+        });
       });
     }
 
@@ -209,8 +248,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const slot = session.slots[index]!;
-    try {
+    return createNdjsonStreamResponse(async (send) => {
+      await send({
+        type: "question_start",
+        index: index + 1,
+        total,
+        track: slot.track,
+        topic: slot.topic,
+        topicLabel: TOPIC_LABELS[slot.topic] ?? slot.topic,
+        difficulty: slot.difficulty,
+      });
+
       const problem = await generateSlotProblem({
         userId: authResult.user.id,
         slot,
@@ -222,26 +270,31 @@ export async function POST(req: NextRequest) {
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
+        progressIndex: index + 1,
+        progressTotal: total,
+        onProgress: send,
       });
       setAiMockSessionProblem(planId, authResult.user.id, index, problem.id);
-      return Response.json({
+      await send({
+        type: "question_done",
+        index: index + 1,
+        total,
+        title: problem.title,
+        topic: problem.topic,
+        topicLabel: TOPIC_LABELS[problem.topic] ?? problem.topic,
+      });
+      await send({
+        type: "slot_done",
         phase: "slot",
         planId,
         index,
         problemId: problem.id,
+        title: problem.title,
         topic: problem.topic,
+        topicLabel: TOPIC_LABELS[problem.topic] ?? problem.topic,
         difficulty: problem.difficulty,
       });
-    } catch (e) {
-      return Response.json(
-        {
-          error:
-            e instanceof Error ? e.message : "Gagal menghasilkan soal simulasi",
-          index,
-        },
-        { status: 400 },
-      );
-    }
+    });
   }
 
   if (phase === "commit") {

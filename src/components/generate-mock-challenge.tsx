@@ -9,6 +9,13 @@ import {
 } from "@/lib/ai/difficulty";
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
+import {
+  INITIAL_GENERATION_PROGRESS,
+  GenerationProgressPanel,
+  applyGenerationProgressEvent,
+  readGenerationNdjsonStream,
+  type GenerationProgressState,
+} from "@/components/generation-progress";
 
 type GenerationMode = "standard" | "custom";
 
@@ -27,7 +34,9 @@ export function GenerateMockChallenge() {
   const [topicPrompt, setTopicPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [progress, setProgress] = useState("");
+  const [progress, setProgress] = useState<GenerationProgressState>(
+    INITIAL_GENERATION_PROGRESS,
+  );
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -41,11 +50,14 @@ export function GenerateMockChallenge() {
   async function generate() {
     setLoading(true);
     setError("");
-    setProgress(
-      generationMode === "custom"
-        ? "Menyusun rencana 10 soal dari brief topik…"
-        : "Menyusun rencana 10 soal AI…",
-    );
+    setProgress({
+      ...INITIAL_GENERATION_PROGRESS,
+      message:
+        generationMode === "custom"
+          ? "Menyusun rencana 10 soal dari brief topik…"
+          : "Menyusun rencana 10 soal AI…",
+      phase: "planning",
+    });
     try {
       const planRes = await fetch("/api/ai/generate-mock", {
         method: "POST",
@@ -66,13 +78,38 @@ export function GenerateMockChallenge() {
 
       const planId = String(planData.planId);
       const total = Number(planData.total) || 10;
+      const planSlots = Array.isArray(planData.slots) ? planData.slots : [];
+
+      setProgress((prev) => ({
+        ...prev,
+        total,
+        phase: "generating",
+        message:
+          generationMode === "custom"
+            ? `Rencana siap. LLM menulis soal 1/${total} sesuai brief…`
+            : `Rencana siap. Menghasilkan soal 1/${total}…`,
+      }));
 
       for (let index = 0; index < total; index++) {
-        setProgress(
-          generationMode === "custom"
-            ? `LLM menulis soal ${index + 1}/${total} sesuai brief topik…`
-            : `Menghasilkan soal ${index + 1}/${total}…`,
-        );
+        const planned = planSlots[index] as
+          | { topic?: string; track?: string; difficulty?: number }
+          | undefined;
+        const topicLabel =
+          (planned?.topic && (TOPIC_LABELS[planned.topic] ?? planned.topic)) ||
+          "";
+        setProgress((prev) => ({
+          ...prev,
+          index: index + 1,
+          total,
+          topicLabel: topicLabel || prev.topicLabel,
+          thinking: "",
+          attempt: 0,
+          phase: "generating",
+          message:
+            generationMode === "custom"
+              ? `LLM menulis soal ${index + 1}/${total}${topicLabel ? `: ${topicLabel}` : ""}…`
+              : `Menghasilkan soal ${index + 1}/${total}${topicLabel ? `: ${topicLabel}` : ""}…`,
+        }));
 
         let lastError = "Gagal generate soal";
         let ok = false;
@@ -86,19 +123,36 @@ export function GenerateMockChallenge() {
               index,
             }),
           });
-          const slotData = await slotRes.json();
-          if (slotRes.ok && slotData.problemId) {
-            ok = true;
-            break;
+
+          const contentType = slotRes.headers.get("content-type") ?? "";
+          if (!contentType.includes("ndjson")) {
+            const slotData = await slotRes.json().catch(() => ({}));
+            lastError =
+              (slotData as { error?: string }).error || lastError;
+            continue;
           }
-          lastError = slotData.error || lastError;
+
+          try {
+            await readGenerationNdjsonStream(slotRes, (event) => {
+              setProgress((prev) => applyGenerationProgressEvent(prev, event));
+            });
+            ok = true;
+          } catch (e) {
+            lastError = e instanceof Error ? e.message : lastError;
+          }
         }
         if (!ok) {
           throw new Error(`Soal ${index + 1}/${total}: ${lastError}`);
         }
       }
 
-      setProgress("Menyimpan paket simulasi…");
+      setProgress((prev) => ({
+        ...prev,
+        phase: "saving",
+        completedCount: total,
+        message: "Menyimpan paket simulasi…",
+        thinking: "",
+      }));
       const commitRes = await fetch("/api/ai/generate-mock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,7 +172,6 @@ export function GenerateMockChallenge() {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setLoading(false);
-      setProgress("");
     }
   }
 
@@ -229,7 +282,9 @@ export function GenerateMockChallenge() {
             ? "Generate dari brief topik"
             : "Buat simulasi AI"}
       </button>
-      {progress && <p className="text-xs text-[var(--muted)]">{progress}</p>}
+      {loading || (error && progress.message) ? (
+        <GenerationProgressPanel state={progress} />
+      ) : null}
       {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
     </CollapsiblePanel>
   );
