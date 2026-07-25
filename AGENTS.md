@@ -16,7 +16,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ### Boot / verify
 1. Dependencies install via `.cursor/environment.json` (`npm ci || npm install`).
-2. Prefer PGlite for cloud: set `USE_PGLITE=true` (see `.env.example`). Do not require VPS Postgres unless secrets are configured.
+2. Prefer PGlite for cloud: set `USE_PGLITE=true` (see `.env.example`). Do not require VPS Postgres unless secrets are configured. The app self-migrates the PGlite schema on first `getDb()` (`src/db/index.ts`) — no `db:push`/`db:migrate` needed. PGlite is **in-memory by default**, so the seeded admin and any registered users are wiped on every dev-server restart unless you set `PGLITE_DATA_DIR` (e.g. `PGLITE_DATA_DIR=.data/pglite`) to persist.
+   - `.env.local` is required and gitignored; copy `.env.example` and fill `BETTER_AUTH_SECRET` + `CREDENTIALS_ENCRYPTION_KEY` (`openssl rand -hex 32`). No external services (DB/Redis) are needed to boot.
 3. Dev server: `npm run dev -- --hostname 0.0.0.0 --port 3000` (also started as a terminal in environment.json).
 4. Before claiming a fix: `npx tsc --noEmit` and/or `npm run lint`. For UI changes, exercise the flow in the browser when possible.
 
@@ -35,7 +36,8 @@ Add as needed (never commit real values):
 - Mock AI generation path: `src/app/api/ai/generate-mock/route.ts`.
 
 ### Deploy (only when user asks)
-- SSH key typically `~/Downloads/lighthouse.pem`, host `ubuntu@43.134.182.44`
+- SSH key: on a local machine it's typically `~/Downloads/lighthouse.pem`. In Cursor Cloud that path does not exist — instead provide the private key via the `LIGHTHOUSE_SSH_KEY` secret and materialize it: `printf '%s\n' "$LIGHTHOUSE_SSH_KEY" > ~/.ssh/lighthouse.pem && chmod 600 ~/.ssh/lighthouse.pem`, then `ssh -i ~/.ssh/lighthouse.pem ubuntu@43.134.182.44`.
+- Host `ubuntu@43.134.182.44`. The VPS runs the app as systemd unit `osnai.service` (Next.js on port 3000).
 - Sync into `/opt/osnai-build`, `npm run build`, rsync standalone to `/var/www/osnai`, `systemctl restart osnai`
 - Env on VPS: `/etc/osnai/env`
 
