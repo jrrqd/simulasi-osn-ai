@@ -36,7 +36,8 @@ Add as needed (never commit real values):
 - Mock AI generation path: `src/app/api/ai/generate-mock/route.ts`.
 
 ### Deploy (only when user asks)
-- SSH key typically `~/Downloads/lighthouse.pem`, host `ubuntu@43.134.182.44`
+- SSH key: on a local machine it's typically `~/Downloads/lighthouse.pem`. In Cursor Cloud that path does not exist — instead provide the private key via the `LIGHTHOUSE_SSH_KEY` secret and materialize it: `printf '%s\n' "$LIGHTHOUSE_SSH_KEY" > ~/.ssh/lighthouse.pem && chmod 600 ~/.ssh/lighthouse.pem`, then `ssh -i ~/.ssh/lighthouse.pem ubuntu@43.134.182.44`.
+- Host `ubuntu@43.134.182.44`. The VPS runs the app as systemd unit `osnai.service` (Next.js on port 3000).
 - Sync into `/opt/osnai-build`, `npm run build`, rsync standalone to `/var/www/osnai`, `systemctl restart osnai`
 - Env on VPS: `/etc/osnai/env`
 
