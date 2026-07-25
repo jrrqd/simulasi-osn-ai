@@ -10,6 +10,7 @@ import {
   type CuratedMockSize,
 } from "@/lib/ai/curated-mock-size";
 import { matchTopicsFromPrompt } from "@/lib/ai/topic-prompt";
+import { buildNaturalMockTitle } from "@/lib/ai/mock-title";
 import { getProblems } from "@/lib/content/load";
 import type { Problem, TrackId } from "@/lib/content/types";
 import { TOPIC_LABELS } from "@/lib/content/types";
@@ -227,6 +228,12 @@ Aturan umum:
 - Untuk mode hard: utamakan D3 (dan D2 jika perlu).
 - Untuk mode normal: campuran seimbang mendekati distribusi normal (lebih banyak D2).
 
+Judul (title):
+- Buat judul pendek & natural dalam Bahasa Indonesia, mudah dikenali (contoh: "Tryout Backprop & Regularisasi", "Paket curated ML Klasik").
+- JANGAN pakai awalan "Simulasi curated ·" atau "Simulasi AI ·".
+- JANGAN sebut jumlah soal atau durasi di title (itu sudah di meta paket).
+- Maksimal ~60 karakter.
+
 Katalog (id | meta | judul):
 ${catalog}
 
@@ -237,7 +244,7 @@ Balas JSON dengan field: title, description, problemIds (array string sepanjang 
       model,
       output: Output.object({ schema: assemblySchema }),
       system:
-        "Kamu adalah penyusun ujian EKKA/OSN AI. Pilih dan urutkan soal curated sesuai preferensi topik bila ada. Balas hanya JSON valid sesuai skema.",
+        "Kamu adalah penyusun ujian EKKA/OSN AI. Pilih dan urutkan soal curated sesuai preferensi topik bila ada. Beri judul natural yang mudah diingat. Balas hanya JSON valid sesuai skema.",
       prompt,
       abortSignal: AbortSignal.timeout(120_000),
     });
@@ -249,8 +256,26 @@ Balas JSON dengan field: title, description, problemIds (array string sepanjang 
       params.trackFilter,
       preferredTopics,
     );
+    const naturalFallback = buildNaturalMockTitle({
+      kind: "curated_assembled",
+      generationMode: topicPrompt ? "custom" : "standard",
+      track: params.trackFilter ?? "ALL",
+      difficultyMode: params.difficultyMode,
+      count,
+      topicLabels:
+        preferredTopics.length > 0
+          ? preferredTopics.slice(0, 3).map((t) => TOPIC_LABELS[t] ?? t)
+          : undefined,
+      topicPrompt,
+    });
+    const llmTitle = parsed.title.trim();
+    const title =
+      /^(Simulasi AI|Simulasi curated)\s*·/i.test(llmTitle) ||
+      /\d+\s*soal|\d+\s*menit/i.test(llmTitle)
+        ? naturalFallback
+        : llmTitle.slice(0, 60);
     return {
-      title: parsed.title,
+      title,
       description: parsed.description,
       problemIds,
       durationMinutes,
@@ -275,11 +300,22 @@ Balas JSON dengan field: title, description, problemIds (array string sepanjang 
           ? " · Fokus topik kustom"
           : "";
     return {
-      title: `Simulasi curated · ${modeLabel}${
-        params.trackFilter ? ` · Track ${params.trackFilter}` : ""
-      }${topicSuffix}`,
+      title: buildNaturalMockTitle({
+        kind: "curated_assembled",
+        generationMode: topicPrompt ? "custom" : "standard",
+        track: params.trackFilter ?? "ALL",
+        difficultyMode: params.difficultyMode,
+        count,
+        topicLabels:
+          preferredTopics.length > 0
+            ? preferredTopics
+                .slice(0, 3)
+                .map((t) => TOPIC_LABELS[t] ?? t)
+            : undefined,
+        topicPrompt,
+      }),
       description: topicPrompt
-        ? `Paket ${count} soal curated (${durationMinutes} menit) disusun otomatis mengikuti preferensi: ${topicPrompt.slice(0, 160)}`
+        ? `Paket ${count} soal curated (${durationMinutes} menit) disusun otomatis mengikuti preferensi: ${topicPrompt.slice(0, 160)}${topicSuffix}`
         : `Paket ${count} soal dari bank curated (disusun otomatis, ${durationMinutes} menit). Siap dikerjakan semua siswa.`,
       problemIds,
       durationMinutes,

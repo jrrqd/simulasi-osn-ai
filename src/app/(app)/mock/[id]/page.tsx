@@ -4,6 +4,7 @@ import {
   resolveMock,
   resolveProblemsForMock,
 } from "@/lib/content/shared";
+import { displayMockTitle } from "@/lib/ai/mock-title";
 import { MockExamClient } from "@/components/mock-exam-client";
 
 export default async function MockPage({
@@ -21,7 +22,7 @@ export default async function MockPage({
   return (
     <MockExamClient
       mockId={mock.id}
-      title={mock.title}
+      title={displayMockTitle(mock)}
       durationMinutes={mock.durationMinutes}
       problems={problems}
     />

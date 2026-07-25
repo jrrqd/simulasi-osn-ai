@@ -8,6 +8,7 @@ import {
   mockActionLabel,
 } from "@/components/mock-progress-badge";
 import { getUserMockProgress, type MockProgress } from "@/lib/mock-progress";
+import { displayMockTitle } from "@/lib/ai/mock-title";
 import { labelDifficultyMode, type DifficultyMode } from "@/lib/ai/difficulty";
 
 function MockRow({
@@ -31,7 +32,9 @@ function MockRow({
     >
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h3 className="display text-xl leading-snug">{mock.title}</h3>
+          <h3 className="display text-xl leading-snug">
+            {displayMockTitle(mock)}
+          </h3>
           <MockProgressBadge progress={progress} />
         </div>
         <p className="line-clamp-2 text-sm text-[var(--muted)]">

@@ -1,5 +1,4 @@
 import {
-  labelDifficultyMode,
   resolveDifficulty,
   type DifficultyMode,
 } from "@/lib/ai/difficulty";
@@ -11,6 +10,7 @@ import {
   matchTopicsFromPrompt,
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
+import { buildNaturalMockTitle } from "@/lib/ai/mock-title";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
 
 function pickTopicForTrack(track: TrackId, preferred?: string) {
@@ -136,24 +136,23 @@ export function buildAiMockPlan(params: {
   const preferred = params.topicPrompt
     ? matchTopicsFromPrompt(params.topicPrompt)
     : [];
-  const topicLabel =
-    preferred.length > 0
-      ? preferred
-          .slice(0, 3)
-          .map((t) => TOPIC_LABELS[t] ?? t)
-          .join(", ")
-      : null;
 
   const mockTrack =
     params.generationMode === "custom" || params.track === "ALL"
       ? "ALL"
       : track;
-  const title =
-    params.generationMode === "custom"
-      ? `Simulasi AI · ${count} soal · Custom${topicLabel ? ` · ${topicLabel}` : " topik"}`
-      : params.track === "ALL"
-        ? `Simulasi AI · ${count} soal · Semua track · ${labelDifficultyMode(params.difficultyMode)}`
-        : `Simulasi AI · ${count} soal · Track ${track} · ${labelDifficultyMode(params.difficultyMode)}`;
+  const title = buildNaturalMockTitle({
+    kind: "ai",
+    generationMode: params.generationMode,
+    track: mockTrack,
+    difficultyMode: params.difficultyMode,
+    count,
+    topicLabels:
+      preferred.length > 0
+        ? preferred.slice(0, 3).map((t) => TOPIC_LABELS[t] ?? t)
+        : undefined,
+    topicPrompt: params.topicPrompt,
+  });
   const description =
     params.generationMode === "custom" && params.topicPrompt
       ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
