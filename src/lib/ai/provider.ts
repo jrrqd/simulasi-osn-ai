@@ -10,19 +10,25 @@ import {
   repairJsonObjectText,
 } from "@/lib/ai/parse-json-object";
 
+const answerTypeSchema = z.enum([
+  "numeric",
+  "short_string",
+  "multi_part",
+  "python_output",
+  "mcq",
+]);
+
 export const generatedProblemSchema = z.object({
-  title: z.string().min(3).max(240),
-  track: z.enum(["A", "B", "C", "D"]),
-  topic: z.string().min(1).max(64),
+  title: z.coerce.string().min(3).max(240),
+  track: z.enum(["A", "B", "C", "D"]).catch("B"),
+  topic: z.coerce.string().min(1).max(64),
   difficulty: z.coerce.number().int().min(1).max(5),
-  answerType: z.enum([
-    "numeric",
-    "short_string",
-    "multi_part",
-    "python_output",
-    "mcq",
-  ]),
-  stem: z.string().min(10),
+  answerType: z
+    .string()
+    .transform((v) => v.trim().toLowerCase())
+    .pipe(answerTypeSchema)
+    .catch("numeric"),
+  stem: z.coerce.string().min(10),
   answer: z.union([
     z.string(),
     z.number(),
@@ -31,9 +37,9 @@ export const generatedProblemSchema = z.object({
   ]),
   tolerance: z.coerce.number().optional(),
   choices: z.array(z.union([z.string(), z.number()])).optional(),
-  solution: z.string().min(10),
-  tags: z.array(z.string()).optional(),
-  starterCode: z.string().optional(),
+  solution: z.coerce.string().min(10),
+  tags: z.array(z.coerce.string()).optional(),
+  starterCode: z.coerce.string().optional(),
 });
 
 export type GeneratedProblemPayload = {
@@ -183,13 +189,15 @@ Kualitas soal:
 - Untuk mcq, sediakan choices dan answer harus SALINAN PERSIS (karakter demi karakter) salah satu string di choices.
 - Solusi harus menjelaskan langkah demi langkah secara detail, merujuk konsep dari materi silabus.
 
-PENTING: Balas HANYA dengan satu objek JSON valid, tanpa teks lain, tanpa markdown, tanpa penjelasan.
+PENTING: Balas HANYA dengan satu objek JSON SOAL (bukan JSON Schema), tanpa teks lain, tanpa markdown, tanpa penjelasan.
+- JANGAN mengembalikan skema/schema/$schema/properties/definitions. Kembalikan INSTANCE soal.
+- Jika model mendukung thinking, thinking boleh ada, tetapi jawaban akhir WAJIB objek JSON soal di output utama.
 - JANGAN pakai LaTeX/backslash math (\\frac, \\(, $...$). Tulis rumus plain text, mis. "1/2", "x^2", "P(A|B)".
 - Di dalam string JSON, hindari tanda kutip ganda; untuk kode/contoh pakai kutip tunggal.
 - Escape newline sebagai \\n. Jangan trailing comma. Jangan komentar.
 - Solusi cukup 3–8 kalimat; jangan terlalu panjang.
-JSON harus sesuai skema berikut:
-${JSON.stringify(z.toJSONSchema(generatedProblemSchema))}`;
+Contoh bentuk (isi diganti sesuai permintaan):
+{"title":"Judul singkat","track":"B","topic":"supervised-learning","difficulty":3,"answerType":"numeric","stem":"Teks soal lengkap...","answer":0.75,"tolerance":0.01,"solution":"Langkah penyelesaian singkat...","tags":["supervised-learning"]}`;
 
 export const REVIEW_SYSTEM_PROMPT = `Kamu adalah tutor AI untuk siswa yang sedang mereview soal EKKA/OSN AI.
 Jawab dalam Bahasa Indonesia yang jelas dan pedagogis.

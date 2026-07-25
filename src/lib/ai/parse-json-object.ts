@@ -175,6 +175,70 @@ export function repairJsonObjectText(text: string): string {
   return stripTrailingCommas(escapeInvalidStringEscapes(text));
 }
 
+/** True when the model echoed a JSON Schema instead of a problem instance. */
+export function looksLikeJsonSchema(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const obj = value as Record<string, unknown>;
+  if ("$schema" in obj || "$defs" in obj || "definitions" in obj) return true;
+  if (obj.type === "object" && obj.properties && typeof obj.properties === "object") {
+    const props = obj.properties as Record<string, unknown>;
+    // Schema for our problem shape mentions these as nested property defs.
+    if ("stem" in props && "answerType" in props && !("stem" in obj)) return true;
+  }
+  return false;
+}
+
+export function isGeneratedProblemShape(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.title === "string" &&
+    typeof obj.stem === "string" &&
+    typeof obj.solution === "string" &&
+    ("answer" in obj || "choices" in obj)
+  );
+}
+
+/**
+ * Try several raw model blobs (answer text, reasoning, combined) and return the
+ * first JSON object that looks like a generated problem — never a JSON Schema.
+ */
+export function parseGeneratedProblemJson(
+  ...blobs: Array<string | undefined | null>
+): unknown {
+  const seen = new Set<string>();
+  let lastError: unknown = new SyntaxError("No JSON object found in model response");
+
+  for (const blob of blobs) {
+    const text = blob?.trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+
+    try {
+      const parsed = parseJsonObject(text);
+      if (looksLikeJsonSchema(parsed)) {
+        lastError = new SyntaxError(
+          "Model mengembalikan JSON Schema, bukan objek soal",
+        );
+        continue;
+      }
+      if (!isGeneratedProblemShape(parsed)) {
+        lastError = new SyntaxError(
+          "JSON terparse tetapi bukan objek soal (title/stem/solution)",
+        );
+        continue;
+      }
+      return parsed;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new SyntaxError("Could not parse JSON object from model response");
+}
+
 export function parseJsonObject(text: string): unknown {
   const extracted = extractJsonObjectText(text);
   if (!extracted) {

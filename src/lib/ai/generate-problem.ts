@@ -14,7 +14,7 @@ import {
   resolveDifficulty,
 } from "@/lib/ai/difficulty";
 import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
-import { parseJsonObject } from "@/lib/ai/parse-json-object";
+import { parseGeneratedProblemJson } from "@/lib/ai/parse-json-object";
 import { getLessonsForTopic } from "@/lib/content/load";
 import type { Lesson } from "@/lib/content/types";
 import {
@@ -25,9 +25,11 @@ import {
 } from "@/lib/content/types";
 
 // Keep wall-clock per request under nginx /api/ai/ proxy_read_timeout (300s).
+// Thinking models may spend many tokens on reasoning before the JSON answer,
+// so leave more output budget than a plain chat completion would need.
 const MAX_GENERATION_ATTEMPTS = 3;
-const MAX_OUTPUT_TOKENS = 2500;
-const GENERATION_ATTEMPT_TIMEOUT_MS = 70_000;
+const MAX_OUTPUT_TOKENS = 4500;
+const GENERATION_ATTEMPT_TIMEOUT_MS = 75_000;
 const THINKING_EMIT_MS = 160;
 
 export type { DifficultyMode } from "@/lib/ai/difficulty";
@@ -176,21 +178,31 @@ Instruksi akhir:
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
 - Solusi 3–8 kalimat, plain text (tanpa LaTeX/backslash).
-- Balas HANYA satu objek JSON valid.`;
+- Balas HANYA satu objek JSON SOAL (bukan JSON Schema).`;
 
   let payload: GeneratedProblemPayload | null = null;
   let lastError: unknown;
   let previousRaw = "";
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
-    const isRepair = attempt > 0 && Boolean(previousRaw);
-    const prompt =
-      !isRepair
-        ? basePrompt
-        : `JSON berikut INVALID dan gagal di-parse. Perbaiki menjadi SATU objek JSON valid sesuai skema (tanpa markdown, tanpa LaTeX, tanpa komentar). Pertahankan isi soal sebisa mungkin.
+    const hadUsableRaw = Boolean(previousRaw.trim());
+    const isRepair = attempt > 0 && hadUsableRaw;
+    const prompt = isRepair
+      ? `Perbaiki menjadi SATU objek JSON SOAL valid (bukan JSON Schema, tanpa markdown, tanpa LaTeX, tanpa komentar).
+Wajib punya field: title, track, topic, difficulty, answerType, stem, answer, solution.
+Track="${params.track}", topic="${params.topic}", difficulty=${difficulty}, answerType="${answerType}".
+Pertahankan isi soal sebisa mungkin.
 
-JSON rusak:
-${previousRaw.slice(0, 5000)}`;
+JSON rusak / salah:
+${previousRaw.slice(0, 5000)}`
+      : attempt > 0
+        ? `${basePrompt}
+
+PERINGATAN PERCOBAAN ULANG:
+- Respons sebelumnya kosong atau hanya thinking tanpa JSON soal.
+- Tulis objek JSON soal langsung di output utama (content), singkat saja.
+- Jangan kembalikan JSON Schema.`
+        : basePrompt;
 
     await onProgress?.({
       type: "attempt",
@@ -200,18 +212,19 @@ ${previousRaw.slice(0, 5000)}`;
       phase: isRepair ? "repairing" : "generating",
     });
 
+    let text = "";
+    let reasoning = "";
+
     try {
       const result = streamText({
         model,
         system: GENERATION_SYSTEM_PROMPT,
         prompt,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
-        temperature: attempt === 0 ? 0.4 : 0.2,
+        temperature: attempt === 0 ? 0.4 : 0.15,
         abortSignal: AbortSignal.timeout(GENERATION_ATTEMPT_TIMEOUT_MS),
       });
 
-      let text = "";
-      let reasoning = "";
       let lastThinkingEmit = 0;
 
       for await (const part of result.fullStream) {
@@ -253,10 +266,19 @@ ${previousRaw.slice(0, 5000)}`;
         });
       }
 
-      previousRaw = text.trim() || (await result.text).trim();
+      const finalText = text.trim() || (await result.text).trim();
+      const finalReasoning = reasoning.trim();
+      // Prefer content; fall back to reasoning (thinking models sometimes put
+      // the JSON only there) and a combined blob for interleaved answers.
+      previousRaw =
+        finalText ||
+        finalReasoning ||
+        [finalReasoning, finalText].filter(Boolean).join("\n");
+
       if (!previousRaw.trim()) {
         throw new Error("Model AI mengembalikan respons kosong");
       }
+
       await onProgress?.({
         type: "attempt",
         index: progressIndex,
@@ -264,16 +286,18 @@ ${previousRaw.slice(0, 5000)}`;
         maxAttempts: MAX_GENERATION_ATTEMPTS,
         phase: "validating",
       });
+
       payload = normalizeGeneratedProblem(
-        generatedProblemSchema.parse(parseJsonObject(previousRaw)),
+        generatedProblemSchema.parse(
+          parseGeneratedProblemJson(finalText, finalReasoning, previousRaw),
+        ),
       );
     } catch (err) {
       lastError = err;
       payload = null;
-      // Preserve prior model text for repair prompts; only fall back to the
-      // error message when we never got a body (timeout/network).
-      if (!previousRaw && err instanceof Error) {
-        previousRaw = "";
+      // Keep the best model blob we saw for the next repair prompt.
+      if (!previousRaw.trim()) {
+        previousRaw = [text, reasoning].map((s) => s.trim()).find(Boolean) ?? "";
       }
     }
 
