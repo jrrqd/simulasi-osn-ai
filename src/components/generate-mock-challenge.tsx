@@ -43,14 +43,15 @@ export function GenerateMockChallenge() {
     setError("");
     setProgress(
       generationMode === "custom"
-        ? "LLM sedang menulis 10 soal sesuai brief topik…"
-        : "Menghasilkan 10 soal AI… bisa beberapa menit.",
+        ? "Menyusun rencana 10 soal dari brief topik…"
+        : "Menyusun rencana 10 soal AI…",
     );
     try {
-      const res = await fetch("/api/ai/generate-mock", {
+      const planRes = await fetch("/api/ai/generate-mock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          phase: "plan",
           generationMode,
           track: generationMode === "standard" ? track : undefined,
           difficultyMode,
@@ -58,9 +59,60 @@ export function GenerateMockChallenge() {
             generationMode === "custom" ? topicPrompt.trim() : undefined,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal generate simulasi");
-      router.push(`/mock/${data.mock.id}`);
+      const planData = await planRes.json();
+      if (!planRes.ok) {
+        throw new Error(planData.error || "Gagal menyusun rencana simulasi");
+      }
+
+      const planId = String(planData.planId);
+      const total = Number(planData.total) || 10;
+
+      for (let index = 0; index < total; index++) {
+        setProgress(
+          generationMode === "custom"
+            ? `LLM menulis soal ${index + 1}/${total} sesuai brief topik…`
+            : `Menghasilkan soal ${index + 1}/${total}…`,
+        );
+
+        let lastError = "Gagal generate soal";
+        let ok = false;
+        for (let attempt = 0; attempt < 2 && !ok; attempt++) {
+          const slotRes = await fetch("/api/ai/generate-mock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phase: "slot",
+              planId,
+              index,
+            }),
+          });
+          const slotData = await slotRes.json();
+          if (slotRes.ok && slotData.problemId) {
+            ok = true;
+            break;
+          }
+          lastError = slotData.error || lastError;
+        }
+        if (!ok) {
+          throw new Error(`Soal ${index + 1}/${total}: ${lastError}`);
+        }
+      }
+
+      setProgress("Menyimpan paket simulasi…");
+      const commitRes = await fetch("/api/ai/generate-mock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase: "commit",
+          planId,
+        }),
+      });
+      const commitData = await commitRes.json();
+      if (!commitRes.ok) {
+        throw new Error(commitData.error || "Gagal menyimpan simulasi");
+      }
+
+      router.push(`/mock/${commitData.mock.id}`);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
