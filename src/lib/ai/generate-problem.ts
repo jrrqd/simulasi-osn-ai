@@ -23,8 +23,10 @@ import {
   type TrackId,
 } from "@/lib/content/types";
 
-const MAX_GENERATION_ATTEMPTS = 4;
+// Keep wall-clock per request under nginx /api/ai/ proxy_read_timeout (300s).
+const MAX_GENERATION_ATTEMPTS = 3;
 const MAX_OUTPUT_TOKENS = 2500;
+const GENERATION_ATTEMPT_TIMEOUT_MS = 70_000;
 
 export type { DifficultyMode } from "@/lib/ai/difficulty";
 export {
@@ -189,17 +191,22 @@ ${previousRaw.slice(0, 5000)}`;
         prompt,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         temperature: attempt === 0 ? 0.4 : 0.2,
-        abortSignal: AbortSignal.timeout(180_000),
+        abortSignal: AbortSignal.timeout(GENERATION_ATTEMPT_TIMEOUT_MS),
       });
       previousRaw = result.text ?? "";
+      if (!previousRaw.trim()) {
+        throw new Error("Model AI mengembalikan respons kosong");
+      }
       payload = normalizeGeneratedProblem(
         generatedProblemSchema.parse(parseJsonObject(previousRaw)),
       );
     } catch (err) {
       lastError = err;
       payload = null;
+      // Preserve prior model text for repair prompts; only fall back to the
+      // error message when we never got a body (timeout/network).
       if (!previousRaw && err instanceof Error) {
-        previousRaw = err.message;
+        previousRaw = "";
       }
     }
 
