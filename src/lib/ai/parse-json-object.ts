@@ -199,11 +199,26 @@ export function isGeneratedProblemShape(value: unknown): boolean {
   );
 }
 
-/**
- * Try several raw model blobs (answer text, reasoning, combined) and return the
- * first JSON object that looks like a generated problem — never a JSON Schema.
- */
-export function parseGeneratedProblemJson(
+/** Study-case pack: shared preamble + linked problems[]. */
+export function isStudyCaseShape(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const obj = value as Record<string, unknown>;
+  const problems = obj.problems;
+  if (!Array.isArray(problems) || problems.length < 2) return false;
+  const hasTitle =
+    typeof obj.caseTitle === "string" ||
+    typeof obj.title === "string" ||
+    typeof obj.case_title === "string";
+  const hasPreamble =
+    typeof obj.preamble === "string" ||
+    typeof obj.context === "string" ||
+    typeof obj.sharedContext === "string";
+  return hasTitle && hasPreamble;
+}
+
+function parseShapedJson(
+  shapeCheck: (value: unknown) => boolean,
+  shapeError: string,
   ...blobs: Array<string | undefined | null>
 ): unknown {
   const seen = new Set<string>();
@@ -222,10 +237,8 @@ export function parseGeneratedProblemJson(
         );
         continue;
       }
-      if (!isGeneratedProblemShape(parsed)) {
-        lastError = new SyntaxError(
-          "JSON terparse tetapi bukan objek soal (title/stem/solution)",
-        );
+      if (!shapeCheck(parsed)) {
+        lastError = new SyntaxError(shapeError);
         continue;
       }
       return parsed;
@@ -237,6 +250,34 @@ export function parseGeneratedProblemJson(
   throw lastError instanceof Error
     ? lastError
     : new SyntaxError("Could not parse JSON object from model response");
+}
+
+/**
+ * Try several raw model blobs (answer text, reasoning, combined) and return the
+ * first JSON object that looks like a generated problem — never a JSON Schema.
+ */
+export function parseGeneratedProblemJson(
+  ...blobs: Array<string | undefined | null>
+): unknown {
+  return parseShapedJson(
+    isGeneratedProblemShape,
+    "JSON terparse tetapi bukan objek soal (title/stem/solution)",
+    ...blobs,
+  );
+}
+
+/**
+ * Parse a study-case JSON pack ({ caseTitle, preamble, problems[] }).
+ * Must not use parseGeneratedProblemJson — that requires stem/answer at root.
+ */
+export function parseStudyCaseJson(
+  ...blobs: Array<string | undefined | null>
+): unknown {
+  return parseShapedJson(
+    isStudyCaseShape,
+    "JSON terparse tetapi bukan studi kasus (caseTitle/preamble/problems)",
+    ...blobs,
+  );
 }
 
 export function parseJsonObject(text: string): unknown {

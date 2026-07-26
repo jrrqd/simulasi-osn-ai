@@ -441,11 +441,31 @@ export async function POST(req: NextRequest) {
         onProgress: send,
       });
 
-      const problems = result.problems.slice(0, caseSlot.problemCount);
-      if (problems.length < caseSlot.problemCount) {
-        throw new Error(
-          `Studi kasus hanya menghasilkan ${problems.length}/${caseSlot.problemCount} soal`,
-        );
+      const problems = [...result.problems.slice(0, caseSlot.problemCount)];
+
+      // Fill short packs with single hAIplay items so the mock still completes.
+      while (problems.length < caseSlot.problemCount) {
+        const fillIndex = caseSlot.startIndex + problems.length;
+        const slot = session.slots[fillIndex]!;
+        await send({
+          type: "status",
+          message: `Melengkapi studi kasus ${caseIndex + 1}: soal ${problems.length + 1}/${caseSlot.problemCount}…`,
+          index: fillIndex + 1,
+          total: totalProblems,
+        });
+        const filler = await generateSlotProblem({
+          userId: authResult.user.id,
+          slot,
+          focusPrompt: `Lanjutkan studi kasus "${result.caseTitle}" (soal pelengkap, gaya hAIplay, text-only).`,
+          difficultyMode: session.meta.difficultyMode,
+          baseUrl: settings.baseUrl,
+          apiKey: settings.apiKey,
+          modelId: settings.modelId,
+          progressIndex: fillIndex + 1,
+          progressTotal: totalProblems,
+          onProgress: send,
+        });
+        problems.push(filler);
       }
 
       setAiMockSessionProblems(

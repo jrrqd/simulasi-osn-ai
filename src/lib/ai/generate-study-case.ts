@@ -14,7 +14,7 @@ import {
   resolveDifficulty,
 } from "@/lib/ai/difficulty";
 import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
-import { parseGeneratedProblemJson } from "@/lib/ai/parse-json-object";
+import { parseStudyCaseJson } from "@/lib/ai/parse-json-object";
 import {
   STUDY_CASE_SYSTEM_PROMPT,
   buildStudyCaseUserPrompt,
@@ -28,15 +28,15 @@ import {
   type TrackId,
 } from "@/lib/content/types";
 
-const MAX_ATTEMPTS = 3;
-const MAX_OUTPUT_TOKENS = 8000;
-const ATTEMPT_TIMEOUT_MS = 90_000;
+const MAX_ATTEMPTS = 4;
+const MAX_OUTPUT_TOKENS = 10_000;
+const ATTEMPT_TIMEOUT_MS = 120_000;
 const THINKING_EMIT_MS = 160;
 const MAX_LESSON_BODY_CHARS = 2200;
 const MAX_LESSONS = 2;
 
 const studyCaseItemSchema = z.object({
-  title: z.coerce.string().min(3).max(240),
+  title: z.coerce.string().min(2).max(240),
   answerType: z
     .string()
     .transform((v) => v.trim().toLowerCase())
@@ -44,7 +44,10 @@ const studyCaseItemSchema = z.object({
       z.enum(["numeric", "short_string", "mcq", "python_output", "multi_part"]),
     )
     .catch("numeric"),
-  prompt: z.coerce.string().min(5),
+  // Models sometimes use stem/question instead of prompt
+  prompt: z.coerce.string().optional(),
+  stem: z.coerce.string().optional(),
+  question: z.coerce.string().optional(),
   answer: z.union([
     z.string(),
     z.number(),
@@ -53,17 +56,70 @@ const studyCaseItemSchema = z.object({
   ]),
   tolerance: z.coerce.number().optional(),
   choices: z.array(z.union([z.string(), z.number()])).optional(),
-  solution: z.coerce.string().min(10),
+  solution: z.coerce.string().min(5),
+}).transform((item, ctx) => {
+  const prompt = (item.prompt || item.stem || item.question || "").trim();
+  if (prompt.length < 5) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Item problems butuh prompt/stem",
+    });
+    return z.NEVER;
+  }
+  return {
+    title: item.title,
+    answerType: item.answerType,
+    prompt,
+    answer: item.answer,
+    tolerance: item.tolerance,
+    choices: item.choices,
+    solution: item.solution,
+  };
 });
 
-const studyCaseSchema = z.object({
-  caseTitle: z.coerce.string().min(3).max(240),
-  preamble: z.coerce.string().min(20),
-  track: z.enum(["A", "B", "C", "D"]).catch("B"),
-  topic: z.coerce.string().min(1).max(64),
-  difficulty: z.coerce.number().int().min(1).max(5),
-  problems: z.array(studyCaseItemSchema).min(2).max(6),
-});
+const studyCaseSchema = z
+  .object({
+    caseTitle: z.coerce.string().optional(),
+    title: z.coerce.string().optional(),
+    case_title: z.coerce.string().optional(),
+    preamble: z.coerce.string().optional(),
+    context: z.coerce.string().optional(),
+    sharedContext: z.coerce.string().optional(),
+    track: z.enum(["A", "B", "C", "D"]).catch("B"),
+    topic: z.coerce.string().min(1).max(64).optional(),
+    difficulty: z.coerce.number().int().min(1).max(5).optional(),
+    problems: z.array(studyCaseItemSchema).min(2).max(8),
+  })
+  .transform((raw, ctx) => {
+    const caseTitle = (
+      raw.caseTitle ||
+      raw.title ||
+      raw.case_title ||
+      ""
+    ).trim();
+    const preamble = (
+      raw.preamble ||
+      raw.context ||
+      raw.sharedContext ||
+      ""
+    ).trim();
+    if (caseTitle.length < 3) {
+      ctx.addIssue({ code: "custom", message: "caseTitle terlalu pendek" });
+      return z.NEVER;
+    }
+    if (preamble.length < 10) {
+      ctx.addIssue({ code: "custom", message: "preamble terlalu pendek" });
+      return z.NEVER;
+    }
+    return {
+      caseTitle,
+      preamble,
+      track: raw.track,
+      topic: raw.topic ?? "",
+      difficulty: raw.difficulty ?? 3,
+      problems: raw.problems,
+    };
+  });
 
 function clip(text: string, max: number) {
   const trimmed = text.trim();
@@ -252,12 +308,15 @@ PERINGATAN: respons sebelumnya kosong/invalid. Tulis JSON studi kasus langsung d
         phase: "validating",
       });
 
-      const json = parseGeneratedProblemJson(
-        finalText,
-        finalReasoning,
-        previousRaw,
-      );
+      const json = parseStudyCaseJson(finalText, finalReasoning, previousRaw);
       parsed = studyCaseSchema.parse(json);
+      // Prefer exact requested count; keep extras only if short.
+      if (parsed.problems.length > problemCount) {
+        parsed = {
+          ...parsed,
+          problems: parsed.problems.slice(0, problemCount),
+        };
+      }
     } catch (err) {
       lastError = err;
       parsed = null;
@@ -273,9 +332,10 @@ PERINGATAN: respons sebelumnya kosong/invalid. Tulis JSON studi kasus langsung d
     console.error("[generate-study-case] failed", {
       track: params.track,
       topic: params.topic,
+      problemCount,
       attemptError:
         lastError instanceof Error ? lastError.message : String(lastError),
-      rawPreview: previousRaw.slice(0, 400),
+      rawPreview: previousRaw.slice(0, 600),
     });
     throw new Error(
       "Model AI mengembalikan JSON studi kasus tidak valid. Silakan coba lagi.",
