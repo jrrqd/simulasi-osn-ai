@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
       ? (body.difficulty as 1 | 2 | 3 | 4 | 5)
       : undefined;
   const answerType = String(body.answerType ?? "numeric");
+  const includeFigures =
+    body.includeFigures === true ||
+    body.includeFigures === "true" ||
+    body.includeFigures === 1;
 
   let track: TrackId;
   let topic: string;
@@ -117,6 +121,7 @@ export async function POST(req: NextRequest) {
       difficulty: legacyDifficulty,
       answerType,
       focusPrompt,
+      includeFigures,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,

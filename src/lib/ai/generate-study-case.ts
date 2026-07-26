@@ -20,6 +20,7 @@ import {
   buildStudyCaseUserPrompt,
 } from "@/lib/ai/haiplay-style";
 import { verifyGeneratedProblem } from "@/lib/ai/verify-generated-answer";
+import { materializeFigures } from "@/lib/ai/diagrams";
 import { getLessonsForTopic } from "@/lib/content/load";
 import {
   TRACKS,
@@ -88,6 +89,7 @@ const studyCaseSchema = z
     track: z.enum(["A", "B", "C", "D"]).catch("B"),
     topic: z.coerce.string().min(1).max(64).optional(),
     difficulty: z.coerce.number().int().min(1).max(5).optional(),
+    figures: z.array(z.unknown()).optional(),
     problems: z.array(studyCaseItemSchema).min(2).max(8),
   })
   .transform((raw, ctx) => {
@@ -117,6 +119,7 @@ const studyCaseSchema = z
       track: raw.track,
       topic: raw.topic ?? "",
       difficulty: raw.difficulty ?? 3,
+      figures: raw.figures,
       problems: raw.problems,
     };
   });
@@ -173,6 +176,7 @@ export async function generateAndStoreStudyCase(params: {
   difficulty?: 1 | 2 | 3 | 4 | 5;
   problemCount?: number;
   focusPrompt?: string;
+  includeFigures?: boolean;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -188,6 +192,7 @@ export async function generateAndStoreStudyCase(params: {
   const difficulty =
     params.difficulty ?? resolveDifficulty(params.difficultyMode);
   const problemCount = Math.min(5, Math.max(3, params.problemCount ?? 4));
+  const includeFigures = Boolean(params.includeFigures);
   const onProgress = params.onProgress;
 
   const model = createUserProvider({
@@ -198,7 +203,7 @@ export async function generateAndStoreStudyCase(params: {
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
-  const basePrompt = buildStudyCaseUserPrompt({
+  const basePrompt = `${buildStudyCaseUserPrompt({
     track: params.track,
     trackName: TRACKS[params.track].name,
     topic: params.topic,
@@ -207,7 +212,12 @@ export async function generateAndStoreStudyCase(params: {
     problemCount,
     syllabus,
     focusPrompt: params.focusPrompt,
-  });
+  })}
+${
+  includeFigures
+    ? `\nGambar: sertakan "figures" di root JSON jika kasus butuh visual; pakai {{fig:id}} di preamble.`
+    : `\nGambar: JANGAN sertakan figures; preamble text-only tanpa {{fig:...}}.`
+}`;
 
   let parsed: z.infer<typeof studyCaseSchema> | null = null;
   let lastError: unknown;
@@ -343,13 +353,32 @@ PERINGATAN: respons sebelumnya kosong/invalid. Tulis JSON studi kasus langsung d
   }
 
   const caseId = `case-${nanoid(10)}`;
-  const preamble = parsed.preamble.trim();
   const caseTitle = parsed.caseTitle.trim();
   const problems: Problem[] = [];
   const db = await getDb();
 
   for (let i = 0; i < parsed.problems.length; i++) {
     const item = parsed.problems[i]!;
+    const id = `ai-${nanoid(10)}`;
+    let preamble = parsed.preamble.trim();
+    let figures: Problem["figures"];
+    try {
+      const materialized = materializeFigures({
+        problemId: id,
+        text: preamble,
+        figuresRaw: parsed.figures,
+        includeFigures,
+      });
+      preamble = materialized.text;
+      figures = materialized.figures.length ? materialized.figures : undefined;
+    } catch (err) {
+      throw new Error(
+        err instanceof Error
+          ? `Gambar studi kasus: ${err.message}`
+          : "Gagal merender gambar studi kasus.",
+      );
+    }
+
     const rawPayload = normalizeGeneratedProblem(
       generatedProblemSchema.parse({
         title: item.title,
@@ -375,12 +404,12 @@ PERINGATAN: respons sebelumnya kosong/invalid. Tulis JSON studi kasus langsung d
       );
     }
 
-    const id = `ai-${nanoid(10)}`;
     const problem: Problem = {
       ...verified.payload,
       id,
       source: "ai",
       difficulty: difficulty as 1 | 2 | 3 | 4 | 5,
+      figures,
       tags: [
         ...(verified.payload.tags ?? []),
         `case:${caseId}`,

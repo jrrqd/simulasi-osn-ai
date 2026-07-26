@@ -16,6 +16,7 @@ import {
 import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
 import { parseGeneratedProblemJson } from "@/lib/ai/parse-json-object";
 import { verifyGeneratedProblem } from "@/lib/ai/verify-generated-answer";
+import { materializeFigures } from "@/lib/ai/diagrams";
 import { getLessonsForTopic } from "@/lib/content/load";
 import type { Lesson } from "@/lib/content/types";
 import {
@@ -118,6 +119,8 @@ export async function generateAndStoreProblem(params: {
   difficulty?: 1 | 2 | 3 | 4 | 5;
   /** Free-text student focus for custom mock generation. */
   focusPrompt?: string;
+  /** When true, prompt model for diagram specs and materialize SVG figures. */
+  includeFigures?: boolean;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -165,7 +168,21 @@ ${params.focusPrompt.trim()}
 `
     : "";
 
-  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS, bergaya studi kasus hAIplay (cerita konkret, hitung-lalu-pilih, text-only).
+  const includeFigures = Boolean(params.includeFigures);
+  const figureBlock = includeFigures
+    ? `
+Gambar (WAJIB dipertimbangkan):
+- Sertakan field "figures" bila soal butuh plot/citra/kernel/pohon/grafik/tabel visual.
+- Sisipkan {{fig:ID}} di stem di tempat gambar harus muncul.
+- Prefer minimal satu figure untuk topic visual (citra, konvolusi, decision tree, clustering).
+- Jika soal murni teks/hitungan tanpa visual, figures boleh [].
+`
+    : `
+Gambar:
+- JANGAN sertakan figures; buat soal text-only tanpa placeholder {{fig:...}}.
+`;
+
+  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS, bergaya studi kasus hAIplay (cerita konkret, hitung-lalu-pilih).
 
 Track: ${params.track} (${TRACKS[params.track].name})
 Topic: ${params.topic} (${TOPIC_LABELS[params.topic] ?? params.topic})
@@ -174,6 +191,7 @@ AnswerType: ${answerType}
 
 ${syllabus}
 ${focusBlock}
+${figureBlock}
 Instruksi akhir:
 - Soal harus dapat diselesaikan hanya dengan materi di atas + prasyarat sangat dasar.
 - Jangan menguji topic lain di luar "${params.topic}".
@@ -185,6 +203,8 @@ Instruksi akhir:
   let payload: GeneratedProblemPayload | null = null;
   let lastError: unknown;
   let previousRaw = "";
+  let problemId = "";
+  let problemFigures: Problem["figures"];
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
     const hadUsableRaw = Boolean(previousRaw.trim());
@@ -320,11 +340,33 @@ PERINGATAN PERCOBAAN ULANG:
       payload = null;
       continue;
     }
-    payload = verified.payload;
+
+    const idCandidate = `ai-${nanoid(10)}`;
+    try {
+      const materialized = materializeFigures({
+        problemId: idCandidate,
+        text: verified.payload.stem,
+        figuresRaw: verified.payload.figures,
+        includeFigures,
+      });
+      payload = {
+        ...verified.payload,
+        stem: materialized.text,
+        figures: undefined,
+      };
+      problemId = idCandidate;
+      problemFigures = materialized.figures.length
+        ? materialized.figures
+        : undefined;
+    } catch (err) {
+      lastError = err;
+      payload = null;
+      continue;
+    }
     break;
   }
 
-  if (!payload) {
+  if (!payload || !problemId) {
     console.error(
       "[generate-problem] failed",
       {
@@ -341,17 +383,17 @@ PERINGATAN PERCOBAAN ULANG:
     );
   }
 
-  const id = `ai-${nanoid(10)}`;
   const problem: Problem = {
     ...payload,
-    id,
+    id: problemId,
     source: "ai",
     difficulty,
+    figures: problemFigures,
   };
 
   const db = await getDb();
   await db.insert(generatedProblems).values({
-    id,
+    id: problemId,
     userId: params.userId,
     payload: problem,
     track: problem.track,

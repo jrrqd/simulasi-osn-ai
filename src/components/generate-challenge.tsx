@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TRACKS, TOPIC_LABELS } from "@/lib/content/types";
 import {
   DIFFICULTY_MODES,
   type DifficultyMode,
 } from "@/lib/ai/difficulty";
+import { defaultIncludeFigures } from "@/lib/ai/diagrams";
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
 import type { GenerationProgressEvent } from "@/lib/ai/generation-progress";
 import {
@@ -35,11 +36,20 @@ export function GenerateChallenge() {
     useState<DifficultyMode>("medium");
   const [answerType, setAnswerType] = useState("numeric");
   const [problemCount, setProblemCount] = useState(4);
+  const [includeFigures, setIncludeFigures] = useState(
+    defaultIncludeFigures(TRACKS.B.topics[0]!),
+  );
+  const [figuresTouched, setFiguresTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<GenerationProgressState>(
     INITIAL_GENERATION_PROGRESS,
   );
+
+  useEffect(() => {
+    if (figuresTouched || generationMode === "custom") return;
+    setIncludeFigures(defaultIncludeFigures(topic));
+  }, [topic, figuresTouched, generationMode]);
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -79,6 +89,7 @@ export function GenerateChallenge() {
                 topic,
                 difficultyMode,
                 problemCount,
+                includeFigures,
               }
             : {
                 generationMode:
@@ -91,6 +102,7 @@ export function GenerateChallenge() {
                     : undefined,
                 difficultyMode,
                 answerType,
+                includeFigures,
               },
         ),
       });
@@ -185,8 +197,10 @@ export function GenerateChallenge() {
       <h2 className="display text-2xl">Generate tantangan AI</h2>
       <p className="text-sm text-[var(--muted)]">
         Soal masuk bank AI bersama dan bisa dikerjakan siswa lain. Mode{" "}
-        <strong>Studi kasus</strong> membuat 3–5 soal terkait bergaya hAIplay
-        (text-only). Progress & thinking model ditampilkan seperti di Simulasi.
+        <strong>Studi kasus</strong> membuat 3–5 soal terkait bergaya hAIplay.
+        Aktifkan <strong>Sertakan gambar</strong> untuk scatter/grid/kernel/dll
+        (dirender akurat dari spek model). Progress & thinking model ditampilkan
+        seperti di Simulasi.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -343,6 +357,25 @@ export function GenerateChallenge() {
           )}
         </div>
       )}
+
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="size-4 accent-[var(--accent)]"
+          checked={includeFigures}
+          onChange={(e) => {
+            setFiguresTouched(true);
+            setIncludeFigures(e.target.checked);
+          }}
+          disabled={loading}
+        />
+        <span>
+          Sertakan gambar{" "}
+          <span className="text-[var(--muted)]">
+            (scatter, grid, pohon, kernel, batang, tabel, graf)
+          </span>
+        </span>
+      </label>
 
       <button className="btn btn-accent" onClick={generate} disabled={loading}>
         {loading

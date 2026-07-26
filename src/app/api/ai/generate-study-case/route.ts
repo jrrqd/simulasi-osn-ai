@@ -74,6 +74,10 @@ export async function POST(req: NextRequest) {
 
   const difficulty = resolveDifficulty(difficultyMode);
   const topicLabel = TOPIC_LABELS[topic] ?? topic;
+  const includeFigures =
+    body.includeFigures === true ||
+    body.includeFigures === "true" ||
+    body.includeFigures === 1;
 
   return createNdjsonStreamResponse(async (send) => {
     await send({
@@ -100,6 +104,7 @@ export async function POST(req: NextRequest) {
       difficulty,
       problemCount,
       focusPrompt,
+      includeFigures,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,

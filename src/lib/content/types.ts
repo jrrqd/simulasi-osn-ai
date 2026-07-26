@@ -17,6 +17,13 @@ export type ProblemPart = {
   points?: number;
 };
 
+export type ProblemFigure = {
+  id: string;
+  alt?: string;
+  diagram: unknown;
+  svg: string;
+};
+
 export type Problem = {
   id: string;
   title: string;
@@ -33,6 +40,8 @@ export type Problem = {
   tags?: string[];
   source?: "curated" | "ai";
   starterCode?: string;
+  /** AI-rendered SVG figures referenced from stem markdown. */
+  figures?: ProblemFigure[];
 };
 
 export type Lesson = {

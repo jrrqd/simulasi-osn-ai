@@ -3,6 +3,21 @@
  * (anonymized from curated p-osn26 bank — not for copying numbers).
  */
 
+export const HAIPLAY_FIGURE_RULES = `Gambar / diagram (opsional, jika includeFigures aktif):
+- Boleh menyertakan "figures": array objek { "id", "alt?", "diagram" }.
+- Di stem/preamble, sisipkan placeholder {{fig:ID}} persis di tempat gambar harus muncul.
+- diagram.kind HARUS salah satu: scatter | grid | tree | kernel | bars | table | graph.
+- scatter: { kind:"scatter", points:[{x,y,group?,label?}], lines?, xLabel?, yLabel?, title? }
+- grid: { kind:"grid", cells:[[0/1 atau angka]], palette:"bw"|"heatmap", showValues?, title? }
+- tree: { kind:"tree", nodes:[{id,label,leaf?}], edges:[{from,to,label?}], title? }
+- kernel: { kind:"kernel", matrix:[[angka]], title? }
+- bars: { kind:"bars", bars:[{label,value}], yLabel?, title? }
+- table: { kind:"table", headers:[...], rows:[[...]], title? }
+- graph: { kind:"graph", nodes:[{id,label?}], edges:[{from,to,label?}], directed?, title? }
+- JANGAN menulis ![markdown](...) sendiri; jangan mengarang URL gambar.
+- Jika soal butuh plot/citra/kernel/pohon, WAJIB isi figures + placeholder.
+- Jika soal murni hitungan teks, figures boleh kosong/dihilangkan.`;
+
 export const HAIPLAY_STYLE_RULES = `Gaya soal hAIplay / studi kasus EKKA (WAJIB diikuti):
 - Buat soal CERITA konkret (skenario dunia nyata: prediksi cuaca, kurir, kolam, metrik model, attention, embedding, dll).
 - Prefer hitung-lalu-pilih: dataset kecil + aritmetika eksak (peluang, regresi/Huber, GD satu langkah, metrik).
@@ -10,8 +25,10 @@ export const HAIPLAY_STYLE_RULES = `Gaya soal hAIplay / studi kasus EKKA (WAJIB 
 - Untuk multi-pilih huruf (fitur), gunakan answerType short_string dengan jawaban seperti "a,c" atau "b,c".
 - Boleh menulis rumus dengan KaTeX inline $...$ atau $$...$$ (mis. $P(H)=1/2$, $\\dfrac{2}{5}$).
 - Solusi 3–8 kalimat, merujuk angka di soal; jangan spoiler pilihan yang tidak relevan.
-- JANGAN butuh gambar/plot/citra; soal harus text-only.
-- JANGAN menyalin contoh few-shot; ganti angka, nama, dan skenario.`;
+- Soal text-only tetap OK jika tidak butuh visual.
+- JANGAN menyalin contoh few-shot; ganti angka, nama, dan skenario.
+
+${HAIPLAY_FIGURE_RULES}`;
 
 /** Compact few-shots for single-problem generation (structure + tone only). */
 export const HAIPLAY_FEW_SHOT_SINGLE = `Contoh gaya (JANGAN disalin angka/skenario; buat soal BARU):
@@ -36,6 +53,9 @@ Struktur keluaran: SATU objek JSON studi kasus (bukan JSON Schema):
   "track": "A|B|C|D",
   "topic": "slug-topic",
   "difficulty": 1-5,
+  "figures": [
+    { "id": "fig1", "alt": "opsional", "diagram": { "kind": "scatter", "points": [{"x":0,"y":1,"group":"A"}] } }
+  ],
   "problems": [
     {
       "title": "judul soal singkat",
@@ -53,7 +73,8 @@ Aturan studi kasus:
 - Buat 3 sampai 5 soal yang BERKAITAN pada preamble yang sama (hitungan bertahap diperbolehkan).
 - Setiap prompt harus berdiri sendiri jika digabung: stem akhir = preamble + prompt.
 - Semua soal harus auto-gradable dan konsisten dengan angka di preamble.
-- Text-only (tanpa gambar).
+- figures (jika ada) dipakai bersama di preamble via {{fig:id}}; jangan duplikasi di setiap prompt.
+- Text-only OK jika kasus tidak butuh visual.
 - Balas HANYA JSON instance, tanpa markdown fence, tanpa komentar.
 - Escape newline sebagai \\n di dalam string.
 

@@ -44,6 +44,8 @@ export const generatedProblemSchema = z.object({
   solution: z.coerce.string().min(10),
   tags: z.array(z.coerce.string()).optional(),
   starterCode: z.coerce.string().optional(),
+  /** Raw figure specs from the model; materialized after id assignment. */
+  figures: z.array(z.unknown()).optional(),
 });
 
 export type GeneratedProblemPayload = {
@@ -64,6 +66,7 @@ export type GeneratedProblemPayload = {
   solution: string;
   tags?: string[];
   starterCode?: string;
+  figures?: unknown[];
 };
 
 export function normalizeGeneratedProblem(
@@ -81,6 +84,7 @@ export function normalizeGeneratedProblem(
           : "false"
         : answer,
     choices: raw.choices?.map(String),
+    figures: raw.figures,
   };
 }
 
@@ -203,6 +207,7 @@ PENTING: Balas HANYA dengan satu objek JSON SOAL (bukan JSON Schema), tanpa teks
 - Escape newline sebagai \\n. Jangan trailing comma. Jangan komentar.
 - Solusi cukup 3–8 kalimat; jangan terlalu panjang.
 - Tambahkan tag "haiplay-style" jika memakai pola studi kasus.
+- Field opsional figures: lihat aturan gambar di atas; gunakan {{fig:id}} di stem.
 
 ${HAIPLAY_FEW_SHOT_SINGLE}
 `;
