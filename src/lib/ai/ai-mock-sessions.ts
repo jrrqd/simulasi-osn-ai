@@ -1,8 +1,13 @@
-import type { AiMockPlanMeta, AiMockSlot } from "@/lib/ai/ai-mock-plan";
+import type {
+  AiMockCaseSlot,
+  AiMockPlanMeta,
+  AiMockSlot,
+} from "@/lib/ai/ai-mock-plan";
 
 type AiMockSession = {
   userId: string;
   slots: AiMockSlot[];
+  cases: AiMockCaseSlot[];
   meta: AiMockPlanMeta;
   problemIds: Array<string | null>;
   expiresAt: number;
@@ -22,6 +27,7 @@ function pruneExpired() {
 export function createAiMockSession(params: {
   userId: string;
   slots: AiMockSlot[];
+  cases?: AiMockCaseSlot[];
   meta: AiMockPlanMeta;
 }): string {
   pruneExpired();
@@ -29,6 +35,7 @@ export function createAiMockSession(params: {
   sessions.set(id, {
     userId: params.userId,
     slots: params.slots,
+    cases: params.cases ?? [],
     meta: params.meta,
     problemIds: Array.from({ length: params.slots.length }, () => null),
     expiresAt: Date.now() + SESSION_TTL_MS,
@@ -57,6 +64,23 @@ export function setAiMockSessionProblem(
   if (!session) return null;
   if (index < 0 || index >= session.problemIds.length) return null;
   session.problemIds[index] = problemId;
+  session.expiresAt = Date.now() + SESSION_TTL_MS;
+  return session;
+}
+
+export function setAiMockSessionProblems(
+  planId: string,
+  userId: string,
+  startIndex: number,
+  problemIds: string[],
+) {
+  const session = getAiMockSession(planId, userId);
+  if (!session) return null;
+  for (let i = 0; i < problemIds.length; i++) {
+    const idx = startIndex + i;
+    if (idx < 0 || idx >= session.problemIds.length) return null;
+    session.problemIds[idx] = problemIds[i]!;
+  }
   session.expiresAt = Date.now() + SESSION_TTL_MS;
   return session;
 }

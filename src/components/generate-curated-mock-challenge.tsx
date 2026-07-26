@@ -20,7 +20,7 @@ import {
 } from "@/components/generation-progress";
 import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
 
-type GenerationMode = "standard" | "custom";
+type GenerationMode = "standard" | "custom" | "study-case";
 type SourceMode = "curated" | "ai";
 
 const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
@@ -70,8 +70,9 @@ export function GenerateCuratedMockChallenge() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          generationMode,
-          track: generationMode === "standard" ? track : "ALL",
+          generationMode:
+            generationMode === "study-case" ? "standard" : generationMode,
+          track: generationMode === "custom" ? "ALL" : track,
           difficultyMode,
           size,
           topicPrompt:
@@ -98,7 +99,7 @@ export function GenerateCuratedMockChallenge() {
       const { mockId } = await runAiMockGeneration({
         request: {
           generationMode,
-          track: generationMode === "standard" ? track : "ALL",
+          track: generationMode === "custom" ? "ALL" : track,
           difficultyMode,
           size,
           topicPrompt:
@@ -126,14 +127,17 @@ export function GenerateCuratedMockChallenge() {
   return (
     <CollapsiblePanel
       title="Susun simulasi curated / AI penuh"
-      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt).`}
+      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk mode studi kasus hAIplay.`}
       accent="primary"
     >
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           className={`btn !px-3 !py-1.5 text-sm ${sourceMode === "curated" ? "btn-primary" : "btn-secondary"}`}
-          onClick={() => setSourceMode("curated")}
+          onClick={() => {
+            setSourceMode("curated");
+            if (generationMode === "study-case") setGenerationMode("standard");
+          }}
           disabled={loading}
         >
           Bank curated
@@ -151,7 +155,9 @@ export function GenerateCuratedMockChallenge() {
       <p className="text-xs text-[var(--muted)]">
         {sourceMode === "curated"
           ? "Memilih & mengurutkan soal dari bank curated (bukan menulis soal baru)."
-          : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
+          : generationMode === "study-case"
+            ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus hAIplay terkait — progress ditampilkan di bawah.`
+            : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -171,6 +177,16 @@ export function GenerateCuratedMockChallenge() {
         >
           Custom topik
         </button>
+        {sourceMode === "ai" ? (
+          <button
+            type="button"
+            className={`btn !px-3 !py-1.5 text-sm ${generationMode === "study-case" ? "btn-primary" : "btn-secondary"}`}
+            onClick={() => setGenerationMode("study-case")}
+            disabled={loading}
+          >
+            Studi kasus hAIplay
+          </button>
+        ) : null}
       </div>
 
       {generationMode === "custom" ? (
@@ -283,7 +299,9 @@ export function GenerateCuratedMockChallenge() {
             ? "Menghasilkan…"
             : "Menyusun…"
           : sourceMode === "ai"
-            ? `Generate ${sizeMeta.count} soal AI`
+            ? generationMode === "study-case"
+              ? `Generate ${sizeMeta.count} soal studi kasus`
+              : `Generate ${sizeMeta.count} soal AI`
             : generationMode === "custom"
               ? "Susun dari preferensi topik"
               : "Susun simulasi curated"}

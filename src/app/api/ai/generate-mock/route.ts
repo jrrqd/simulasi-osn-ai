@@ -8,6 +8,7 @@ import {
   generateAndStoreProblem,
   parseDifficultyMode,
 } from "@/lib/ai/generate-problem";
+import { generateAndStoreStudyCase } from "@/lib/ai/generate-study-case";
 import {
   createNdjsonStreamResponse,
   type GenerationProgressHandler,
@@ -25,6 +26,7 @@ import {
   createAiMockSession,
   getAiMockSession,
   setAiMockSessionProblem,
+  setAiMockSessionProblems,
 } from "@/lib/ai/ai-mock-sessions";
 import {
   normalizeTopicPrompt,
@@ -32,11 +34,25 @@ import {
 } from "@/lib/ai/topic-prompt";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
 
-type Phase = "plan" | "slot" | "commit" | "legacy";
+type Phase = "plan" | "slot" | "case" | "commit" | "legacy";
 
 function parsePhase(raw: unknown): Phase {
-  if (raw === "plan" || raw === "slot" || raw === "commit") return raw;
+  if (
+    raw === "plan" ||
+    raw === "slot" ||
+    raw === "case" ||
+    raw === "commit"
+  ) {
+    return raw;
+  }
   return "legacy";
+}
+
+function parseGenerationMode(
+  raw: unknown,
+): "standard" | "custom" | "study-case" {
+  if (raw === "custom" || raw === "study-case") return raw;
+  return "standard";
 }
 
 async function generateSlotProblem(params: {
@@ -134,8 +150,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const generationMode =
-      body.generationMode === "custom" ? "custom" : "standard";
+    const generationMode = parseGenerationMode(body.generationMode);
     const difficultyMode = parseDifficultyMode(body.difficultyMode);
     const topicPrompt = normalizeTopicPrompt(body.topicPrompt);
     const preferredTopic =
@@ -174,7 +189,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { slots, meta } = buildAiMockPlan({
+    const { slots, cases, meta } = buildAiMockPlan({
       generationMode,
       track,
       difficultyMode,
@@ -183,9 +198,17 @@ export async function POST(req: NextRequest) {
       size,
     });
 
+    if (generationMode === "study-case" && cases.length === 0) {
+      return Response.json(
+        { error: "Gagal menyusun paket studi kasus untuk ukuran ini." },
+        { status: 400 },
+      );
+    }
+
     const planId = createAiMockSession({
       userId: authResult.user.id,
       slots,
+      cases,
       meta,
     });
 
@@ -193,7 +216,9 @@ export async function POST(req: NextRequest) {
       phase: "plan",
       planId,
       slots,
+      cases,
       total: slots.length,
+      totalCases: cases.length,
       meta: {
         title: meta.title,
         description: meta.description,
@@ -310,6 +335,151 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  if (phase === "case") {
+    if (!rateLimit(`gen-mock-case:${authResult.user.id}`, 40, 60 * 60_000)) {
+      return Response.json(
+        { error: "Terlalu banyak permintaan generate studi kasus simulasi" },
+        { status: 429 },
+      );
+    }
+
+    const planId = String(body.planId ?? "");
+    const caseIndex = Number(body.caseIndex);
+    const session = getAiMockSession(planId, authResult.user.id);
+    if (!session) {
+      return Response.json(
+        {
+          error:
+            "Sesi generate simulasi tidak ditemukan atau sudah kedaluwarsa.",
+        },
+        { status: 400 },
+      );
+    }
+    if (session.meta.generationMode !== "study-case") {
+      return Response.json(
+        { error: "Sesi ini bukan mode studi kasus." },
+        { status: 400 },
+      );
+    }
+    const caseSlot = session.cases[caseIndex];
+    if (
+      !caseSlot ||
+      !Number.isInteger(caseIndex) ||
+      caseIndex < 0 ||
+      caseIndex >= session.cases.length
+    ) {
+      return Response.json(
+        { error: "Index studi kasus tidak valid" },
+        { status: 400 },
+      );
+    }
+
+    const totalProblems = session.slots.length;
+    const already = session.problemIds
+      .slice(caseSlot.startIndex, caseSlot.startIndex + caseSlot.problemCount)
+      .every(Boolean);
+    if (already) {
+      return createNdjsonStreamResponse(async (send) => {
+        for (let i = 0; i < caseSlot.problemCount; i++) {
+          const problemId = session.problemIds[caseSlot.startIndex + i]!;
+          const slot = session.slots[caseSlot.startIndex + i]!;
+          await send({
+            type: "slot_done",
+            phase: "slot",
+            planId,
+            index: caseSlot.startIndex + i,
+            problemId,
+            title: `Soal ${caseSlot.startIndex + i + 1}`,
+            topic: slot.topic,
+            topicLabel: TOPIC_LABELS[slot.topic] ?? slot.topic,
+            difficulty: slot.difficulty,
+            reused: true,
+          });
+        }
+      });
+    }
+
+    const settings = await getEffectiveAiSettings(authResult.user.id);
+    if (!settings) {
+      return Response.json(
+        {
+          error:
+            "AI belum tersedia. Gunakan API key pribadi di Pengaturan atau hubungi admin.",
+        },
+        { status: 400 },
+      );
+    }
+
+    return createNdjsonStreamResponse(async (send) => {
+      await send({
+        type: "status",
+        message: `Menyusun studi kasus ${caseIndex + 1}/${session.cases.length} (${caseSlot.problemCount} soal)…`,
+        index: caseSlot.startIndex + 1,
+        total: totalProblems,
+      });
+      await send({
+        type: "question_start",
+        index: caseSlot.startIndex + 1,
+        total: totalProblems,
+        track: caseSlot.track,
+        topic: caseSlot.topic,
+        topicLabel: TOPIC_LABELS[caseSlot.topic] ?? caseSlot.topic,
+        difficulty: caseSlot.difficulty,
+      });
+
+      const result = await generateAndStoreStudyCase({
+        userId: authResult.user.id,
+        track: caseSlot.track,
+        topic: caseSlot.topic,
+        difficultyMode: session.meta.difficultyMode,
+        difficulty: caseSlot.difficulty,
+        problemCount: caseSlot.problemCount,
+        focusPrompt: `Paket simulasi studi kasus hAIplay bagian ${caseIndex + 1} dari ${session.cases.length}. Buat tepat ${caseSlot.problemCount} soal terkait.`,
+        baseUrl: settings.baseUrl,
+        apiKey: settings.apiKey,
+        modelId: settings.modelId,
+        onProgress: send,
+      });
+
+      const problems = result.problems.slice(0, caseSlot.problemCount);
+      if (problems.length < caseSlot.problemCount) {
+        throw new Error(
+          `Studi kasus hanya menghasilkan ${problems.length}/${caseSlot.problemCount} soal`,
+        );
+      }
+
+      setAiMockSessionProblems(
+        planId,
+        authResult.user.id,
+        caseSlot.startIndex,
+        problems.map((p) => p.id),
+      );
+
+      for (let i = 0; i < caseSlot.problemCount; i++) {
+        const problem = problems[i]!;
+        await send({
+          type: "question_done",
+          index: caseSlot.startIndex + i + 1,
+          total: totalProblems,
+          title: problem.title,
+          topic: problem.topic,
+          topicLabel: TOPIC_LABELS[problem.topic] ?? problem.topic,
+        });
+        await send({
+          type: "slot_done",
+          phase: "slot",
+          planId,
+          index: caseSlot.startIndex + i,
+          problemId: problem.id,
+          title: problem.title,
+          topic: problem.topic,
+          topicLabel: TOPIC_LABELS[problem.topic] ?? problem.topic,
+          difficulty: problem.difficulty,
+        });
+      }
+    });
+  }
+
   if (phase === "commit") {
     if (!rateLimit(`gen-mock-commit:${authResult.user.id}`, 6, 60 * 60_000)) {
       return Response.json(
@@ -377,8 +547,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const generationMode =
-    body.generationMode === "custom" ? "custom" : "standard";
+  const generationMode = parseGenerationMode(body.generationMode);
+  if (generationMode === "study-case") {
+    return Response.json(
+      {
+        error:
+          "Mode studi kasus memerlukan alur plan → case → commit dari UI.",
+      },
+      { status: 400 },
+    );
+  }
   const difficultyMode = parseDifficultyMode(body.difficultyMode);
   const topicPrompt = normalizeTopicPrompt(body.topicPrompt);
   const preferredTopic =

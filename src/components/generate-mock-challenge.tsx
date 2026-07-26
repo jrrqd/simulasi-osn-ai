@@ -16,7 +16,7 @@ import {
 } from "@/components/generation-progress";
 import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
 
-type GenerationMode = "standard" | "custom";
+type GenerationMode = "standard" | "custom" | "study-case";
 
 const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
   id,
@@ -54,7 +54,10 @@ export function GenerateMockChallenge() {
       const { mockId } = await runAiMockGeneration({
         request: {
           generationMode,
-          track: generationMode === "standard" ? track : undefined,
+          track:
+            generationMode === "custom"
+              ? undefined
+              : track,
           difficultyMode,
           size: "quick",
           topicPrompt:
@@ -74,7 +77,7 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary="Buat 10 soal baru / 30 menit (batas 2× per jam). Untuk 20/40 soal, pakai Generate AI penuh di panel atas."
+      summary="Buat 10 soal baru / 30 menit (batas 2× per jam). Mode studi kasus hAIplay mengelompokkan soal terkait. Untuk 20/40 soal, pakai Generate AI penuh di panel atas."
       accent="accent"
     >
       <div className="flex flex-wrap gap-2">
@@ -94,7 +97,22 @@ export function GenerateMockChallenge() {
         >
           Custom topik
         </button>
+        <button
+          type="button"
+          className={`btn !px-3 !py-1.5 text-sm ${generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
+          onClick={() => setGenerationMode("study-case")}
+          disabled={loading}
+        >
+          Studi kasus hAIplay
+        </button>
       </div>
+
+      {generationMode === "study-case" ? (
+        <p className="text-xs text-[var(--muted)]">
+          10 soal disusun dari beberapa studi kasus terkait (text-only, gaya
+          hAIplay).
+        </p>
+      ) : null}
 
       {generationMode === "custom" ? (
         <div className="space-y-2.5">
@@ -174,9 +192,11 @@ export function GenerateMockChallenge() {
       >
         {loading
           ? "Menghasilkan…"
-          : generationMode === "custom"
-            ? "Generate dari brief topik"
-            : "Buat simulasi AI"}
+          : generationMode === "study-case"
+            ? "Buat simulasi studi kasus"
+            : generationMode === "custom"
+              ? "Generate dari brief topik"
+              : "Buat simulasi AI"}
       </button>
       {loading || (error && progress.message) ? (
         <GenerationProgressPanel state={progress} />
