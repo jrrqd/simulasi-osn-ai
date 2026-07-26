@@ -1,8 +1,13 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { generatedMocks, generatedProblems, user } from "@/db/schema";
 import type { MockExam, Problem } from "@/lib/content/types";
-import { getMock, getMocks, getProblem } from "@/lib/content/load";
+import { getMock, getMocks } from "@/lib/content/load";
+import {
+  countVisibleAiProblems,
+  listVisibleAiProblems,
+  resolvePracticeProblem,
+} from "@/lib/content/problem-library";
 
 export async function getGeneratedProblem(id: string): Promise<Problem | null> {
   const db = await getDb();
@@ -14,15 +19,11 @@ export async function getGeneratedProblem(id: string): Promise<Problem | null> {
 }
 
 export async function resolveProblem(id: string): Promise<Problem | null> {
-  return getProblem(id) ?? (await getGeneratedProblem(id));
+  return resolvePracticeProblem(id);
 }
 
 export async function countSharedProblems() {
-  const db = await getDb();
-  const [row] = await db
-    .select({ n: count() })
-    .from(generatedProblems);
-  return Number(row?.n ?? 0);
+  return countVisibleAiProblems();
 }
 
 export async function listSharedProblems(params: {
@@ -31,38 +32,7 @@ export async function listSharedProblems(params: {
   limit?: number;
   offset?: number;
 }) {
-  const db = await getDb();
-  const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
-  const offset = Math.max(params.offset ?? 0, 0);
-
-  const conditions = [];
-  if (params.track) conditions.push(eq(generatedProblems.track, params.track));
-  if (params.topic) conditions.push(eq(generatedProblems.topic, params.topic));
-
-  const rows = await db
-    .select({
-      id: generatedProblems.id,
-      title: generatedProblems.title,
-      track: generatedProblems.track,
-      topic: generatedProblems.topic,
-      difficulty: generatedProblems.difficulty,
-      difficultyMode: generatedProblems.difficultyMode,
-      createdAt: generatedProblems.createdAt,
-      creatorName: user.name,
-      creatorId: user.id,
-    })
-    .from(generatedProblems)
-    .leftJoin(user, eq(generatedProblems.userId, user.id))
-    .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(generatedProblems.createdAt))
-    .limit(limit)
-    .offset(offset);
-
-  return rows.map((row) => ({
-    ...row,
-    title: row.title || row.id,
-    source: "ai" as const,
-  }));
+  return listVisibleAiProblems(params);
 }
 
 export type SharedMockExam = MockExam & {

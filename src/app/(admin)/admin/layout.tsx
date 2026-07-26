@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/session";
 const adminLinks = [
   { href: "/admin", label: "Ringkasan" },
   { href: "/admin/users", label: "Pengguna" },
+  { href: "/admin/problems", label: "Bank soal" },
   { href: "/admin/ai", label: "LLM Bersama" },
 ];
 

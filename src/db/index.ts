@@ -202,6 +202,13 @@ async function migratePglite(client: PGlite) {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS lesson_progress_user_lesson_uidx ON lesson_progress(user_id, lesson_id);
     CREATE INDEX IF NOT EXISTS lesson_progress_user_idx ON lesson_progress(user_id);
+    CREATE TABLE IF NOT EXISTS problem_overrides (
+      id text PRIMARY KEY,
+      payload jsonb,
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
   `);
 }
 

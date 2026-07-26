@@ -214,6 +214,17 @@ export const generatedProblems = pgTable(
   ],
 );
 
+/** Runtime admin edits/hides for curated (and optional AI) practice problems. */
+export const problemOverrides = pgTable("problem_overrides", {
+  id: text("id").primaryKey(),
+  payload: jsonb("payload").$type<Record<string, unknown> | null>(),
+  hidden: boolean("hidden").notNull().default(false),
+  updatedBy: text("updated_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const generatedMocks = pgTable(
   "generated_mocks",
   {

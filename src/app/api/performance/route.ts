@@ -10,7 +10,8 @@ import {
 } from "@/lib/analytics/readiness";
 import { TOPIC_LABELS, TRACKS } from "@/lib/content/types";
 import { getLessons, getProblems } from "@/lib/content/load";
-import { countSharedProblems, resolveProblem } from "@/lib/content/shared";
+import { resolveProblem } from "@/lib/content/shared";
+import { countVisiblePracticeProblems } from "@/lib/content/problem-library";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { dayKeyWib } from "@/lib/datetime";
 import { buildCampaignPayload } from "@/lib/campaign-stages";
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     practiceAttempts,
     userMocks,
     lessonProgressMap,
-    sharedBankCount,
+    practiceBankTotal,
   ] = await Promise.all([
     db.select().from(topicMastery).where(eq(topicMastery.userId, userId)),
     db
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
       .where(eq(mockSessions.userId, userId))
       .orderBy(asc(mockSessions.startedAt)),
     getUserLessonProgress(userId),
-    countSharedProblems(),
+    countVisiblePracticeProblems(),
   ]);
 
   const allTopics = Object.entries(TRACKS).flatMap(([track, meta]) =>
@@ -171,7 +172,7 @@ export async function GET(req: NextRequest) {
 
   const practiceCorrect = practiceAttempts.filter((a) => a.isCorrect).length;
   const practiceDone = new Set(practiceAttempts.map((a) => a.problemId)).size;
-  const practiceTotal = problems.length + sharedBankCount;
+  const practiceTotal = practiceBankTotal;
   const practiceSummary = {
     attempts: practiceAttempts.length,
     correct: practiceCorrect,

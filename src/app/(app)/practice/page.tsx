@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getLessons, getProblems } from "@/lib/content/load";
+import { getLessons } from "@/lib/content/load";
 import { listSharedProblems } from "@/lib/content/shared";
+import { listVisibleCuratedProblems } from "@/lib/content/problem-library";
 import { TOPIC_LABELS } from "@/lib/content/types";
 import { getUserProblemProgress } from "@/lib/attempts";
 import { GenerateChallenge } from "@/components/generate-challenge";
@@ -14,9 +15,10 @@ export default async function PracticePage({
 }) {
   const user = await requireUser();
   const sp = await searchParams;
-  let problems = getProblems();
-  if (sp.track) problems = problems.filter((p) => p.track === sp.track);
-  if (sp.topic) problems = problems.filter((p) => p.topic === sp.topic);
+  const problems = await listVisibleCuratedProblems({
+    track: sp.track,
+    topic: sp.topic,
+  });
 
   const shared = await listSharedProblems({
     track: sp.track,
