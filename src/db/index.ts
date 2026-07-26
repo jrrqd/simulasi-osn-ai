@@ -209,6 +209,13 @@ async function migratePglite(client: PGlite) {
       updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
       updated_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS mock_overrides (
+      id text PRIMARY KEY,
+      payload jsonb,
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
   `);
 }
 

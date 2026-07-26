@@ -247,6 +247,17 @@ export const generatedMocks = pgTable(
   ],
 );
 
+/** Runtime admin edits/hides for curated (and optional AI) mock exams. */
+export const mockOverrides = pgTable("mock_overrides", {
+  id: text("id").primaryKey(),
+  payload: jsonb("payload").$type<Record<string, unknown> | null>(),
+  hidden: boolean("hidden").notNull().default(false),
+  updatedBy: text("updated_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const reviewThreads = pgTable("review_threads", {
   id: text("id").primaryKey(),
   userId: text("user_id")
