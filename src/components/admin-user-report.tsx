@@ -14,6 +14,11 @@ import {
   YAxis,
 } from "recharts";
 import { masteryFill } from "@/lib/charts/mastery-color";
+import {
+  formatBirthDateWib,
+  formatDateTimeWib,
+  formatDateWib,
+} from "@/lib/datetime";
 
 type Report = {
   user: {
@@ -47,6 +52,12 @@ type Report = {
       mockVolume: number;
     };
     topGaps: { topic: string; label: string; mastery: number }[];
+  };
+  campaign: {
+    levelsCompleted: number;
+    totalLevels: number;
+    sideQuestAttempts: number;
+    sideQuestCorrect: number;
   };
   sessionScores: {
     index: number;
@@ -148,10 +159,8 @@ export function AdminUserReport({ userId }: { userId: string }) {
             <h1 className="display text-4xl">{data.user.name}</h1>
             <p className="text-[var(--muted)]">{data.user.email}</p>
             <p className="mt-3 text-xs text-[var(--muted)]">
-              Bergabung{" "}
-              {new Date(data.user.createdAt).toLocaleDateString("id-ID")} ·
-              terakhir aktif{" "}
-              {new Date(data.user.lastActiveAt).toLocaleString("id-ID")}
+              Bergabung {formatDateWib(data.user.createdAt)} · terakhir aktif{" "}
+              {formatDateTimeWib(data.user.lastActiveAt)}
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -198,10 +207,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
             {
               label: "Tanggal lahir",
               value: data.user.birthDate
-                ? new Date(`${data.user.birthDate}T00:00:00`).toLocaleDateString(
-                    "id-ID",
-                    { day: "numeric", month: "long", year: "numeric" },
-                  )
+                ? formatBirthDateWib(data.user.birthDate)
                 : null,
             },
             { label: "Sekolah", value: data.user.schoolName },
@@ -237,6 +243,53 @@ export function AdminUserReport({ userId }: { userId: string }) {
             <p className="display mt-2 text-3xl">{item.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="panel rounded-3xl p-5">
+        <div className="mb-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+            Kampanye belajar
+          </p>
+          <h2 className="display text-2xl">Tutorial & side quests</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Progress modul Belajar (level) dan latihan (side quest) siswa ini.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl bg-black/[0.03] p-4">
+            <p className="text-xs text-[var(--muted)]">Tutorial levels</p>
+            <p className="display mt-1 text-3xl">
+              {data.campaign?.levelsCompleted ?? 0}/
+              {data.campaign?.totalLevels ?? 0}
+            </p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/10">
+              <div
+                className="h-full rounded-full bg-[var(--accent)]"
+                style={{
+                  width: `${
+                    data.campaign?.totalLevels
+                      ? Math.round(
+                          ((data.campaign.levelsCompleted ?? 0) /
+                            data.campaign.totalLevels) *
+                            100,
+                        )
+                      : 0
+                  }%`,
+                }}
+              />
+            </div>
+          </div>
+          <div className="rounded-2xl bg-black/[0.03] p-4">
+            <p className="text-xs text-[var(--muted)]">Side quest attempts</p>
+            <p className="display mt-1 text-3xl">
+              {data.campaign?.sideQuestCorrect ?? 0}/
+              {data.campaign?.sideQuestAttempts ?? 0}
+            </p>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              Benar / total attempt latihan
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="panel rounded-3xl p-5">
@@ -344,7 +397,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
             {data.recentAttempts.map((item) => (
               <tr key={item.id} className="border-b border-[var(--line)]">
                 <td className="py-2">
-                  {new Date(item.createdAt).toLocaleString("id-ID")}
+                  {formatDateTimeWib(item.createdAt)}
                 </td>
                 <td>{item.problemId}</td>
                 <td>{item.topic}</td>
@@ -373,8 +426,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
               className="flex items-center justify-between border-b border-[var(--line)] py-2"
             >
               <span>
-                {mock.mockId} ·{" "}
-                {new Date(mock.startedAt).toLocaleString("id-ID")}
+                {mock.mockId} · {formatDateTimeWib(mock.startedAt)}
               </span>
               <span>
                 {mock.status === "submitted" &&

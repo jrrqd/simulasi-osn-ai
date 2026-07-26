@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import Link from "next/link";
 import { masteryFill } from "@/lib/charts/mastery-color";
+import { formatDateTimeWib } from "@/lib/datetime";
 
 type Perf = {
   overall: number;
@@ -422,15 +423,12 @@ export function PerformanceDashboard() {
                   const pct = Math.round(
                     (item.score / Math.max(item.maxScore || 1, 1)) * 100,
                   );
-                  const when = new Date(item.createdAt);
-                  const timeLabel = Number.isNaN(when.getTime())
-                    ? "—"
-                    : when.toLocaleString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
+                  const timeLabel = formatDateTimeWib(item.createdAt, {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
                   return (
                     <tr
                       key={item.id}

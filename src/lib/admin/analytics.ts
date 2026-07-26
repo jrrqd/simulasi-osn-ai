@@ -7,6 +7,7 @@ import {
   user,
 } from "@/db/schema";
 import { TOPIC_LABELS } from "@/lib/content/types";
+import { dayKeyWib } from "@/lib/datetime";
 
 function formatMinutes(ms: number) {
   const minutes = Math.round(ms / 60_000);
@@ -139,7 +140,7 @@ export async function buildAdminAssistantContext(focusUserId?: string) {
 
   const recentDay = new Map<string, number>();
   for (const attempt of allAttempts.slice(0, 500)) {
-    const day = attempt.createdAt.toISOString().slice(0, 10);
+    const day = dayKeyWib(attempt.createdAt);
     recentDay.set(day, (recentDay.get(day) ?? 0) + 1);
   }
   const activityLines = Array.from(recentDay)

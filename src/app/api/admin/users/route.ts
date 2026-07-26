@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   attempts,
@@ -14,6 +14,9 @@ import {
   computeOsnReadiness,
   syllabusTopicsFromMastery,
 } from "@/lib/analytics/readiness";
+import { dayKeyWib } from "@/lib/datetime";
+import { getLessons } from "@/lib/content/load";
+import { getUserLessonProgress } from "@/lib/lesson-progress";
 
 function submittedMockScores(
   userMocks: (typeof mockSessions.$inferSelect)[],
@@ -129,7 +132,7 @@ export async function GET(req: NextRequest) {
     topic.timeMs += attempt.durationMs;
     topicStats.set(attempt.topic, topic);
 
-    const dayKey = attempt.createdAt.toISOString().slice(0, 10);
+    const dayKey = dayKeyWib(attempt.createdAt);
     const day = activity.get(dayKey) ?? {
       attempts: 0,
       timeMs: 0,
@@ -170,6 +173,25 @@ export async function GET(req: NextRequest) {
     attemptsCount: summary.attemptsCount,
   });
 
+  const [lessonProgressMap, practiceAttempts] = await Promise.all([
+    getUserLessonProgress(userId),
+    db
+      .select()
+      .from(attempts)
+      .where(and(eq(attempts.userId, userId), isNull(attempts.mockSessionId))),
+  ]);
+  const allLessons = getLessons();
+  const levelsCompleted = allLessons.filter(
+    (l) => lessonProgressMap.get(l.id)?.status === "completed",
+  ).length;
+  const sideQuestCorrect = practiceAttempts.filter((a) => a.isCorrect).length;
+  const campaign = {
+    levelsCompleted,
+    totalLevels: allLessons.length,
+    sideQuestAttempts: practiceAttempts.length,
+    sideQuestCorrect,
+  };
+
   return Response.json({
     user: {
       ...summary,
@@ -184,6 +206,7 @@ export async function GET(req: NextRequest) {
       completedMocks: submitted.length,
     },
     readiness,
+    campaign,
     sessionScores,
     topics: Array.from(topicStats, ([topic, stats]) => ({
       topic,

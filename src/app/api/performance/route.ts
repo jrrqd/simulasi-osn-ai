@@ -12,6 +12,7 @@ import { TOPIC_LABELS, TRACKS } from "@/lib/content/types";
 import { getLessons, getProblems } from "@/lib/content/load";
 import { resolveProblem } from "@/lib/content/shared";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
+import { dayKeyWib } from "@/lib/datetime";
 
 export async function GET(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -73,7 +74,7 @@ export async function GET(req: NextRequest) {
 
   const byDay: Record<string, { correct: number; total: number }> = {};
   for (const a of recentAttempts) {
-    const day = new Date(a.createdAt).toISOString().slice(0, 10);
+    const day = dayKeyWib(a.createdAt);
     byDay[day] ??= { correct: 0, total: 0 };
     byDay[day].total += 1;
     if (a.isCorrect) byDay[day].correct += 1;

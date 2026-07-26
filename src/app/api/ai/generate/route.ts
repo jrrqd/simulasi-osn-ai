@@ -6,6 +6,11 @@ import {
   parseDifficultyMode,
 } from "@/lib/ai/generate-problem";
 import { TRACKS, type TrackId } from "@/lib/content/types";
+import {
+  TOPIC_PROMPT_MIN_LEN,
+  normalizeTopicPrompt,
+  topicPairsFromPrompt,
+} from "@/lib/ai/topic-prompt";
 
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -15,11 +20,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const track = String(body.track ?? "B") as TrackId;
-  const topic = String(
-    body.topic ?? TRACKS[track]?.topics[0] ?? "supervised-learning",
+  const generationMode =
+    body.generationMode === "custom" ? "custom" : "standard";
+  const difficultyMode = parseDifficultyMode(
+    body.difficultyMode ?? body.difficulty,
   );
-  const difficultyMode = parseDifficultyMode(body.difficultyMode ?? body.difficulty);
   // Legacy numeric difficulty still accepted if difficultyMode omitted and number given.
   const legacyDifficulty =
     body.difficultyMode == null &&
@@ -30,8 +35,33 @@ export async function POST(req: NextRequest) {
       : undefined;
   const answerType = String(body.answerType ?? "numeric");
 
-  if (!TRACKS[track]) {
-    return Response.json({ error: "Track tidak valid" }, { status: 400 });
+  let track: TrackId;
+  let topic: string;
+  let focusPrompt: string | undefined;
+
+  if (generationMode === "custom") {
+    const topicPrompt = normalizeTopicPrompt(body.topicPrompt);
+    if (!topicPrompt || topicPrompt.length < TOPIC_PROMPT_MIN_LEN) {
+      return Response.json(
+        {
+          error: `Jelaskan topik/brief soal yang diinginkan (minimal ${TOPIC_PROMPT_MIN_LEN} karakter).`,
+        },
+        { status: 400 },
+      );
+    }
+    const pairs = topicPairsFromPrompt(topicPrompt);
+    const pick = pairs[Math.floor(Math.random() * pairs.length)] ?? pairs[0];
+    track = pick.track;
+    topic = pick.topic;
+    focusPrompt = topicPrompt;
+  } else {
+    track = String(body.track ?? "B") as TrackId;
+    topic = String(
+      body.topic ?? TRACKS[track]?.topics[0] ?? "supervised-learning",
+    );
+    if (!TRACKS[track]) {
+      return Response.json({ error: "Track tidak valid" }, { status: 400 });
+    }
   }
 
   const settings = await getEffectiveAiSettings(authResult.user.id);
@@ -60,6 +90,7 @@ export async function POST(req: NextRequest) {
           : difficultyMode,
       difficulty: legacyDifficulty,
       answerType,
+      focusPrompt,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,
