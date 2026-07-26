@@ -17,7 +17,7 @@ export function Markdown({ content }: { content: string }) {
             <img
               src={src}
               alt={alt ?? ""}
-              className="my-3 max-h-[28rem] w-auto max-w-full rounded-md border border-border bg-white"
+              className="my-3 h-auto max-h-[28rem] w-auto max-w-full rounded-md border border-[var(--line)] object-contain bg-[var(--panel)]"
             />
           ),
         }}

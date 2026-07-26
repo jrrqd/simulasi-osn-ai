@@ -138,9 +138,65 @@ a {
   overflow-x: auto;
   background: #18212c;
   color: #e8eef5;
-  padding: 1rem;
+  padding: 1rem 1.1rem;
   border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 0.85rem 0 1.1rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
+
+.prose-osn pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.prose-osn h3 {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: 1.1rem 0 0.45rem;
+}
+
+.prose-osn table {
+  width: 100%;
+  max-width: 28rem;
+  border-collapse: collapse;
+  margin: 0.65rem 0 1.1rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  overflow: hidden;
+  background: rgba(255, 253, 248, 0.72);
+}
+
+.prose-osn thead th {
+  background: rgba(28, 36, 48, 0.06);
+  text-align: left;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.prose-osn td {
+  padding: 0.55rem 0.85rem;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.prose-osn tbody tr:first-child td {
+  border-top: none;
+}
+
+.prose-osn td:first-child {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 600;
+}
+
 
 @keyframes rise {
   from {
