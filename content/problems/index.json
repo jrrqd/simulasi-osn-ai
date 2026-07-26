@@ -8,7 +8,7 @@
     "answerType": "numeric",
     "stem": "Diberikan data: 4, 8, 6, 10, 12. Hitung mean.",
     "answer": 8,
-    "tolerance": 0.000001,
+    "tolerance": 1e-06,
     "solution": "Mean = (4+8+6+10+12)/5 = 40/5 = 8."
   },
   {
@@ -109,7 +109,7 @@
     "answerType": "numeric",
     "stem": "L(w)= (w-3)^2. Mulai w=0, η=0.25. Setelah 1 update, berapa w?",
     "answer": 1.5,
-    "tolerance": 0.000001,
+    "tolerance": 1e-06,
     "solution": "∇L=2(w-3). w ← 0 - 0.25*2(0-3)=0+1.5=1.5."
   },
   {
@@ -121,7 +121,7 @@
     "answerType": "numeric",
     "stem": "σ(0) pada regresi logistik bernilai?",
     "answer": 0.5,
-    "tolerance": 1e-9,
+    "tolerance": 1e-09,
     "solution": "σ(0)=1/(1+e^0)=1/2."
   },
   {
@@ -144,7 +144,7 @@
     "answerType": "numeric",
     "stem": "y=[2,4,6], ŷ=[3,3,7]. Hitung MSE.",
     "answer": 1,
-    "tolerance": 1e-9,
+    "tolerance": 1e-09,
     "solution": "Errors: -1,1,-1 → squares 1,1,1 → mean 1."
   },
   {
@@ -156,7 +156,7 @@
     "answerType": "numeric",
     "stem": "TP=40, FP=10, FN=20, TN=30. Precision=?",
     "answer": 0.8,
-    "tolerance": 1e-9,
+    "tolerance": 1e-09,
     "solution": "P=TP/(TP+FP)=40/50=0.8."
   },
   {
@@ -336,7 +336,7 @@
     "answerType": "numeric",
     "stem": "w=0.5, grad=0.2, η=0.1. w baru?",
     "answer": 0.48,
-    "tolerance": 1e-9,
+    "tolerance": 1e-09,
     "solution": "w←0.5−0.1*0.2=0.48."
   },
   {
@@ -360,7 +360,7 @@
     "answerType": "numeric",
     "stem": "Data loss=2.0, λ=0.1, ||w||^2=5. Total loss = data + λ||w||^2?",
     "answer": 2.5,
-    "tolerance": 1e-9,
+    "tolerance": 1e-09,
     "solution": "2+0.1*5=2.5."
   },
   {
@@ -505,7 +505,653 @@
     "answerType": "numeric",
     "stem": "Pada scaled dot-product attention, skor mentah q·k = 12 dan dimensi key d_k = 16. Berapa skor setelah scaling sebelum softmax?",
     "answer": 3,
-    "tolerance": 0.000001,
+    "tolerance": 1e-06,
     "solution": "Skor dibagi √d_k. Karena √16 = 4, skor hasil scaling = 12/4 = 3."
+  },
+  {
+    "id": "p-osn26-q01",
+    "title": "Ekspektasi Hari Hujan",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "**Studi kasus: Akankah Hari Ini Hujan?**\n\nAnda membuat sistem prediksi hujan. Diketahui:\n- Peluang suatu hari turun hujan $P(H)=\\dfrac{2}{5}$\n- Jika mendung, $P(H\\mid M)=\\dfrac{3}{5}$\n- Jika tidak mendung, $P(H\\mid \\neg M)=\\dfrac{1}{5}$\n- Jika hujan, peluang ada orang memakai payung $P(U\\mid H)=\\dfrac{2}{5}$\n\nAsumsikan kondisi cuaca pada suatu hari independen terhadap hari lainnya.\n\nSelama 40 hari ke depan, berapa ekspektasi jumlah hari yang turun hujan?",
+    "answer": 16,
+    "tolerance": 0,
+    "solution": "E[jumlah hujan] = 40 · P(H) = 40 · 2/5 = 16.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q02",
+    "title": "Ekspektasi Mendung dan Hujan",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 3,
+    "answerType": "numeric",
+    "stem": "**Studi kasus: Akankah Hari Ini Hujan?**\n\nAnda membuat sistem prediksi hujan. Diketahui:\n- Peluang suatu hari turun hujan $P(H)=\\dfrac{2}{5}$\n- Jika mendung, $P(H\\mid M)=\\dfrac{3}{5}$\n- Jika tidak mendung, $P(H\\mid \\neg M)=\\dfrac{1}{5}$\n- Jika hujan, peluang ada orang memakai payung $P(U\\mid H)=\\dfrac{2}{5}$\n\nAsumsikan kondisi cuaca pada suatu hari independen terhadap hari lainnya.\n\nSelama 40 hari ke depan, berapa ekspektasi jumlah hari yang mendung dan turun hujan?",
+    "answer": 12,
+    "tolerance": 0,
+    "solution": "Dari P(H|M)=3/5 dan P(H)=2/5 didapat P(M)=1/2, sehingga P(M∩H)=P(H|M)P(M)=3/10. E=40·3/10=12.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q03",
+    "title": "Peluang Mendung jika Tidak Hujan",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 3,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Akankah Hari Ini Hujan?**\n\nAnda membuat sistem prediksi hujan. Diketahui:\n- Peluang suatu hari turun hujan $P(H)=\\dfrac{2}{5}$\n- Jika mendung, $P(H\\mid M)=\\dfrac{3}{5}$\n- Jika tidak mendung, $P(H\\mid \\neg M)=\\dfrac{1}{5}$\n- Jika hujan, peluang ada orang memakai payung $P(U\\mid H)=\\dfrac{2}{5}$\n\nAsumsikan kondisi cuaca pada suatu hari independen terhadap hari lainnya.\n\nJika diketahui suatu hari tidak turun hujan, berapa peluang hari tersebut mendung?",
+    "choices": [
+      "1/4",
+      "1/3",
+      "1/2",
+      "2/3"
+    ],
+    "answer": "1/3",
+    "solution": "P(M∩¬H)=P(M)-P(M∩H)=1/2-3/10=1/5. P(M|¬H)=(1/5)/(3/5)=1/3.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q04",
+    "title": "Mendung dan Payung jika Hujan",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 3,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Akankah Hari Ini Hujan?**\n\nAnda membuat sistem prediksi hujan. Diketahui:\n- Peluang suatu hari turun hujan $P(H)=\\dfrac{2}{5}$\n- Jika mendung, $P(H\\mid M)=\\dfrac{3}{5}$\n- Jika tidak mendung, $P(H\\mid \\neg M)=\\dfrac{1}{5}$\n- Jika hujan, peluang ada orang memakai payung $P(U\\mid H)=\\dfrac{2}{5}$\n\nAsumsikan kondisi cuaca pada suatu hari independen terhadap hari lainnya.\n\nAsumsikan mendung dan adanya orang memakai payung saling independen jika diketahui hari hujan. Jika diketahui suatu hari turun hujan, berapa peluang hari tersebut mendung dan terdapat orang yang menggunakan payung?",
+    "choices": [
+      "1/10",
+      "1/5",
+      "3/10",
+      "2/5"
+    ],
+    "answer": "3/10",
+    "solution": "P(M|H)=P(M∩H)/P(H)=(3/10)/(2/5)=3/4. Independen: P(M∩U|H)=P(M|H)P(U|H)=(3/4)(2/5)=3/10.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q05",
+    "title": "Ekspektasi Posisi Ikan",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 2,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Pelepasan Ikan**\n\nKolam berbentuk persegi panjang dengan titik sudut $(-4,0)$, $(-4,4)$, $(4,4)$, dan $(4,0)$. Ikan jatuh seragam di dalam kolam.\n\nAnda melepas ikan tersebut ke kolam. Berapa nilai ekspektasi dari posisinya?",
+    "choices": [
+      "(0, 0)",
+      "(0, 2)",
+      "(2, 0)",
+      "(2, 2)"
+    ],
+    "answer": "(0, 2)",
+    "solution": "X~Unif(-4,4), Y~Unif(0,4) independen → E[(X,Y)]=(0,2).",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q06",
+    "title": "Peluang x < y di Kolam",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 3,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Pelepasan Ikan**\n\nKolam berbentuk persegi panjang dengan titik sudut $(-4,0)$, $(-4,4)$, $(4,4)$, dan $(4,0)$. Ikan jatuh seragam di dalam kolam.\n\nMisalkan ikan jatuh pada titik $(x,y)$. Berapa peluang $x < y$?",
+    "choices": [
+      "1/8",
+      "1/4",
+      "1/2",
+      "3/4"
+    ],
+    "answer": "3/4",
+    "solution": "Luas kolam=32. Daerah x<y berukuran ∫_0^4 (y+4) dy=24. P=24/32=3/4.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q07",
+    "title": "Ikan Berenang ke Tepi",
+    "track": "A",
+    "topic": "probabilitas",
+    "difficulty": 4,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Pelepasan Ikan**\n\nKolam berbentuk persegi panjang dengan titik sudut $(-4,0)$, $(-4,4)$, $(4,4)$, dan $(4,0)$. Ikan jatuh seragam di dalam kolam.\n\nMisalkan ikan jatuh pada $(x,y)$, lalu berenang mengarah ke $(2x+2, 2y)$ dan berhenti saat mencapai tepi kolam. Berapa ekspektasi posisinya?",
+    "choices": [
+      "(0, 3)",
+      "(0, 1)",
+      "(1, 1)",
+      "(1, 3)"
+    ],
+    "answer": "(1, 3)",
+    "solution": "Arah menuju $(2x+2,2y)$ sama dengan sinar dari pusat homoteti $(-2,0)$ melalui $(x,y)$ hingga tepi. Ekspektasi posisi akhir ≈ (1,3).",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q08",
+    "title": "Prediksi Waktu Awal",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 2,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Pengiriman Paket**\n\nData lima perjalanan (jarak km, berat kg, waktu jam):\n\n| No | Jarak | Berat | Waktu |\n|---:|------:|------:|------:|\n| 1 | 2 | 5 | 4,5 |\n| 2 | 3 | 2 | 3,0 |\n| 3 | 1 | 4 | 3,5 |\n| 4 | 3 | 4 | 4,5 |\n| 5 | 10 | 12 | 15 |\n\nModel: $\\mathrm{prediksi} = w_1\\cdot\\mathrm{jarak} + w_2\\cdot\\mathrm{berat} + b$ dengan inisialisasi $w_1=0{,}3$, $w_2=0{,}7$, $b=0{,}5$.\n\nDilatih dengan Huber Loss $\\delta=1$: jika $\\mathrm{selisih}=|\\mathrm{aktual}-\\mathrm{prediksi}|\\le 1$ maka $\\tfrac12\\mathrm{selisih}^2$, jika $>1$ maka $\\mathrm{selisih}-\\tfrac12$. $L$ = rata-rata loss pada seluruh data.\n\nMenggunakan model awal, prediksi waktu untuk jarak 5 km dan berat 7 kg?",
+    "choices": [
+      "5,2 jam",
+      "5,6 jam",
+      "6,4 jam",
+      "6,9 jam"
+    ],
+    "answer": "6,9 jam",
+    "solution": "0,3·5 + 0,7·7 + 0,5 = 1,5 + 4,9 + 0,5 = 6,9.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q09",
+    "title": "Rata-rata Huber Loss Awal",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 3,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Pengiriman Paket**\n\nData lima perjalanan (jarak km, berat kg, waktu jam):\n\n| No | Jarak | Berat | Waktu |\n|---:|------:|------:|------:|\n| 1 | 2 | 5 | 4,5 |\n| 2 | 3 | 2 | 3,0 |\n| 3 | 1 | 4 | 3,5 |\n| 4 | 3 | 4 | 4,5 |\n| 5 | 10 | 12 | 15 |\n\nModel: $\\mathrm{prediksi} = w_1\\cdot\\mathrm{jarak} + w_2\\cdot\\mathrm{berat} + b$ dengan inisialisasi $w_1=0{,}3$, $w_2=0{,}7$, $b=0{,}5$.\n\nDilatih dengan Huber Loss $\\delta=1$: jika $\\mathrm{selisih}=|\\mathrm{aktual}-\\mathrm{prediksi}|\\le 1$ maka $\\tfrac12\\mathrm{selisih}^2$, jika $>1$ maka $\\mathrm{selisih}-\\tfrac12$. $L$ = rata-rata loss pada seluruh data.\n\nSebelum melatih, tentukan nilai $L$ (rata-rata Huber loss).",
+    "choices": [
+      "0,535",
+      "0,976",
+      "2,675",
+      "4,880"
+    ],
+    "answer": "0,535",
+    "solution": "Prediksi awal: 4,6; 2,8; 3,6; 4,2; 11,9. Loss per data lalu rata-rata = 0,535.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q10",
+    "title": "Gradien ∂L/∂w1",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 4,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Pengiriman Paket**\n\nData lima perjalanan (jarak km, berat kg, waktu jam):\n\n| No | Jarak | Berat | Waktu |\n|---:|------:|------:|------:|\n| 1 | 2 | 5 | 4,5 |\n| 2 | 3 | 2 | 3,0 |\n| 3 | 1 | 4 | 3,5 |\n| 4 | 3 | 4 | 4,5 |\n| 5 | 10 | 12 | 15 |\n\nModel: $\\mathrm{prediksi} = w_1\\cdot\\mathrm{jarak} + w_2\\cdot\\mathrm{berat} + b$ dengan inisialisasi $w_1=0{,}3$, $w_2=0{,}7$, $b=0{,}5$.\n\nDilatih dengan Huber Loss $\\delta=1$: jika $\\mathrm{selisih}=|\\mathrm{aktual}-\\mathrm{prediksi}|\\le 1$ maka $\\tfrac12\\mathrm{selisih}^2$, jika $>1$ maka $\\mathrm{selisih}-\\tfrac12$. $L$ = rata-rata loss pada seluruh data.\n\nTentukan nilai $\\dfrac{\\partial L}{\\partial w_1}$.",
+    "choices": [
+      "-2,24",
+      "-2,16",
+      "2,16",
+      "2,24"
+    ],
+    "answer": "-2,24",
+    "solution": "Rata-rata (∂ℓ/∂pred)·jarak. Untuk |r|≤1: ∂ℓ/∂pred = pred−aktual; untuk |r|>1: −sign(aktual−pred). Hasil −2,24.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q11",
+    "title": "Update w1 Gradient Descent",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 3,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Pengiriman Paket**\n\nData lima perjalanan (jarak km, berat kg, waktu jam):\n\n| No | Jarak | Berat | Waktu |\n|---:|------:|------:|------:|\n| 1 | 2 | 5 | 4,5 |\n| 2 | 3 | 2 | 3,0 |\n| 3 | 1 | 4 | 3,5 |\n| 4 | 3 | 4 | 4,5 |\n| 5 | 10 | 12 | 15 |\n\nModel: $\\mathrm{prediksi} = w_1\\cdot\\mathrm{jarak} + w_2\\cdot\\mathrm{berat} + b$ dengan inisialisasi $w_1=0{,}3$, $w_2=0{,}7$, $b=0{,}5$.\n\nDilatih dengan Huber Loss $\\delta=1$: jika $\\mathrm{selisih}=|\\mathrm{aktual}-\\mathrm{prediksi}|\\le 1$ maka $\\tfrac12\\mathrm{selisih}^2$, jika $>1$ maka $\\mathrm{selisih}-\\tfrac12$. $L$ = rata-rata loss pada seluruh data.\n\nLatih dengan gradient descent $\\eta=10^{-2}$. Nilai $w_1$ setelah satu iterasi (3 desimal)?",
+    "choices": [
+      "-1,94",
+      "0,277",
+      "0,322",
+      "2,54"
+    ],
+    "answer": "0,322",
+    "solution": "w1 ← 0,3 − 0,01·(−2,24) = 0,3224 → 0,322.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q12",
+    "title": "Loss Setelah Satu Iterasi GD",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 4,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Pengiriman Paket**\n\nData lima perjalanan (jarak km, berat kg, waktu jam):\n\n| No | Jarak | Berat | Waktu |\n|---:|------:|------:|------:|\n| 1 | 2 | 5 | 4,5 |\n| 2 | 3 | 2 | 3,0 |\n| 3 | 1 | 4 | 3,5 |\n| 4 | 3 | 4 | 4,5 |\n| 5 | 10 | 12 | 15 |\n\nModel: $\\mathrm{prediksi} = w_1\\cdot\\mathrm{jarak} + w_2\\cdot\\mathrm{berat} + b$ dengan inisialisasi $w_1=0{,}3$, $w_2=0{,}7$, $b=0{,}5$.\n\nDilatih dengan Huber Loss $\\delta=1$: jika $\\mathrm{selisih}=|\\mathrm{aktual}-\\mathrm{prediksi}|\\le 1$ maka $\\tfrac12\\mathrm{selisih}^2$, jika $>1$ maka $\\mathrm{selisih}-\\tfrac12$. $L$ = rata-rata loss pada seluruh data.\n\nSetelah satu iterasi gradient descent pada semua parameter ($w_1,w_2,b$) dengan $\\eta=10^{-2}$, tentukan $L$ (3 desimal).",
+    "choices": [
+      "0,429",
+      "0,487",
+      "0,532",
+      "0,660"
+    ],
+    "answer": "0,429",
+    "solution": "Update semua parameter: gradien rata-rata untuk w1,w2,b lalu satu langkah η. L baru ≈ 0,429.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q13",
+    "title": "Fitur Linear untuk Jumlah",
+    "track": "B",
+    "topic": "feature-engineering",
+    "difficulty": 3,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Model Alternatif**\n\nBinary logistic regression memprediksi 1 jika $x\\cdot w + b \\ge 0$, dan 0 jika $<0$. Anda boleh merancang fitur tambahan.\n\nDiberikan $x,y\\in\\mathbb{R}^2$. Modelkan\n$f(x,y)=1$ jika $(x_1+2y_1)+(x_2+2y_2)\\ge 0$, else 0.\n\nPilihan fitur:\n- a. $[x_1,x_2,y_1,y_2]$\n- b. $[x_1+y_1, x_2+y_2]$\n- c. $[x_1+y_1, x_2+y_2, x_1-y_1, x_2-y_2]$\n- d. $[x_1 y_1, x_2 y_2]$\n\nSemua pilihan yang memungkinkan? Format: a,b",
+    "answer": [
+      "a, c",
+      "a,c",
+      "c, a",
+      "c,a"
+    ],
+    "solution": "Target linear pada x,y. a dan c (basis lengkap) cukup; b dan d tidak span ruang yang dibutuhkan.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q14",
+    "title": "Fitur untuk Dot Product ≥ 0",
+    "track": "B",
+    "topic": "feature-engineering",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Model Alternatif**\n\nBinary logistic regression memprediksi 1 jika $x\\cdot w + b \\ge 0$, dan 0 jika $<0$. Anda boleh merancang fitur tambahan.\n\nDiberikan $\\|x\\|_2=\\|y\\|_2=1$. Modelkan $f=1$ jika $x_1 y_1 + x_2 y_2 \\ge 0$, else 0.\n\n- a. $[x_1,x_2,y_1,y_2]$\n- b. $[(x_1-y_1)^2,(x_2-y_2)^2]$\n- c. $[(x_1+y_1)^2,(x_2+y_2)^2]$\n- d. $[(x_1-y_1)^4,(x_2-y_2)^4]$\n\nSemua pilihan yang memungkinkan? Format: a,b",
+    "answer": [
+      "b, c",
+      "b,c",
+      "c, b",
+      "c,b"
+    ],
+    "solution": "x·y≥0 ⇔ ‖x−y‖²≤2 ⇔ ‖x+y‖²≥2. Fitur kuadrat beda/jumlah (b,c) memungkinkan; a bilinear, d tidak ekuivalen ke ambang 2.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q15",
+    "title": "Fitur untuk Dot Product ≥ 1",
+    "track": "B",
+    "topic": "feature-engineering",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Model Alternatif**\n\nBinary logistic regression memprediksi 1 jika $x\\cdot w + b \\ge 0$, dan 0 jika $<0$. Anda boleh merancang fitur tambahan.\n\nDiberikan $\\|x\\|_2=\\|y\\|_2=1$. Modelkan $f=1$ jika $x\\cdot y \\ge 1$, else 0.\n\n- a. $[x_1,x_2,y_1,y_2]$\n- b. $[(x_1-y_1)^2,(x_2-y_2)^2]$\n- c. $[(x_1+y_1)^2,(x_2+y_2)^2]$\n- d. $[(x_1-y_1)^4,(x_2-y_2)^4]$\n\nSemua pilihan yang memungkinkan? Format: a,b",
+    "answer": [
+      "b, c",
+      "b,c",
+      "c, b",
+      "c,b"
+    ],
+    "solution": "Pada vektor satuan, x·y≥1 hanya jika x=y ⇔ ‖x−y‖²=0 ⇔ ‖x+y‖²=4. Fitur kuadrat (b,c) afine terhadap x·y sehingga cukup; pangkat empat (d) tidak afine terhadap x·y.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q16",
+    "title": "Fitur dengan y Konstan",
+    "track": "B",
+    "topic": "feature-engineering",
+    "difficulty": 3,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Model Alternatif**\n\nBinary logistic regression memprediksi 1 jika $x\\cdot w + b \\ge 0$, dan 0 jika $<0$. Anda boleh merancang fitur tambahan.\n\nDiberikan $x\\in\\mathbb{R}^2$ dan $y$ **vektor konstan**. Modelkan $f(x)=1$ jika $x_1 y_1 + x_2 y_2 \\ge 0$, else 0.\n\n- a. $[x_1,x_2]$\n- b. $[x_1,x_2,y_1,y_2]$\n- c. $[x_1+y_1, x_2+y_2]$\n- d. $[x_1^2, x_2^2]$\n\nSemua pilihan yang memungkinkan? Format: a,b",
+    "answer": [
+      "a, b, c",
+      "a, c, b",
+      "a,b,c",
+      "a,c,b",
+      "b, a, c",
+      "b, c, a",
+      "b,a,c",
+      "b,c,a",
+      "c, a, b",
+      "c, b, a",
+      "c,a,b",
+      "c,b,a"
+    ],
+    "solution": "Karena y konstan, keputusan linear di x. a,b,c bisa; d kuadratik tidak cukup umum.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q17",
+    "title": "Fitur Baru Decision Tree",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 3,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Decision Tree**\n\nDecision tree membagi data dengan ambang pada fitur. Kedalaman = jumlah maksimum aturan pemisahan yang dilalui saat klasifikasi.\n\nContoh pohon kedalaman 2:\n\n![intro](/problems/osn26/dt-intro.png)\n\nAnda melatih decision tree pada data berikut.\n\n![scatter](/problems/osn26/dt-q17-scatter.png)\n\nSelain fitur $x$ dan $y$, Anda menambahkan sebuah fitur baru. Manakah fitur agar model dapat mengklasifikasi **secara sempurna** dengan **kedalaman minimum**?\n",
+    "choices": [
+      "2x − 3y",
+      "2x + 3y",
+      "3x − 2y",
+      "3x + 2y"
+    ],
+    "answer": "2x + 3y",
+    "solution": "Batas kelas adalah garis $2x+3y=12$. Satu ambang pada fitur $2x+3y$ memisahkan sempurna (kedalaman 1).",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q18",
+    "title": "Fitur XOR Decision Tree",
+    "track": "B",
+    "topic": "supervised-learning",
+    "difficulty": 3,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Decision Tree**\n\nDecision tree membagi data dengan ambang pada fitur. Kedalaman = jumlah maksimum aturan pemisahan yang dilalui saat klasifikasi.\n\nAnda melatih decision tree pada data berikut.\n\n![scatter](/problems/osn26/dt-q18-scatter.png)\n\nSelain fitur $x$ dan $y$, Anda menambahkan sebuah fitur baru. Manakah fitur agar model dapat mengklasifikasi **secara sempurna** dengan **kedalaman minimum**?\n",
+    "choices": [
+      "xy",
+      "x + y",
+      "x - y",
+      "x^2 + y^2"
+    ],
+    "answer": "xy",
+    "solution": "Label bergantung kesamaan tanda x dan y ≈ tanda(xy). Satu ambang pada xy cukup.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q19",
+    "title": "Kernel Menghilangkan Noise",
+    "track": "D",
+    "topic": "konvolusi",
+    "difficulty": 3,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Deteksi Bentuk**\n\nKonvolusi memakai padding 1 piksel bernilai 0.\n\nSaat deteksi tepi, selain tepi bentuk yang diinginkan, Anda juga mendapat tepi dari noise kecil.\nAnda konvolusi gambar awal agar noise tidak terdeteksi saat deteksi tepi. Mana kernel yang digunakan?\n\n![edges](/problems/osn26/shapes-edges.png)\n\n- a. $\\begin{pmatrix}0&0&0\\\\0&1&0\\\\0&0&0\\end{pmatrix}$\n- b. $\\begin{pmatrix}0&-1&0\\\\-1&5&-1\\\\0&-1&0\\end{pmatrix}$\n- c. $\\begin{pmatrix}-1&-2&-1\\\\0&0&0\\\\1&2&1\\end{pmatrix}$\n- d. $\\dfrac{1}{9}\\begin{pmatrix}1&1&1\\\\1&1&1\\\\1&1&1\\end{pmatrix}$\n",
+    "choices": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "answer": "d",
+    "solution": "Perlu pelembutan (low-pass) agar noise kecil hilang sebelum deteksi tepi. Kernel rata-rata (d).",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q20",
+    "title": "Urutan Morfologi Bentuk",
+    "track": "D",
+    "topic": "konvolusi",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Deteksi Bentuk**\n\nKonvolusi memakai padding 1 piksel bernilai 0. Dilasi: keluaran 1 jika ada ≥1 piksel bernilai 1 pada structuring element (padding 0). Erosi: keluaran 1 jika seluruh piksel pada structuring element bernilai 1 (padding 1).\n\nAnda berhasil menghilangkan noise.\n\n![hasil](/problems/osn26/shapes-clean-edges.png)\n\nNamun hasil deteksi masih punya dua masalah:\n1. Terdapat beberapa celah kecil pada persegi.\n2. Segitiga dan segi lima menempel (seharusnya terpisah).\n\nOperasi yang tersedia:\n- `dilate`: dilasi\n- `erode`: erosi\n- `fill`: bagi bagian hitam menjadi komponen terhubung (4 arah), lalu isi semua komponen selain yang luasnya terbesar dengan putih\n\nTuliskan urutan operasi (maksimal tiga, pisahkan spasi) agar diperoleh empat bentuk saling terpisah. Contoh: `erode dilate`.\n",
+    "answer": [
+      "erode dilate fill",
+      "erode dilate fill"
+    ],
+    "solution": "Erode memisahkan kontak tipis segitiga–segi lima; dilate menutup celah persegi; fill mengisi komponen hitam non-terluas (lubang dalam kontur) menjadi bentuk padat terpisah.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q21",
+    "title": "Metrik Precision=Recall",
+    "track": "B",
+    "topic": "evaluasi-model",
+    "difficulty": 1,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Metrik Klasifikasi**\n\n| Simbol | Arti |\n|--------|------|\n| TP | positif diprediksi positif |\n| FN | positif diprediksi negatif |\n| FP | negatif diprediksi positif |\n| TN | negatif diprediksi negatif |\n\nAkurasi $=\\dfrac{TP+TN}{TP+TN+FP+FN}$; Precision $=\\dfrac{TP}{TP+FP}$; Recall $=\\dfrac{TP}{TP+FN}$;\n$F_\\beta=\\dfrac{(1+\\beta^2)\\cdot\\mathrm{precision}\\cdot\\mathrm{recall}}{\\beta^2\\cdot\\mathrm{precision}+\\mathrm{recall}}$.\n\n\nPrecision dan recall sama pentingnya. Metrik evaluasi manakah yang paling sesuai?",
+    "choices": [
+      "akurasi",
+      "F1",
+      "F2",
+      "F0.5"
+    ],
+    "answer": "F1",
+    "solution": "F1 adalah F_β dengan β=1 (precision dan recall seimbang).",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q22",
+    "title": "Metrik Prioritas Precision",
+    "track": "B",
+    "topic": "evaluasi-model",
+    "difficulty": 2,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Metrik Klasifikasi**\n\n| Simbol | Arti |\n|--------|------|\n| TP | positif diprediksi positif |\n| FN | positif diprediksi negatif |\n| FP | negatif diprediksi positif |\n| TN | negatif diprediksi negatif |\n\nAkurasi $=\\dfrac{TP+TN}{TP+TN+FP+FN}$; Precision $=\\dfrac{TP}{TP+FP}$; Recall $=\\dfrac{TP}{TP+FN}$;\n$F_\\beta=\\dfrac{(1+\\beta^2)\\cdot\\mathrm{precision}\\cdot\\mathrm{recall}}{\\beta^2\\cdot\\mathrm{precision}+\\mathrm{recall}}$.\n\n\nLebih memprioritaskan precision daripada recall. Metrik evaluasi manakah yang paling sesuai?",
+    "choices": [
+      "akurasi",
+      "F1",
+      "F2",
+      "F0.5"
+    ],
+    "answer": "F0.5",
+    "solution": "β<1 memberi bobot lebih pada precision → F0.5.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q23",
+    "title": "Konteks Terkuat Attention",
+    "track": "D",
+    "topic": "transformer-dasar",
+    "difficulty": 1,
+    "answerType": "mcq",
+    "stem": "**Studi kasus: Self-Attention pada Transformers**\n\nKalimat: \"Budi menyimpan uang di bank.\" Skor dot-product terhadap kata **bank**:\n\n| Kata | Skor |\n|------|-----:|\n| Budi | 2 |\n| menyimpan | 7 |\n| uang | 12 |\n| di | 1 |\n| bank | 15 |\n\nBerdasarkan skor di atas, kata manakah yang memberikan petunjuk (konteks) terkuat bagi arti kata \"bank\" (selain kata \"bank\" itu sendiri)?",
+    "choices": [
+      "Budi",
+      "menyimpan",
+      "uang",
+      "di"
+    ],
+    "answer": "uang",
+    "solution": "Skor tertinggi selain bank adalah uang (12).",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q24",
+    "title": "Hardmax Weight menyimpan",
+    "track": "D",
+    "topic": "transformer-dasar",
+    "difficulty": 2,
+    "answerType": "numeric",
+    "stem": "**Studi kasus: Self-Attention pada Transformers**\n\nKalimat: \"Budi menyimpan uang di bank.\" Skor dot-product terhadap kata **bank**:\n\n| Kata | Skor |\n|------|-----:|\n| Budi | 2 |\n| menyimpan | 7 |\n| uang | 12 |\n| di | 1 |\n| bank | 15 |\n\nHardmax: **hanya satu** kata dengan skor tertinggi (selain kata target itu sendiri) mendapat bobot 1, lainnya 0. Berapa attention weight akhir untuk kata \"menyimpan\"?",
+    "answer": 0,
+    "tolerance": 0,
+    "solution": "Target bank; max selain bank = uang → uang dapat 1, menyimpan dapat 0.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q25",
+    "title": "Padanan ghfy",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Bahasa BVNFCWBM**\n\nEmbedding dihubungkan linear: $[a\\; b]\\times M \\approx [c\\; d]$ dengan\n$[a\\; b]\\times\\begin{pmatrix}m_{11}&m_{12}\\\\ m_{21}&m_{22}\\end{pmatrix}=[a m_{11}+b m_{21},\\; a m_{12}+b m_{22}]$.\n\n**Bahasa 1:** ghfy$(9,1)$, ysbm$(4,-6)$, hstk$(1,3)$, xtja$(-3,-5)$, rvji$(-3,-2)$, upou$(1,-9)$, ikwd$(-2,2)$, dhxr$(-2,6)$.\n\n**Bahasa 2:** gquw$(5,0)$, xvnm$(-4,-4)$, admc$(-13,8)$, jtyl$(6,17)$, vcrv$(-2,-13)$, qbtz$(-1,15)$, uxwr$(1,-6)$, ydds$(8,6)$.\n\n\n`ghfy` berpasangan dengan kata apa dari bahasa kedua?",
+    "answer": "admc",
+    "solution": "Setelah estimasi M (least squares pada pasangan), ghfy dipetakan mendekati admc.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q26",
+    "title": "Padanan ysbm",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Bahasa BVNFCWBM**\n\nEmbedding dihubungkan linear: $[a\\; b]\\times M \\approx [c\\; d]$ dengan\n$[a\\; b]\\times\\begin{pmatrix}m_{11}&m_{12}\\\\ m_{21}&m_{22}\\end{pmatrix}=[a m_{11}+b m_{21},\\; a m_{12}+b m_{22}]$.\n\n**Bahasa 1:** ghfy$(9,1)$, ysbm$(4,-6)$, hstk$(1,3)$, xtja$(-3,-5)$, rvji$(-3,-2)$, upou$(1,-9)$, ikwd$(-2,2)$, dhxr$(-2,6)$.\n\n**Bahasa 2:** gquw$(5,0)$, xvnm$(-4,-4)$, admc$(-13,8)$, jtyl$(6,17)$, vcrv$(-2,-13)$, qbtz$(-1,15)$, uxwr$(1,-6)$, ydds$(8,6)$.\n\n\n`ysbm` berpasangan dengan kata apa dari bahasa kedua?",
+    "answer": "qbtz",
+    "solution": "Setelah estimasi M (least squares pada pasangan), ysbm dipetakan mendekati qbtz.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q27",
+    "title": "Padanan hstk",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Bahasa BVNFCWBM**\n\nEmbedding dihubungkan linear: $[a\\; b]\\times M \\approx [c\\; d]$ dengan\n$[a\\; b]\\times\\begin{pmatrix}m_{11}&m_{12}\\\\ m_{21}&m_{22}\\end{pmatrix}=[a m_{11}+b m_{21},\\; a m_{12}+b m_{22}]$.\n\n**Bahasa 1:** ghfy$(9,1)$, ysbm$(4,-6)$, hstk$(1,3)$, xtja$(-3,-5)$, rvji$(-3,-2)$, upou$(1,-9)$, ikwd$(-2,2)$, dhxr$(-2,6)$.\n\n**Bahasa 2:** gquw$(5,0)$, xvnm$(-4,-4)$, admc$(-13,8)$, jtyl$(6,17)$, vcrv$(-2,-13)$, qbtz$(-1,15)$, uxwr$(1,-6)$, ydds$(8,6)$.\n\n\n`hstk` berpasangan dengan kata apa dari bahasa kedua?",
+    "answer": "xvnm",
+    "solution": "Setelah estimasi M (least squares pada pasangan), hstk dipetakan mendekati xvnm.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q28",
+    "title": "Padanan xtja",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Bahasa BVNFCWBM**\n\nEmbedding dihubungkan linear: $[a\\; b]\\times M \\approx [c\\; d]$ dengan\n$[a\\; b]\\times\\begin{pmatrix}m_{11}&m_{12}\\\\ m_{21}&m_{22}\\end{pmatrix}=[a m_{11}+b m_{21},\\; a m_{12}+b m_{22}]$.\n\n**Bahasa 1:** ghfy$(9,1)$, ysbm$(4,-6)$, hstk$(1,3)$, xtja$(-3,-5)$, rvji$(-3,-2)$, upou$(1,-9)$, ikwd$(-2,2)$, dhxr$(-2,6)$.\n\n**Bahasa 2:** gquw$(5,0)$, xvnm$(-4,-4)$, admc$(-13,8)$, jtyl$(6,17)$, vcrv$(-2,-13)$, qbtz$(-1,15)$, uxwr$(1,-6)$, ydds$(8,6)$.\n\n\n`xtja` berpasangan dengan kata apa dari bahasa kedua?",
+    "answer": "ydds",
+    "solution": "Setelah estimasi M (least squares pada pasangan), xtja dipetakan mendekati ydds.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q29",
+    "title": "Padanan rvji",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Bahasa BVNFCWBM**\n\nEmbedding dihubungkan linear: $[a\\; b]\\times M \\approx [c\\; d]$ dengan\n$[a\\; b]\\times\\begin{pmatrix}m_{11}&m_{12}\\\\ m_{21}&m_{22}\\end{pmatrix}=[a m_{11}+b m_{21},\\; a m_{12}+b m_{22}]$.\n\n**Bahasa 1:** ghfy$(9,1)$, ysbm$(4,-6)$, hstk$(1,3)$, xtja$(-3,-5)$, rvji$(-3,-2)$, upou$(1,-9)$, ikwd$(-2,2)$, dhxr$(-2,6)$.\n\n**Bahasa 2:** gquw$(5,0)$, xvnm$(-4,-4)$, admc$(-13,8)$, jtyl$(6,17)$, vcrv$(-2,-13)$, qbtz$(-1,15)$, uxwr$(1,-6)$, ydds$(8,6)$.\n\n\n`rvji` berpasangan dengan kata apa dari bahasa kedua?",
+    "answer": "gquw",
+    "solution": "Setelah estimasi M (least squares pada pasangan), rvji dipetakan mendekati gquw.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q30",
+    "title": "Padanan upou",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Bahasa BVNFCWBM**\n\nEmbedding dihubungkan linear: $[a\\; b]\\times M \\approx [c\\; d]$ dengan\n$[a\\; b]\\times\\begin{pmatrix}m_{11}&m_{12}\\\\ m_{21}&m_{22}\\end{pmatrix}=[a m_{11}+b m_{21},\\; a m_{12}+b m_{22}]$.\n\n**Bahasa 1:** ghfy$(9,1)$, ysbm$(4,-6)$, hstk$(1,3)$, xtja$(-3,-5)$, rvji$(-3,-2)$, upou$(1,-9)$, ikwd$(-2,2)$, dhxr$(-2,6)$.\n\n**Bahasa 2:** gquw$(5,0)$, xvnm$(-4,-4)$, admc$(-13,8)$, jtyl$(6,17)$, vcrv$(-2,-13)$, qbtz$(-1,15)$, uxwr$(1,-6)$, ydds$(8,6)$.\n\n\n`upou` berpasangan dengan kata apa dari bahasa kedua?",
+    "answer": "jtyl",
+    "solution": "Setelah estimasi M (least squares pada pasangan), upou dipetakan mendekati jtyl.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q31",
+    "title": "Padanan ikwd",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Bahasa BVNFCWBM**\n\nEmbedding dihubungkan linear: $[a\\; b]\\times M \\approx [c\\; d]$ dengan\n$[a\\; b]\\times\\begin{pmatrix}m_{11}&m_{12}\\\\ m_{21}&m_{22}\\end{pmatrix}=[a m_{11}+b m_{21},\\; a m_{12}+b m_{22}]$.\n\n**Bahasa 1:** ghfy$(9,1)$, ysbm$(4,-6)$, hstk$(1,3)$, xtja$(-3,-5)$, rvji$(-3,-2)$, upou$(1,-9)$, ikwd$(-2,2)$, dhxr$(-2,6)$.\n\n**Bahasa 2:** gquw$(5,0)$, xvnm$(-4,-4)$, admc$(-13,8)$, jtyl$(6,17)$, vcrv$(-2,-13)$, qbtz$(-1,15)$, uxwr$(1,-6)$, ydds$(8,6)$.\n\n\n`ikwd` berpasangan dengan kata apa dari bahasa kedua?",
+    "answer": "uxwr",
+    "solution": "Setelah estimasi M (least squares pada pasangan), ikwd dipetakan mendekati uxwr.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q32",
+    "title": "Padanan dhxr",
+    "track": "D",
+    "topic": "tfidf-embedding",
+    "difficulty": 4,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Bahasa BVNFCWBM**\n\nEmbedding dihubungkan linear: $[a\\; b]\\times M \\approx [c\\; d]$ dengan\n$[a\\; b]\\times\\begin{pmatrix}m_{11}&m_{12}\\\\ m_{21}&m_{22}\\end{pmatrix}=[a m_{11}+b m_{21},\\; a m_{12}+b m_{22}]$.\n\n**Bahasa 1:** ghfy$(9,1)$, ysbm$(4,-6)$, hstk$(1,3)$, xtja$(-3,-5)$, rvji$(-3,-2)$, upou$(1,-9)$, ikwd$(-2,2)$, dhxr$(-2,6)$.\n\n**Bahasa 2:** gquw$(5,0)$, xvnm$(-4,-4)$, admc$(-13,8)$, jtyl$(6,17)$, vcrv$(-2,-13)$, qbtz$(-1,15)$, uxwr$(1,-6)$, ydds$(8,6)$.\n\n\n`dhxr` berpasangan dengan kata apa dari bahasa kedua?",
+    "answer": "vcrv",
+    "solution": "Setelah estimasi M (least squares pada pasangan), dhxr dipetakan mendekati vcrv.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q33",
+    "title": "DP Beban Server",
+    "track": "A",
+    "topic": "python-dasar",
+    "difficulty": 3,
+    "answerType": "numeric",
+    "stem": "**Studi kasus: Membaca Kode**\n\n```python\ndef ambil_data_maksimal(data):\n    n = len(data)\n    if n == 0: return 0\n    if n == 1: return data[0]\n    dp = [0] * n\n    dp[0] = data[0]\n    dp[1] = max(data[0], data[1])\n    for i in range(2, n):\n        dp[i] = max(dp[i-1], dp[i-2] + data[i])\n    return dp[n-1]\n\nbeban_server = [10, 20, 15, 5, 30, 25, 10]\nhasil = ambil_data_maksimal(beban_server)\n```\n\nBerapakah nilai akhir `hasil`?\n",
+    "answer": 65,
+    "tolerance": 0,
+    "solution": "House-robber DP: pilihan optimal 10+15+30+10 atau 20+5+30+10 = 65.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
+  },
+  {
+    "id": "p-osn26-q34",
+    "title": "Minimasi Tiga Pusat",
+    "track": "B",
+    "topic": "unsupervised-learning",
+    "difficulty": 5,
+    "answerType": "short_string",
+    "stem": "**Studi kasus: Membaca Kode**\n\n```python\na = [\n    [5, 14], [19, 25], [23, 12],\n    [18, 24], [21, 9],  [7, 14],\n    [20, 26], [21, 10], [5, 16],\n    [4, 13],  [20, 11], [20, 25],\n]\ndef f(a1, a2, a3, a4, a5, a6):\n    if a1 > a3 or a3 > a5:\n        return 1e6\n    s = 0\n    for i in range(len(a)):\n        x = (a[i][0] - a1)**2 + (a[i][1] - a2)**2\n        y = (a[i][0] - a3)**2 + (a[i][1] - a4)**2\n        z = (a[i][0] - a5)**2 + (a[i][1] - a6)**2\n        s += min(x, y, z)\n    return s\n```\n\nTentukan $a_1\\ldots a_6$ (float, $a_1\\le a_3\\le a_5$) yang meminimalkan $f$. Pisahkan spasi. Contoh: `-1 -0.5 0 1 0.5 1.5`\n",
+    "answer": [
+      "5.25 14.25 19.25 25 21.25 10.5",
+      "5.25 14.25 19.25 25.0 21.25 10.5",
+      "5.25 14.25 19.25 25.00 21.25 10.50",
+      "5,25 14,25 19,25 25 21,25 10,5"
+    ],
+    "solution": "Tiga klaster k-means; pusat (terurut absis): (5.25, 14.25), (19.25, 25), (21.25, 10.5) dengan jumlah jarak kuadrat = 24.",
+    "tags": [
+      "osn26",
+      "haiplay"
+    ]
   }
 ]

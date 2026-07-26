@@ -11,6 +11,16 @@ export function Markdown({ content }: { content: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
+        components={{
+          img: ({ src, alt }) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={src}
+              alt={alt ?? ""}
+              className="my-3 max-h-80 w-auto max-w-full rounded-md border border-border"
+            />
+          ),
+        }}
       >
         {content}
       </ReactMarkdown>

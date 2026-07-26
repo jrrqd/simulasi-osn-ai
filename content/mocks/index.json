@@ -94,5 +94,47 @@
       "p-b-kmeans-assign",
       "p-b-precision"
     ]
+  },
+  {
+    "id": "mock-osn26-haiplay",
+    "title": "Simulasi OSN AI (EKKA) 2026 — Paket hAIppy",
+    "description": "34 soal resmi bergaya hAIplay (studi kasus lintas silabus), dibersihkan untuk simulasi timed 150 menit.",
+    "durationMinutes": 150,
+    "problemIds": [
+      "p-osn26-q01",
+      "p-osn26-q02",
+      "p-osn26-q03",
+      "p-osn26-q04",
+      "p-osn26-q05",
+      "p-osn26-q06",
+      "p-osn26-q07",
+      "p-osn26-q08",
+      "p-osn26-q09",
+      "p-osn26-q10",
+      "p-osn26-q11",
+      "p-osn26-q12",
+      "p-osn26-q13",
+      "p-osn26-q14",
+      "p-osn26-q15",
+      "p-osn26-q16",
+      "p-osn26-q17",
+      "p-osn26-q18",
+      "p-osn26-q19",
+      "p-osn26-q20",
+      "p-osn26-q21",
+      "p-osn26-q22",
+      "p-osn26-q23",
+      "p-osn26-q24",
+      "p-osn26-q25",
+      "p-osn26-q26",
+      "p-osn26-q27",
+      "p-osn26-q28",
+      "p-osn26-q29",
+      "p-osn26-q30",
+      "p-osn26-q31",
+      "p-osn26-q32",
+      "p-osn26-q33",
+      "p-osn26-q34"
+    ]
   }
 ]
