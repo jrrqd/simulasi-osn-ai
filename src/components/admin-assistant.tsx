@@ -4,12 +4,36 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { Bot, X } from "lucide-react";
+import { X } from "lucide-react";
 import { AssistantMessageBubble } from "@/components/assistant-message";
 import {
   AssistantTypingIndicator,
   shouldShowAssistantTyping,
 } from "@/components/assistant-typing";
+
+const ADMIN_ASSISTANT_ICON = "/pets/matrix.gif";
+
+function AdminAssistantAvatar({
+  size = "fab",
+}: {
+  size?: "fab" | "header";
+}) {
+  const dim = size === "fab" ? "h-16 w-16" : "h-10 w-10";
+  const img = size === "fab" ? "h-14 w-14" : "h-9 w-9";
+  return (
+    <span
+      className={`inline-flex ${dim} items-center justify-center overflow-hidden rounded-full bg-black`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- animated GIF */}
+      <img
+        src={ADMIN_ASSISTANT_ICON}
+        alt=""
+        className={`${img} scale-110 object-cover`}
+        draggable={false}
+      />
+    </span>
+  );
+}
 
 function pageHint(pathname: string, focusUserId: string): string {
   if (focusUserId) {
@@ -87,13 +111,16 @@ function AdminAssistantInner() {
       {open && (
         <div className="panel flex h-[min(30rem,72vh)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl shadow-[0_12px_40px_rgba(28,36,48,0.18)] rise">
           <div className="flex items-center justify-between border-b border-[var(--line)] bg-[#173d34] px-4 py-3 text-white">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/70">
-                Admin AI
-              </p>
-              <h2 className="display text-lg leading-tight text-white">
-                Asisten platform
-              </h2>
+            <div className="flex items-center gap-3">
+              <AdminAssistantAvatar size="header" />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/70">
+                  Admin AI
+                </p>
+                <h2 className="display text-lg leading-tight text-white">
+                  Asisten platform
+                </h2>
+              </div>
             </div>
             <button
               type="button"
@@ -170,11 +197,11 @@ function AdminAssistantInner() {
 
       <button
         type="button"
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-[#173d34] text-white shadow-[0_8px_24px_rgba(23,61,52,0.4)] transition hover:scale-105"
+        className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-black shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition hover:scale-105"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Tutup asisten admin" : "Buka asisten admin"}
       >
-        {open ? <X size={22} /> : <Bot size={22} />}
+        {open ? <X size={22} className="text-white" /> : <AdminAssistantAvatar />}
       </button>
     </div>
   );
