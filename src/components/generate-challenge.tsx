@@ -8,6 +8,14 @@ import {
   type DifficultyMode,
 } from "@/lib/ai/difficulty";
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
+import type { GenerationProgressEvent } from "@/lib/ai/generation-progress";
+import {
+  applyGenerationProgressEvent,
+  GenerationProgressPanel,
+  INITIAL_GENERATION_PROGRESS,
+  readGenerationNdjsonStream,
+  type GenerationProgressState,
+} from "@/components/generation-progress";
 
 type GenerationMode = "standard" | "custom";
 
@@ -28,6 +36,9 @@ export function GenerateChallenge() {
   const [answerType, setAnswerType] = useState("numeric");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<GenerationProgressState>(
+    INITIAL_GENERATION_PROGRESS,
+  );
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -41,6 +52,15 @@ export function GenerateChallenge() {
   async function generate() {
     setLoading(true);
     setError("");
+    setProgress({
+      ...INITIAL_GENERATION_PROGRESS,
+      total: 1,
+      phase: "planning",
+      message:
+        generationMode === "custom"
+          ? "Menyiapkan generate dari brief topik…"
+          : "Menyiapkan generate soal AI…",
+    });
     try {
       const res = await fetch("/api/ai/generate", {
         method: "POST",
@@ -55,13 +75,45 @@ export function GenerateChallenge() {
           answerType,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal generate");
-      sessionStorage.setItem(
-        `problem:${data.problem.id}`,
-        JSON.stringify(data.problem),
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("ndjson")) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          (data as { error?: string }).error || "Gagal generate",
+        );
+      }
+
+      const done = await readGenerationNdjsonStream(
+        res,
+        (event: GenerationProgressEvent) => {
+          setProgress((prev) => applyGenerationProgressEvent(prev, event));
+        },
       );
-      router.push(`/practice/${data.problem.id}`);
+
+      setProgress((prev) => ({
+        ...prev,
+        phase: "saving",
+        thinking: "",
+        message: "Memuat soal yang baru dibuat…",
+        completedCount: 1,
+      }));
+
+      const problemRes = await fetch(`/api/problems/${done.problemId}`);
+      const problemData = await problemRes.json().catch(() => ({}));
+      if (!problemRes.ok || !(problemData as { problem?: unknown }).problem) {
+        throw new Error(
+          (problemData as { error?: string }).error ||
+            "Soal berhasil dibuat tetapi gagal dimuat",
+        );
+      }
+
+      const problem = (problemData as { problem: { id: string } }).problem;
+      sessionStorage.setItem(
+        `problem:${problem.id}`,
+        JSON.stringify(problem),
+      );
+      router.push(`/practice/${problem.id}`);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -75,7 +127,8 @@ export function GenerateChallenge() {
       <h2 className="display text-2xl">Generate tantangan AI</h2>
       <p className="text-sm text-[var(--muted)]">
         Soal masuk bank AI bersama dan bisa dikerjakan siswa lain. Menggunakan
-        BYOK milikmu jika ada, atau LLM bersama dari admin.
+        BYOK milikmu jika ada, atau LLM bersama dari admin. Progress & thinking
+        model ditampilkan seperti di Simulasi.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -217,6 +270,9 @@ export function GenerateChallenge() {
             ? "Generate dari brief topik"
             : "Buat soal baru"}
       </button>
+      {loading || (error && progress.message) ? (
+        <GenerationProgressPanel state={progress} />
+      ) : null}
       {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
     </div>
   );

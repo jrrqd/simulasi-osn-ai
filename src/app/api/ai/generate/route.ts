@@ -4,13 +4,15 @@ import { getEffectiveAiSettings } from "@/lib/ai/settings";
 import {
   generateAndStoreProblem,
   parseDifficultyMode,
+  resolveDifficulty,
 } from "@/lib/ai/generate-problem";
-import { TRACKS, type TrackId } from "@/lib/content/types";
+import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
 import {
   TOPIC_PROMPT_MIN_LEN,
   normalizeTopicPrompt,
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
+import { createNdjsonStreamResponse } from "@/lib/ai/generation-progress";
 
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -75,37 +77,77 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
+  const resolvedDifficultyMode =
+    legacyDifficulty != null
+      ? legacyDifficulty <= 2
+        ? "easy"
+        : legacyDifficulty >= 4
+          ? "hard"
+          : "medium"
+      : difficultyMode;
+  const difficulty =
+    legacyDifficulty ?? resolveDifficulty(resolvedDifficultyMode);
+  const topicLabel = TOPIC_LABELS[topic] ?? topic;
+
+  return createNdjsonStreamResponse(async (send) => {
+    await send({
+      type: "status",
+      message:
+        generationMode === "custom"
+          ? "Menyiapkan generate dari brief topik…"
+          : "Menyiapkan generate soal AI…",
+      index: 0,
+      total: 1,
+    });
+    await send({
+      type: "question_start",
+      index: 1,
+      total: 1,
+      track,
+      topic,
+      topicLabel,
+      difficulty,
+    });
+
     const problem = await generateAndStoreProblem({
       userId: authResult.user.id,
       track,
       topic,
-      difficultyMode:
-        legacyDifficulty != null
-          ? legacyDifficulty <= 2
-            ? "easy"
-            : legacyDifficulty >= 4
-              ? "hard"
-              : "medium"
-          : difficultyMode,
+      difficultyMode: resolvedDifficultyMode,
       difficulty: legacyDifficulty,
       answerType,
       focusPrompt,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,
+      progressIndex: 1,
+      onProgress: send,
     });
 
-    return Response.json({
-      problem,
-      providerSource: settings.source,
+    await send({
+      type: "status",
+      message: "Menyimpan soal ke bank AI…",
+      index: 1,
+      total: 1,
     });
-  } catch (e) {
-    return Response.json(
-      {
-        error: e instanceof Error ? e.message : "Gagal menghasilkan soal",
-      },
-      { status: 400 },
-    );
-  }
+    await send({
+      type: "question_done",
+      index: 1,
+      total: 1,
+      title: problem.title,
+      topic: problem.topic,
+      topicLabel: TOPIC_LABELS[problem.topic] ?? problem.topic,
+    });
+    await send({
+      type: "slot_done",
+      phase: "slot",
+      planId: "practice-single",
+      index: 0,
+      problemId: problem.id,
+      title: problem.title,
+      topic: problem.topic,
+      topicLabel: TOPIC_LABELS[problem.topic] ?? problem.topic,
+      difficulty: problem.difficulty,
+    });
+  });
 }
