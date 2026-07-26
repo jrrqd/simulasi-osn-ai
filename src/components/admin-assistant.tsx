@@ -1,33 +1,74 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Bot, X } from "lucide-react";
 import { AssistantMessageBubble } from "@/components/assistant-message";
 
-export function AdminAssistant() {
-  const pathname = usePathname();
+function pageHint(pathname: string, focusUserId: string): string {
+  if (focusUserId) {
+    return "Konteks: laporan pengguna yang sedang dibuka + snapshot platform.";
+  }
+  if (pathname.startsWith("/study")) {
+    return "Konteks: halaman belajar (modul/silabus) yang sedang dibuka.";
+  }
+  if (pathname.startsWith("/practice")) {
+    return "Konteks: halaman latihan / soal yang sedang dibuka.";
+  }
+  if (pathname.startsWith("/mock")) {
+    return "Konteks: daftar atau sesi simulasi yang sedang dibuka.";
+  }
+  if (pathname.startsWith("/performance")) {
+    return "Konteks: halaman performa + data agregat platform.";
+  }
+  if (pathname.startsWith("/admin")) {
+    return "Konteks: konsol admin + snapshot aktivitas platform.";
+  }
+  if (pathname.startsWith("/settings")) {
+    return "Konteks: halaman pengaturan.";
+  }
+  return "Konteks mengikuti halaman yang sedang dibuka + snapshot platform.";
+}
+
+function AdminAssistantInner() {
+  const pathname = usePathname() || "/";
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
 
+  const search = searchParams.toString();
   const focusUserId = useMemo(() => {
-    const match = pathname?.match(/^\/admin\/users\/([^/?#]+)/);
+    const match = pathname.match(/^\/admin\/users\/([^/?#]+)/);
     return match?.[1] ?? "";
   }, [pathname]);
 
+  const chatId = useMemo(
+    () => `admin-assistant:${pathname}?${search}|${focusUserId || "none"}`,
+    [pathname, search, focusUserId],
+  );
+
   const { messages, sendMessage, status, error, setMessages } = useChat({
-    id: `admin-assistant:${focusUserId || "overview"}`,
+    id: chatId,
     transport: new DefaultChatTransport({
       api: "/api/ai/admin-assistant",
-      body: { focusUserId: focusUserId || undefined },
+      body: {
+        focusUserId: focusUserId || undefined,
+        pathname,
+        search: search ? `?${search}` : undefined,
+      },
     }),
   });
 
   useEffect(() => {
     setMessages([]);
-  }, [focusUserId, setMessages]);
+  }, [chatId, setMessages]);
+
+  // Keep admin FAB on the left so it does not cover student pet assistants.
+  const dockClass = pathname.startsWith("/admin")
+    ? "fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3"
+    : "fixed bottom-5 left-5 z-50 flex flex-col items-start gap-3";
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -38,7 +79,7 @@ export function AdminAssistant() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
+    <div className={dockClass}>
       {open && (
         <div className="panel flex h-[min(30rem,72vh)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl shadow-[0_12px_40px_rgba(28,36,48,0.18)] rise">
           <div className="flex items-center justify-between border-b border-[var(--line)] bg-[#173d34] px-4 py-3 text-white">
@@ -64,19 +105,17 @@ export function AdminAssistant() {
             {messages.length === 0 && (
               <div className="space-y-2 text-sm text-[var(--muted)]">
                 <p>
-                  Tanya apa saja tentang aktivitas platform: perilaku siswa,
-                  akurasi, topik lemah, mock, atau siapa yang perlu perhatian.
+                  Tanya tentang halaman ini atau aktivitas platform: siswa,
+                  akurasi, topik lemah, mock, atau isi soal/modul yang sedang
+                  dibuka.
                 </p>
-                {focusUserId ? (
-                  <p className="rounded-2xl bg-[rgba(15,110,86,0.08)] px-3 py-2 text-xs text-[var(--ink)]">
-                    Konteks: laporan pengguna yang sedang dibuka.
-                  </p>
-                ) : (
-                  <p className="text-xs">
-                    Contoh: “Siapa siswa paling tidak aktif minggu ini?” atau
-                    “Topik mana yang paling lemah?”
-                  </p>
-                )}
+                <p className="rounded-2xl bg-[rgba(15,110,86,0.08)] px-3 py-2 text-xs text-[var(--ink)]">
+                  {pageHint(pathname, focusUserId)}
+                </p>
+                <p className="text-xs">
+                  Contoh: “Ringkas halaman ini” · “Siapa perlu follow-up?” ·
+                  “Jelaskan soal ini”
+                </p>
               </div>
             )}
             {messages.map((m) => (
@@ -99,7 +138,7 @@ export function AdminAssistant() {
               className="input !py-2 text-sm"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Tanya tentang platform…"
+              placeholder="Tanya tentang halaman / platform…"
               disabled={status === "streaming" || status === "submitted"}
             />
             <button
@@ -131,5 +170,13 @@ export function AdminAssistant() {
         {open ? <X size={22} /> : <Bot size={22} />}
       </button>
     </div>
+  );
+}
+
+export function AdminAssistant() {
+  return (
+    <Suspense fallback={null}>
+      <AdminAssistantInner />
+    </Suspense>
   );
 }

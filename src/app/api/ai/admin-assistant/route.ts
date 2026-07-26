@@ -7,6 +7,7 @@ import {
 } from "@/lib/ai/provider";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
 import { buildAdminAssistantContext } from "@/lib/admin/analytics";
+import { buildAdminPageContext } from "@/lib/admin/page-context";
 
 export async function POST(req: NextRequest) {
   const authResult = await requireApiAdmin(req);
@@ -20,6 +21,14 @@ export async function POST(req: NextRequest) {
   const focusUserId =
     typeof body.focusUserId === "string" && body.focusUserId
       ? body.focusUserId
+      : undefined;
+  const pathname =
+    typeof body.pathname === "string" && body.pathname
+      ? body.pathname.slice(0, 400)
+      : undefined;
+  const search =
+    typeof body.search === "string" && body.search
+      ? body.search.slice(0, 400)
       : undefined;
 
   const settings = await getEffectiveAiSettings(authResult.user.id);
@@ -39,10 +48,14 @@ export async function POST(req: NextRequest) {
     modelId: settings.modelId,
   });
 
-  const context = await buildAdminAssistantContext(focusUserId);
+  const [platformContext, pageContext] = await Promise.all([
+    buildAdminAssistantContext(focusUserId),
+    buildAdminPageContext({ pathname, search, focusUserId }),
+  ]);
+
   const result = streamText({
     model,
-    system: `${ADMIN_ASSISTANT_SYSTEM_PROMPT}\n\n${context}`,
+    system: `${ADMIN_ASSISTANT_SYSTEM_PROMPT}\n\n${pageContext}\n\n${platformContext}`,
     messages: await convertToModelMessages(messages),
     abortSignal: AbortSignal.timeout(180_000),
   });

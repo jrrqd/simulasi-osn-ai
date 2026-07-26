@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { AdminAssistant } from "@/components/admin-assistant";
 import { SiteHeader } from "@/components/site-header";
 import { OnboardingGate } from "@/components/onboarding";
 import { ProfilePrompt } from "@/components/profile-prompt";
@@ -16,6 +17,7 @@ export default async function AppShell({
   const session = await getSession();
   let needsOnboarding = false;
   let showProfilePrompt = false;
+  let isAdmin = session?.user?.role === "admin";
 
   if (session?.user) {
     const db = await getDb();
@@ -23,6 +25,7 @@ export default async function AppShell({
       where: eq(user.id, session.user.id),
     });
     const role = row?.role ?? session.user.role;
+    isAdmin = role === "admin";
     if (role === "student") {
       needsOnboarding = !row?.onboardingCompletedAt;
       showProfilePrompt = Boolean(row?.onboardingCompletedAt);
@@ -38,6 +41,7 @@ export default async function AppShell({
       <OnboardingGate needsOnboarding={needsOnboarding} />
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       <ProfilePrompt enabled={showProfilePrompt} />
+      {isAdmin ? <AdminAssistant /> : null}
     </div>
   );
 }

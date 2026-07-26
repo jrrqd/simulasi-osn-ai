@@ -17,7 +17,7 @@ import {
   type GenerationProgressState,
 } from "@/components/generation-progress";
 
-type GenerationMode = "standard" | "custom";
+type GenerationMode = "standard" | "custom" | "study-case";
 
 const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
   id,
@@ -34,6 +34,7 @@ export function GenerateChallenge() {
   const [difficultyMode, setDifficultyMode] =
     useState<DifficultyMode>("medium");
   const [answerType, setAnswerType] = useState("numeric");
+  const [problemCount, setProblemCount] = useState(4);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<GenerationProgressState>(
@@ -52,28 +53,46 @@ export function GenerateChallenge() {
   async function generate() {
     setLoading(true);
     setError("");
+    const isCase = generationMode === "study-case";
     setProgress({
       ...INITIAL_GENERATION_PROGRESS,
-      total: 1,
+      total: isCase ? problemCount : 1,
       phase: "planning",
-      message:
-        generationMode === "custom"
+      message: isCase
+        ? "Menyiapkan studi kasus hAIplay…"
+        : generationMode === "custom"
           ? "Menyiapkan generate dari brief topik…"
           : "Menyiapkan generate soal AI…",
     });
     try {
-      const res = await fetch("/api/ai/generate", {
+      const endpoint = isCase
+        ? "/api/ai/generate-study-case"
+        : "/api/ai/generate";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          generationMode,
-          track: generationMode === "standard" ? track : undefined,
-          topic: generationMode === "standard" ? topic : undefined,
-          topicPrompt:
-            generationMode === "custom" ? topicPrompt.trim() : undefined,
-          difficultyMode,
-          answerType,
-        }),
+        body: JSON.stringify(
+          isCase
+            ? {
+                generationMode: "standard",
+                track,
+                topic,
+                difficultyMode,
+                problemCount,
+              }
+            : {
+                generationMode:
+                  generationMode === "custom" ? "custom" : "standard",
+                track: generationMode === "standard" ? track : undefined,
+                topic: generationMode === "standard" ? topic : undefined,
+                topicPrompt:
+                  generationMode === "custom"
+                    ? topicPrompt.trim()
+                    : undefined,
+                difficultyMode,
+                answerType,
+              },
+        ),
       });
 
       const contentType = res.headers.get("content-type") ?? "";
@@ -84,22 +103,45 @@ export function GenerateChallenge() {
         );
       }
 
+      const caseProblemIds: string[] = [];
+      let firstProblemId: string | null = null;
+      let caseTitle = "";
+
       const done = await readGenerationNdjsonStream(
         res,
         (event: GenerationProgressEvent) => {
           setProgress((prev) => applyGenerationProgressEvent(prev, event));
+          if (event.type === "slot_done") {
+            caseProblemIds.push(event.problemId);
+            if (!firstProblemId) firstProblemId = event.problemId;
+          }
+          if (event.type === "status" && event.message) {
+            const idMatch = event.message.match(/firstProblemId=([^;]+)/);
+            if (idMatch?.[1]) firstProblemId = idMatch[1];
+            const titleMatch = event.message.match(
+              /Studi kasus "([^"]+)"/,
+            );
+            if (titleMatch?.[1]) caseTitle = titleMatch[1];
+          }
         },
       );
+
+      const problemId = firstProblemId ?? done.problemId;
+      const caseId = done.planId || "latest";
 
       setProgress((prev) => ({
         ...prev,
         phase: "saving",
         thinking: "",
-        message: "Memuat soal yang baru dibuat…",
-        completedCount: 1,
+        message: isCase
+          ? "Memuat soal pertama dari studi kasus…"
+          : "Memuat soal yang baru dibuat…",
+        completedCount: isCase
+          ? Math.max(prev.completedCount, caseProblemIds.length)
+          : 1,
       }));
 
-      const problemRes = await fetch(`/api/problems/${done.problemId}`);
+      const problemRes = await fetch(`/api/problems/${problemId}`);
       const problemData = await problemRes.json().catch(() => ({}));
       if (!problemRes.ok || !(problemData as { problem?: unknown }).problem) {
         throw new Error(
@@ -111,8 +153,24 @@ export function GenerateChallenge() {
       const problem = (problemData as { problem: { id: string } }).problem;
       sessionStorage.setItem(
         `problem:${problem.id}`,
-        JSON.stringify(problem),
+        JSON.stringify(
+          (problemData as { problem: Record<string, unknown> }).problem,
+        ),
       );
+      if (isCase && caseProblemIds.length > 0) {
+        const bundle = {
+          caseId,
+          caseTitle: caseTitle || undefined,
+          problemIds: caseProblemIds,
+        };
+        sessionStorage.setItem(`study-case:${caseId}`, JSON.stringify(bundle));
+        for (const id of caseProblemIds) {
+          sessionStorage.setItem(
+            `study-case-for:${id}`,
+            JSON.stringify(bundle),
+          );
+        }
+      }
       router.push(`/practice/${problem.id}`);
       router.refresh();
     } catch (e) {
@@ -126,9 +184,9 @@ export function GenerateChallenge() {
     <div className="panel space-y-3 rounded-3xl p-5">
       <h2 className="display text-2xl">Generate tantangan AI</h2>
       <p className="text-sm text-[var(--muted)]">
-        Soal masuk bank AI bersama dan bisa dikerjakan siswa lain. Menggunakan
-        BYOK milikmu jika ada, atau LLM bersama dari admin. Progress & thinking
-        model ditampilkan seperti di Simulasi.
+        Soal masuk bank AI bersama dan bisa dikerjakan siswa lain. Mode{" "}
+        <strong>Studi kasus</strong> membuat 3–5 soal terkait bergaya hAIplay
+        (text-only). Progress & thinking model ditampilkan seperti di Simulasi.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -147,6 +205,14 @@ export function GenerateChallenge() {
           disabled={loading}
         >
           Custom topik
+        </button>
+        <button
+          type="button"
+          className={`btn !px-3 !py-1.5 text-sm ${generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
+          onClick={() => setGenerationMode("study-case")}
+          disabled={loading}
+        >
+          Studi kasus hAIplay
         </button>
       </div>
 
@@ -248,27 +314,44 @@ export function GenerateChallenge() {
               </option>
             ))}
           </select>
-          <select
-            className="select"
-            value={answerType}
-            onChange={(e) => setAnswerType(e.target.value)}
-            disabled={loading}
-          >
-            {["numeric", "short_string", "mcq", "python_output"].map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+          {generationMode === "study-case" ? (
+            <select
+              className="select"
+              value={problemCount}
+              onChange={(e) => setProblemCount(Number(e.target.value))}
+              disabled={loading}
+            >
+              {[3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n} soal terkait
+                </option>
+              ))}
+            </select>
+          ) : (
+            <select
+              className="select"
+              value={answerType}
+              onChange={(e) => setAnswerType(e.target.value)}
+              disabled={loading}
+            >
+              {["numeric", "short_string", "mcq", "python_output"].map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
 
       <button className="btn btn-accent" onClick={generate} disabled={loading}>
         {loading
           ? "Menghasilkan…"
-          : generationMode === "custom"
-            ? "Generate dari brief topik"
-            : "Buat soal baru"}
+          : generationMode === "study-case"
+            ? "Buat studi kasus"
+            : generationMode === "custom"
+              ? "Generate dari brief topik"
+              : "Buat soal baru"}
       </button>
       {loading || (error && progress.message) ? (
         <GenerationProgressPanel state={progress} />

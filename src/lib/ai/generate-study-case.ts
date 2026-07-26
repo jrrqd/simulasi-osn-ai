@@ -1,0 +1,368 @@
+import { streamText } from "ai";
+import { nanoid } from "nanoid";
+import { z } from "zod";
+import { getDb } from "@/db";
+import { generatedProblems } from "@/db/schema";
+import {
+  createUserProvider,
+  generatedProblemSchema,
+  normalizeGeneratedProblem,
+  type GeneratedProblemPayload,
+} from "@/lib/ai/provider";
+import {
+  type DifficultyMode,
+  resolveDifficulty,
+} from "@/lib/ai/difficulty";
+import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
+import { parseGeneratedProblemJson } from "@/lib/ai/parse-json-object";
+import {
+  STUDY_CASE_SYSTEM_PROMPT,
+  buildStudyCaseUserPrompt,
+} from "@/lib/ai/haiplay-style";
+import { verifyGeneratedProblem } from "@/lib/ai/verify-generated-answer";
+import { getLessonsForTopic } from "@/lib/content/load";
+import {
+  TRACKS,
+  TOPIC_LABELS,
+  type Problem,
+  type TrackId,
+} from "@/lib/content/types";
+
+const MAX_ATTEMPTS = 3;
+const MAX_OUTPUT_TOKENS = 8000;
+const ATTEMPT_TIMEOUT_MS = 90_000;
+const THINKING_EMIT_MS = 160;
+const MAX_LESSON_BODY_CHARS = 2200;
+const MAX_LESSONS = 2;
+
+const studyCaseItemSchema = z.object({
+  title: z.coerce.string().min(3).max(240),
+  answerType: z
+    .string()
+    .transform((v) => v.trim().toLowerCase())
+    .pipe(
+      z.enum(["numeric", "short_string", "mcq", "python_output", "multi_part"]),
+    )
+    .catch("numeric"),
+  prompt: z.coerce.string().min(5),
+  answer: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.union([z.string(), z.number()])),
+  ]),
+  tolerance: z.coerce.number().optional(),
+  choices: z.array(z.union([z.string(), z.number()])).optional(),
+  solution: z.coerce.string().min(10),
+});
+
+const studyCaseSchema = z.object({
+  caseTitle: z.coerce.string().min(3).max(240),
+  preamble: z.coerce.string().min(20),
+  track: z.enum(["A", "B", "C", "D"]).catch("B"),
+  topic: z.coerce.string().min(1).max(64),
+  difficulty: z.coerce.number().int().min(1).max(5),
+  problems: z.array(studyCaseItemSchema).min(2).max(6),
+});
+
+function clip(text: string, max: number) {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max).trimEnd()}\n…`;
+}
+
+function buildSyllabusContext(track: TrackId, topic: string): string {
+  const trackMeta = TRACKS[track];
+  const lessons = getLessonsForTopic(track, topic).slice(0, MAX_LESSONS);
+  const allowedTopics = trackMeta.topics
+    .map((t) => `- ${t} (${TOPIC_LABELS[t] ?? t})`)
+    .join("\n");
+
+  if (lessons.length === 0) {
+    return `## Cakupan track ${track} (${trackMeta.name})
+${trackMeta.description}
+
+Topic: ${topic} (${TOPIC_LABELS[topic] ?? topic})
+${allowedTopics}`;
+  }
+
+  const blocks = lessons.map((lesson, i) => {
+    return `### Modul ${i + 1}: ${lesson.title}
+${lesson.summary}
+
+${clip(lesson.body, MAX_LESSON_BODY_CHARS)}`;
+  });
+
+  return `## Cakupan track ${track} (${trackMeta.name})
+${trackMeta.description}
+
+Topic: ${topic} (${TOPIC_LABELS[topic] ?? topic})
+${allowedTopics}
+
+## Materi silabus
+${blocks.join("\n\n")}`;
+}
+
+export type StudyCaseResult = {
+  caseId: string;
+  caseTitle: string;
+  problems: Problem[];
+};
+
+export async function generateAndStoreStudyCase(params: {
+  userId: string;
+  track: TrackId;
+  topic: string;
+  difficultyMode: DifficultyMode;
+  difficulty?: 1 | 2 | 3 | 4 | 5;
+  problemCount?: number;
+  focusPrompt?: string;
+  baseUrl: string;
+  apiKey: string;
+  modelId: string;
+  onProgress?: GenerationProgressHandler;
+}): Promise<StudyCaseResult> {
+  if (!TRACKS[params.track]) throw new Error("Track tidak valid");
+  if (!TRACKS[params.track].topics.includes(params.topic)) {
+    throw new Error(
+      `Topic "${params.topic}" tidak ada di silabus track ${params.track}`,
+    );
+  }
+
+  const difficulty =
+    params.difficulty ?? resolveDifficulty(params.difficultyMode);
+  const problemCount = Math.min(5, Math.max(3, params.problemCount ?? 4));
+  const onProgress = params.onProgress;
+
+  const model = createUserProvider({
+    baseUrl: params.baseUrl,
+    apiKey: params.apiKey,
+    modelId: params.modelId,
+    jsonOutput: false,
+  });
+
+  const syllabus = buildSyllabusContext(params.track, params.topic);
+  const basePrompt = buildStudyCaseUserPrompt({
+    track: params.track,
+    trackName: TRACKS[params.track].name,
+    topic: params.topic,
+    topicLabel: TOPIC_LABELS[params.topic] ?? params.topic,
+    difficulty,
+    problemCount,
+    syllabus,
+    focusPrompt: params.focusPrompt,
+  });
+
+  let parsed: z.infer<typeof studyCaseSchema> | null = null;
+  let lastError: unknown;
+  let previousRaw = "";
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const hadUsableRaw = Boolean(previousRaw.trim());
+    const isRepair = attempt > 0 && hadUsableRaw;
+    const prompt = isRepair
+      ? `Perbaiki menjadi SATU objek JSON STUDI KASUS valid (bukan schema).
+Wajib: caseTitle, preamble, track, topic, difficulty, problems[${problemCount}].
+Track="${params.track}", topic="${params.topic}", difficulty=${difficulty}.
+Setiap item problems: title, answerType, prompt, answer, solution (+ choices jika mcq).
+
+JSON rusak:
+${previousRaw.slice(0, 7000)}`
+      : attempt > 0
+        ? `${basePrompt}
+
+PERINGATAN: respons sebelumnya kosong/invalid. Tulis JSON studi kasus langsung di content.`
+        : basePrompt;
+
+    await onProgress?.({
+      type: "attempt",
+      index: 1,
+      attempt: attempt + 1,
+      maxAttempts: MAX_ATTEMPTS,
+      phase: isRepair ? "repairing" : "generating",
+    });
+
+    let text = "";
+    let reasoning = "";
+
+    try {
+      const result = streamText({
+        model,
+        system: STUDY_CASE_SYSTEM_PROMPT,
+        prompt,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        temperature: attempt === 0 ? 0.45 : 0.15,
+        abortSignal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+      });
+
+      let lastThinkingEmit = 0;
+      for await (const part of result.fullStream) {
+        if (part.type === "reasoning-delta") {
+          reasoning += part.text;
+          const now = Date.now();
+          if (
+            onProgress &&
+            reasoning.length > 0 &&
+            now - lastThinkingEmit >= THINKING_EMIT_MS
+          ) {
+            lastThinkingEmit = now;
+            await onProgress({
+              type: "thinking",
+              index: 1,
+              attempt: attempt + 1,
+              text: reasoning,
+            });
+          }
+        } else if (part.type === "text-delta") {
+          text += part.text;
+        } else if (part.type === "error") {
+          throw new Error(
+            part.error instanceof Error
+              ? part.error.message
+              : "Model AI gagal menghasilkan teks",
+          );
+        }
+      }
+
+      if (onProgress && reasoning.length > 0) {
+        await onProgress({
+          type: "thinking",
+          index: 1,
+          attempt: attempt + 1,
+          text: reasoning,
+        });
+      }
+
+      const finalText = text.trim() || (await result.text).trim();
+      const finalReasoning = reasoning.trim();
+      previousRaw =
+        finalText ||
+        finalReasoning ||
+        [finalReasoning, finalText].filter(Boolean).join("\n");
+
+      if (!previousRaw.trim()) {
+        throw new Error("Model AI mengembalikan respons kosong");
+      }
+
+      await onProgress?.({
+        type: "attempt",
+        index: 1,
+        attempt: attempt + 1,
+        maxAttempts: MAX_ATTEMPTS,
+        phase: "validating",
+      });
+
+      const json = parseGeneratedProblemJson(
+        finalText,
+        finalReasoning,
+        previousRaw,
+      );
+      parsed = studyCaseSchema.parse(json);
+    } catch (err) {
+      lastError = err;
+      parsed = null;
+      if (!previousRaw.trim()) {
+        previousRaw = [text, reasoning].map((s) => s.trim()).find(Boolean) ?? "";
+      }
+    }
+
+    if (parsed) break;
+  }
+
+  if (!parsed) {
+    console.error("[generate-study-case] failed", {
+      track: params.track,
+      topic: params.topic,
+      attemptError:
+        lastError instanceof Error ? lastError.message : String(lastError),
+      rawPreview: previousRaw.slice(0, 400),
+    });
+    throw new Error(
+      "Model AI mengembalikan JSON studi kasus tidak valid. Silakan coba lagi.",
+    );
+  }
+
+  const caseId = `case-${nanoid(10)}`;
+  const preamble = parsed.preamble.trim();
+  const caseTitle = parsed.caseTitle.trim();
+  const problems: Problem[] = [];
+  const db = await getDb();
+
+  for (let i = 0; i < parsed.problems.length; i++) {
+    const item = parsed.problems[i]!;
+    const rawPayload = normalizeGeneratedProblem(
+      generatedProblemSchema.parse({
+        title: item.title,
+        track: params.track,
+        topic: params.topic,
+        difficulty,
+        answerType: item.answerType === "multi_part" ? "short_string" : item.answerType,
+        stem: `${preamble}\n\n${item.prompt.trim()}`,
+        answer: item.answer,
+        tolerance: item.tolerance,
+        choices: item.choices,
+        solution: item.solution,
+        tags: ["haiplay-style", "study-case", caseId],
+      }),
+    );
+
+    const verified = verifyGeneratedProblem(rawPayload, {
+      styleTag: "haiplay-style",
+    });
+    if (!verified.ok) {
+      throw new Error(
+        `Soal studi kasus #${i + 1} gagal verifikasi: ${verified.error}`,
+      );
+    }
+
+    const id = `ai-${nanoid(10)}`;
+    const problem: Problem = {
+      ...verified.payload,
+      id,
+      source: "ai",
+      difficulty: difficulty as 1 | 2 | 3 | 4 | 5,
+      tags: [
+        ...(verified.payload.tags ?? []),
+        `case:${caseId}`,
+        `case-part:${i + 1}`,
+      ],
+    };
+
+    await db.insert(generatedProblems).values({
+      id,
+      userId: params.userId,
+      payload: problem,
+      track: problem.track,
+      topic: problem.topic,
+      difficulty: problem.difficulty,
+      difficultyMode: params.difficultyMode,
+      title: `${caseTitle} — ${problem.title}`,
+    });
+
+    // Keep display title as part title; case title is in DB title for admin lists
+    problems.push({ ...problem, title: problem.title });
+
+    await onProgress?.({
+      type: "question_done",
+      index: i + 1,
+      total: parsed.problems.length,
+      title: problem.title,
+      topic: problem.topic,
+      topicLabel: TOPIC_LABELS[problem.topic] ?? problem.topic,
+    });
+
+    await onProgress?.({
+      type: "slot_done",
+      phase: "slot",
+      planId: caseId,
+      index: i,
+      problemId: id,
+      title: problem.title,
+      topic: problem.topic,
+      topicLabel: TOPIC_LABELS[problem.topic] ?? problem.topic,
+      difficulty: problem.difficulty,
+    });
+  }
+
+  return { caseId, caseTitle, problems };
+}

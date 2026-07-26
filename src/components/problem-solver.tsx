@@ -10,6 +10,7 @@ import {
   difficultyBandTextClass,
   labelDifficultyBand,
 } from "@/lib/ai/difficulty";
+import { StudyCaseNav } from "@/components/study-case-nav";
 
 export function ProblemSolver({
   problem,
@@ -60,6 +61,7 @@ export function ProblemSolver({
 
   return (
     <div className="space-y-5">
+      <StudyCaseNav problemId={problem.id} />
       <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
         <span className="rounded-full bg-white/70 px-3 py-1">
           Track {problem.track}

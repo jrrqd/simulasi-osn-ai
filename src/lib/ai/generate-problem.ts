@@ -15,6 +15,7 @@ import {
 } from "@/lib/ai/difficulty";
 import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
 import { parseGeneratedProblemJson } from "@/lib/ai/parse-json-object";
+import { verifyGeneratedProblem } from "@/lib/ai/verify-generated-answer";
 import { getLessonsForTopic } from "@/lib/content/load";
 import type { Lesson } from "@/lib/content/types";
 import {
@@ -164,7 +165,7 @@ ${params.focusPrompt.trim()}
 `
     : "";
 
-  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS.
+  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS, bergaya studi kasus hAIplay (cerita konkret, hitung-lalu-pilih, text-only).
 
 Track: ${params.track} (${TRACKS[params.track].name})
 Topic: ${params.topic} (${TOPIC_LABELS[params.topic] ?? params.topic})
@@ -177,7 +178,8 @@ Instruksi akhir:
 - Soal harus dapat diselesaikan hanya dengan materi di atas + prasyarat sangat dasar.
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
-- Solusi 3–8 kalimat, plain text (tanpa LaTeX/backslash).
+- Solusi 3–8 kalimat; rumus boleh KaTeX $...$ atau plain text.
+- Tambahkan "haiplay-style" di tags.
 - Balas HANYA satu objek JSON SOAL (bukan JSON Schema).`;
 
   let payload: GeneratedProblemPayload | null = null;
@@ -188,10 +190,10 @@ Instruksi akhir:
     const hadUsableRaw = Boolean(previousRaw.trim());
     const isRepair = attempt > 0 && hadUsableRaw;
     const prompt = isRepair
-      ? `Perbaiki menjadi SATU objek JSON SOAL valid (bukan JSON Schema, tanpa markdown, tanpa LaTeX, tanpa komentar).
+      ? `Perbaiki menjadi SATU objek JSON SOAL valid (bukan JSON Schema, tanpa markdown fence, tanpa komentar).
 Wajib punya field: title, track, topic, difficulty, answerType, stem, answer, solution.
 Track="${params.track}", topic="${params.topic}", difficulty=${difficulty}, answerType="${answerType}".
-Pertahankan isi soal sebisa mungkin.
+KaTeX $...$ boleh; escape backslash ganda di JSON. Pertahankan isi soal sebisa mungkin.
 
 JSON rusak / salah:
 ${previousRaw.slice(0, 5000)}`
@@ -310,18 +312,15 @@ PERINGATAN PERCOBAAN ULANG:
       difficulty,
       answerType: answerType as GeneratedProblemPayload["answerType"],
     };
-    if (payload.answerType === "mcq") {
-      if (!payload.choices || payload.choices.length < 2) {
-        lastError = new Error("Soal MCQ harus punya choices");
-        payload = null;
-        continue;
-      }
-      if (!payload.choices.map(String).includes(String(payload.answer))) {
-        lastError = new Error("Jawaban MCQ harus salah satu choices");
-        payload = null;
-        continue;
-      }
+    const verified = verifyGeneratedProblem(payload, {
+      styleTag: "haiplay-style",
+    });
+    if (!verified.ok) {
+      lastError = new Error(verified.error || "Verifikasi soal gagal");
+      payload = null;
+      continue;
     }
+    payload = verified.payload;
     break;
   }
 
