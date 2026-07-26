@@ -5,12 +5,26 @@ const STAGES: {
   id: CampaignStageId;
   label: string;
   href: string;
-  /** Horizontal shift of the 300%-wide strip (0 / -100% / -200%). */
-  shift: string;
+  src: string;
 }[] = [
-  { id: "belajar", label: "Belajar", href: "/study", shift: "0%" },
-  { id: "latihan", label: "Latihan", href: "/practice", shift: "-100%" },
-  { id: "simulasi", label: "Simulasi", href: "/mock", shift: "-200%" },
+  {
+    id: "belajar",
+    label: "Belajar",
+    href: "/study",
+    src: "/campaign/belajar.gif",
+  },
+  {
+    id: "latihan",
+    label: "Latihan",
+    href: "/practice",
+    src: "/campaign/latihan.gif",
+  },
+  {
+    id: "simulasi",
+    label: "Simulasi",
+    href: "/mock",
+    src: "/campaign/simulasi.gif",
+  },
 ];
 
 function stageStat(stages: CampaignStages, id: CampaignStageId): string {
@@ -58,30 +72,23 @@ export function CampaignEvolution({
           return (
             <div
               key={stage.id}
-              className={`relative overflow-hidden rounded-2xl border bg-black/[0.04] p-2 transition ${
+              className={`relative overflow-hidden rounded-2xl border bg-white/50 p-2 transition ${
                 current
                   ? "border-[var(--accent)] shadow-[0_0_0_1px_rgba(15,110,86,0.25)]"
                   : "border-[var(--line)]"
               } ${unlocked ? "" : "opacity-55"}`}
             >
               <div
-                className={`relative mx-auto aspect-square w-full max-w-[7.5rem] overflow-hidden rounded-xl bg-black ${
+                className={`relative mx-auto flex aspect-square w-full max-w-[7.5rem] items-center justify-center overflow-hidden rounded-xl bg-transparent ${
                   unlocked ? "" : "grayscale"
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element -- GIF strip crop needs free positioning */}
+                {/* eslint-disable-next-line @next/next/no-img-element -- animated GIF with transparency */}
                 <img
-                  src="/campaign/evolution.gif"
+                  src={stage.src}
                   alt=""
-                  className="pointer-events-none absolute inset-y-0 h-full max-w-none select-none"
-                  style={{
-                    width: "300%",
-                    left: stage.shift,
-                  }}
+                  className="pointer-events-none h-[88%] w-[88%] object-contain select-none"
                 />
-                {!unlocked ? (
-                  <div className="absolute inset-0 bg-black/35" aria-hidden />
-                ) : null}
               </div>
               <div className="mt-2 text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
