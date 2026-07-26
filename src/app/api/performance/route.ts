@@ -13,6 +13,7 @@ import { getLessons, getProblems } from "@/lib/content/load";
 import { resolveProblem } from "@/lib/content/shared";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { dayKeyWib } from "@/lib/datetime";
+import { buildCampaignPayload } from "@/lib/campaign-stages";
 
 export async function GET(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -188,12 +189,13 @@ export async function GET(req: NextRequest) {
   const levelsCompleted = allLessons.filter(
     (l) => lessonProgressMap.get(l.id)?.status === "completed",
   ).length;
-  const campaign = {
+  const campaign = buildCampaignPayload({
     levelsCompleted,
     totalLevels: allLessons.length,
     sideQuestAttempts: practiceSummary.attempts,
     sideQuestCorrect: practiceSummary.correct,
-  };
+    completedMocks: submitted.length,
+  });
 
   return Response.json({
     overall: overallMastery(allTopics),

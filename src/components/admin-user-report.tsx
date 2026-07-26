@@ -19,6 +19,8 @@ import {
   formatDateTimeWib,
   formatDateWib,
 } from "@/lib/datetime";
+import { CampaignEvolution } from "@/components/campaign-evolution";
+import type { CampaignStages } from "@/lib/campaign-stages";
 
 type Report = {
   user: {
@@ -58,6 +60,7 @@ type Report = {
     totalLevels: number;
     sideQuestAttempts: number;
     sideQuestCorrect: number;
+    stages: CampaignStages;
   };
   sessionScores: {
     index: number;
@@ -250,46 +253,16 @@ export function AdminUserReport({ userId }: { userId: string }) {
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
             Kampanye belajar
           </p>
-          <h2 className="display text-2xl">Tutorial & side quests</h2>
+          <h2 className="display text-2xl">Evolusi belajar</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Progress modul Belajar (level) dan latihan (side quest) siswa ini.
+            Tahap Belajar → Latihan → Simulasi siswa ini.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl bg-black/[0.03] p-4">
-            <p className="text-xs text-[var(--muted)]">Tutorial levels</p>
-            <p className="display mt-1 text-3xl">
-              {data.campaign?.levelsCompleted ?? 0}/
-              {data.campaign?.totalLevels ?? 0}
-            </p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/10">
-              <div
-                className="h-full rounded-full bg-[var(--accent)]"
-                style={{
-                  width: `${
-                    data.campaign?.totalLevels
-                      ? Math.round(
-                          ((data.campaign.levelsCompleted ?? 0) /
-                            data.campaign.totalLevels) *
-                            100,
-                        )
-                      : 0
-                  }%`,
-                }}
-              />
-            </div>
-          </div>
-          <div className="rounded-2xl bg-black/[0.03] p-4">
-            <p className="text-xs text-[var(--muted)]">Side quest attempts</p>
-            <p className="display mt-1 text-3xl">
-              {data.campaign?.sideQuestCorrect ?? 0}/
-              {data.campaign?.sideQuestAttempts ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              Benar / total attempt latihan
-            </p>
-          </div>
-        </div>
+        {data.campaign?.stages ? (
+          <CampaignEvolution stages={data.campaign.stages} showLinks={false} />
+        ) : (
+          <p className="text-sm text-[var(--muted)]">Belum ada data tahap.</p>
+        )}
       </div>
 
       <div className="panel rounded-3xl p-5">

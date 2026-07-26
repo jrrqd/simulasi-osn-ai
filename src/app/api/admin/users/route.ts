@@ -17,6 +17,7 @@ import {
 import { dayKeyWib } from "@/lib/datetime";
 import { getLessons } from "@/lib/content/load";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
+import { buildCampaignPayload } from "@/lib/campaign-stages";
 
 function submittedMockScores(
   userMocks: (typeof mockSessions.$inferSelect)[],
@@ -185,12 +186,13 @@ export async function GET(req: NextRequest) {
     (l) => lessonProgressMap.get(l.id)?.status === "completed",
   ).length;
   const sideQuestCorrect = practiceAttempts.filter((a) => a.isCorrect).length;
-  const campaign = {
+  const campaign = buildCampaignPayload({
     levelsCompleted,
     totalLevels: allLessons.length,
     sideQuestAttempts: practiceAttempts.length,
     sideQuestCorrect,
-  };
+    completedMocks: submitted.length,
+  });
 
   return Response.json({
     user: {

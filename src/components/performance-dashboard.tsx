@@ -16,6 +16,8 @@ import {
 import Link from "next/link";
 import { masteryFill } from "@/lib/charts/mastery-color";
 import { formatDateTimeWib } from "@/lib/datetime";
+import { CampaignEvolution } from "@/components/campaign-evolution";
+import type { CampaignStages } from "@/lib/campaign-stages";
 
 type Perf = {
   overall: number;
@@ -69,6 +71,7 @@ type Perf = {
     totalLevels: number;
     sideQuestAttempts: number;
     sideQuestCorrect: number;
+    stages: CampaignStages;
   };
   practiceSummary: {
     attempts: number;
@@ -198,60 +201,21 @@ export function PerformanceDashboard() {
       </div>
 
       <div className="panel rounded-3xl p-5">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-              Kampanye belajar
-            </p>
-            <h2 className="display text-2xl">Tutorial & side quests</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Progress modul Belajar (level) dan latihan (side quest).
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/study" className="btn btn-secondary !py-1.5 text-sm">
-              Buka tutorial
-            </Link>
-            <Link href="/practice" className="btn btn-primary !py-1.5 text-sm">
-              Side quests
-            </Link>
-          </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+            Kampanye belajar
+          </p>
+          <h2 className="display text-2xl">Evolusi belajar</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Tahap Belajar → Latihan → Simulasi. Bentuk menyala mengikuti
+            progressmu (tanpa mengunci halaman).
+          </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl bg-black/[0.03] p-4">
-            <p className="text-xs text-[var(--muted)]">Tutorial levels</p>
-            <p className="display mt-1 text-3xl">
-              {data.campaign?.levelsCompleted ?? 0}/
-              {data.campaign?.totalLevels ?? 0}
-            </p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/10">
-              <div
-                className="h-full rounded-full bg-[var(--accent)]"
-                style={{
-                  width: `${
-                    data.campaign?.totalLevels
-                      ? Math.round(
-                          ((data.campaign.levelsCompleted ?? 0) /
-                            data.campaign.totalLevels) *
-                            100,
-                        )
-                      : 0
-                  }%`,
-                }}
-              />
-            </div>
-          </div>
-          <div className="rounded-2xl bg-black/[0.03] p-4">
-            <p className="text-xs text-[var(--muted)]">Side quest attempts</p>
-            <p className="display mt-1 text-3xl">
-              {data.campaign?.sideQuestCorrect ?? 0}/
-              {data.campaign?.sideQuestAttempts ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              Benar / total attempt latihan
-            </p>
-          </div>
-        </div>
+        {data.campaign?.stages ? (
+          <CampaignEvolution stages={data.campaign.stages} showLinks />
+        ) : (
+          <p className="text-sm text-[var(--muted)]">Memuat tahap kampanye…</p>
+        )}
       </div>
 
       <div className="panel rounded-3xl p-5">
