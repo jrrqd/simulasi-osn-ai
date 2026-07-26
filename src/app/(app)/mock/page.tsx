@@ -9,7 +9,11 @@ import {
 } from "@/components/mock-progress-badge";
 import { getUserMockProgress, type MockProgress } from "@/lib/mock-progress";
 import { displayMockTitle } from "@/lib/ai/mock-title";
-import { labelDifficultyMode, type DifficultyMode } from "@/lib/ai/difficulty";
+import {
+  difficultyModeTextClass,
+  labelDifficultyModeBand,
+  parseDifficultyMode,
+} from "@/lib/ai/difficulty";
 
 function MockRow({
   mock,
@@ -23,6 +27,9 @@ function MockRow({
   const done = Boolean(
     progress && (progress.attemptCount > 0 || progress.hasInProgress),
   );
+  const difficultyMode = mock.difficultyMode
+    ? parseDifficultyMode(mock.difficultyMode)
+    : null;
 
   return (
     <div
@@ -42,6 +49,16 @@ function MockRow({
         </p>
         <p className="text-xs text-[var(--muted)]">
           {mock.durationMinutes} mnt · {mock.problemIds.length} soal
+          {difficultyMode ? (
+            <>
+              {" · "}
+              <span
+                className={`font-semibold ${difficultyModeTextClass(difficultyMode)}`}
+              >
+                {labelDifficultyModeBand(difficultyMode)}
+              </span>
+            </>
+          ) : null}
           {metaExtra ? ` · ${metaExtra}` : ""}
         </p>
       </div>
@@ -108,9 +125,7 @@ export default async function MockListPage() {
       <section className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="display text-2xl">Bank Soal Simulasi</h2>
-          <span className="text-xs text-[var(--muted)]">
-            bank soal
-          </span>
+          <span className="text-xs text-[var(--muted)]">bank soal</span>
         </div>
         <div className="space-y-2">
           {official.map((m) => (
@@ -137,14 +152,7 @@ export default async function MockListPage() {
                 key={m.id}
                 mock={m}
                 progress={progressById.get(m.id)}
-                metaExtra={[
-                  m.difficultyMode
-                    ? labelDifficultyMode(m.difficultyMode as DifficultyMode)
-                    : null,
-                  m.creatorName,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
+                metaExtra={m.creatorName || undefined}
               />
             ))}
           </div>
@@ -165,14 +173,7 @@ export default async function MockListPage() {
                 key={m.id}
                 mock={m}
                 progress={progressById.get(m.id)}
-                metaExtra={[
-                  m.difficultyMode
-                    ? labelDifficultyMode(m.difficultyMode as DifficultyMode)
-                    : null,
-                  m.creatorName,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
+                metaExtra={m.creatorName || undefined}
               />
             ))}
           </div>

@@ -72,3 +72,24 @@ export function difficultyBandTextClass(difficulty: number): string {
   if (band === "hard") return "text-[var(--bad)]";
   return "text-[var(--ink)]";
 }
+
+/** Map mock difficultyMode to Mudah / Normal / Sulit display band. */
+export function difficultyModeBand(mode: DifficultyMode): DifficultyBand {
+  if (mode === "easy") return "easy";
+  if (mode === "hard") return "hard";
+  return "normal";
+}
+
+export function labelDifficultyModeBand(mode: DifficultyMode): string {
+  const band = difficultyModeBand(mode);
+  if (band === "easy") return "Mudah";
+  if (band === "hard") return "Sulit";
+  return "Normal";
+}
+
+export function difficultyModeTextClass(mode: DifficultyMode): string {
+  const band = difficultyModeBand(mode);
+  if (band === "easy") return "text-[var(--ok)]";
+  if (band === "hard") return "text-[var(--bad)]";
+  return "text-[var(--ink)]";
+}
