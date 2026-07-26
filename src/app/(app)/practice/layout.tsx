@@ -1,4 +1,4 @@
-import { StudyAssistant } from "@/components/study-assistant";
+import { PracticeAssistant } from "@/components/practice-assistant";
 
 export default function PracticeLayout({
   children,
@@ -8,7 +8,7 @@ export default function PracticeLayout({
   return (
     <>
       {children}
-      <StudyAssistant />
+      <PracticeAssistant />
     </>
   );
 }
