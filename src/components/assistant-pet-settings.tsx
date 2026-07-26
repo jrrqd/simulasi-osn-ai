@@ -55,7 +55,7 @@ export function AssistantPetSettings() {
         <h2 className="display text-2xl">Pet asisten AI</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Pilih maskot animasi untuk tombol chat mengambang di halaman Belajar
-          dan Performa (seperti Clippy).
+          dan Performa.
         </p>
       </div>
 
