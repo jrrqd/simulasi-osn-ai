@@ -15,7 +15,8 @@ import {
   syllabusTopicsFromMastery,
 } from "@/lib/analytics/readiness";
 import { dayKeyWib } from "@/lib/datetime";
-import { getLessons } from "@/lib/content/load";
+import { getLessons, getProblems } from "@/lib/content/load";
+import { countSharedProblems } from "@/lib/content/shared";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { buildCampaignPayload } from "@/lib/campaign-stages";
 
@@ -174,23 +175,29 @@ export async function GET(req: NextRequest) {
     attemptsCount: summary.attemptsCount,
   });
 
-  const [lessonProgressMap, practiceAttempts] = await Promise.all([
-    getUserLessonProgress(userId),
-    db
-      .select()
-      .from(attempts)
-      .where(and(eq(attempts.userId, userId), isNull(attempts.mockSessionId))),
-  ]);
+  const [lessonProgressMap, practiceAttempts, sharedBankCount] =
+    await Promise.all([
+      getUserLessonProgress(userId),
+      db
+        .select()
+        .from(attempts)
+        .where(and(eq(attempts.userId, userId), isNull(attempts.mockSessionId))),
+      countSharedProblems(),
+    ]);
   const allLessons = getLessons();
   const levelsCompleted = allLessons.filter(
     (l) => lessonProgressMap.get(l.id)?.status === "completed",
   ).length;
   const sideQuestCorrect = practiceAttempts.filter((a) => a.isCorrect).length;
+  const sideQuestDone = new Set(practiceAttempts.map((a) => a.problemId)).size;
+  const sideQuestTotal = getProblems().length + sharedBankCount;
   const campaign = buildCampaignPayload({
     levelsCompleted,
     totalLevels: allLessons.length,
     sideQuestAttempts: practiceAttempts.length,
     sideQuestCorrect,
+    sideQuestDone,
+    sideQuestTotal,
     completedMocks: submitted.length,
   });
 

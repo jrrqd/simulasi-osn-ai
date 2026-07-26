@@ -32,7 +32,7 @@ function stageStat(stages: CampaignStages, id: CampaignStageId): string {
     return `${stages.belajar.completed}/${stages.belajar.total} level`;
   }
   if (id === "latihan") {
-    return `${stages.latihan.correct}/${stages.latihan.attempts} quest`;
+    return `${stages.latihan.done}/${stages.latihan.total} quest`;
   }
   return `${stages.simulasi.completedMocks} mock`;
 }

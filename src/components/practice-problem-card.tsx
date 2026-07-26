@@ -10,7 +10,15 @@ function scorePercent(score: number) {
   return Math.round(Math.max(0, Math.min(1, score)) * 100);
 }
 
-function ProgressBadge({ progress }: { progress: ProblemProgress }) {
+function ProgressBadge({ progress }: { progress?: ProblemProgress }) {
+  if (!progress || progress.attemptCount === 0) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-black/[0.04] px-2 py-0.5 text-xs text-[var(--muted)]">
+        Belum dikerjakan
+      </span>
+    );
+  }
+
   const pct = scorePercent(progress.bestScore);
   const tone =
     pct >= 100
@@ -24,12 +32,12 @@ function ProgressBadge({ progress }: { progress: ProblemProgress }) {
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
       title={
         progress.attemptCount > 1
-          ? `Dikerjakan ${progress.attemptCount}× · skor terakhir ${scorePercent(progress.lastScore)}%`
+          ? `Sudah dikerjakan ${progress.attemptCount}× · skor terakhir ${scorePercent(progress.lastScore)}%`
           : "Sudah dikerjakan"
       }
     >
       <Check size={12} strokeWidth={2.5} aria-hidden />
-      {pct >= 100 ? "Selesai" : "Dikerjakan"} · {pct}%
+      Sudah dikerjakan · {pct}%
       {progress.attemptCount > 1 ? (
         <span className="opacity-70">· {progress.attemptCount}×</span>
       ) : null}
@@ -75,9 +83,7 @@ export function PracticeProblemCard({
             </span>
           </p>
         </div>
-        {progress && progress.attemptCount > 0 ? (
-          <ProgressBadge progress={progress} />
-        ) : null}
+        <ProgressBadge progress={progress} />
       </div>
     </Link>
   );

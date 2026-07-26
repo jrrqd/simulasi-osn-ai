@@ -71,11 +71,15 @@ type Perf = {
     totalLevels: number;
     sideQuestAttempts: number;
     sideQuestCorrect: number;
+    sideQuestDone: number;
+    sideQuestTotal: number;
     stages: CampaignStages;
   };
   practiceSummary: {
     attempts: number;
     correct: number;
+    done: number;
+    total: number;
     accuracy: number;
     avgScore: number;
   };
@@ -341,8 +345,15 @@ export function PerformanceDashboard() {
               Riwayat soal latihan yang sudah kamu kerjakan (bukan simulasi).
             </p>
           </div>
-          {data.practiceSummary.attempts > 0 ? (
-            <div className="grid grid-cols-3 gap-3 text-center text-sm">
+          {data.practiceSummary.attempts > 0 ||
+          data.practiceSummary.total > 0 ? (
+            <div className="grid grid-cols-2 gap-3 text-center text-sm sm:grid-cols-4">
+              <div className="rounded-2xl bg-black/[0.03] px-3 py-2">
+                <p className="text-xs text-[var(--muted)]">Coverage</p>
+                <p className="font-semibold tabular-nums">
+                  {data.practiceSummary.done}/{data.practiceSummary.total}
+                </p>
+              </div>
               <div className="rounded-2xl bg-black/[0.03] px-3 py-2">
                 <p className="text-xs text-[var(--muted)]">Attempt</p>
                 <p className="font-semibold">{data.practiceSummary.attempts}</p>
@@ -350,13 +361,17 @@ export function PerformanceDashboard() {
               <div className="rounded-2xl bg-black/[0.03] px-3 py-2">
                 <p className="text-xs text-[var(--muted)]">Akurasi</p>
                 <p className="font-semibold">
-                  {Math.round(data.practiceSummary.accuracy * 100)}%
+                  {data.practiceSummary.attempts > 0
+                    ? `${Math.round(data.practiceSummary.accuracy * 100)}%`
+                    : "—"}
                 </p>
               </div>
               <div className="rounded-2xl bg-black/[0.03] px-3 py-2">
                 <p className="text-xs text-[var(--muted)]">Rata skor</p>
                 <p className="font-semibold">
-                  {Math.round(data.practiceSummary.avgScore * 100)}%
+                  {data.practiceSummary.attempts > 0
+                    ? `${Math.round(data.practiceSummary.avgScore * 100)}%`
+                    : "—"}
                 </p>
               </div>
             </div>

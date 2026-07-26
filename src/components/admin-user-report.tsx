@@ -60,6 +60,8 @@ type Report = {
     totalLevels: number;
     sideQuestAttempts: number;
     sideQuestCorrect: number;
+    sideQuestDone: number;
+    sideQuestTotal: number;
     stages: CampaignStages;
   };
   sessionScores: {

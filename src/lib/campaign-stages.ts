@@ -2,7 +2,13 @@ export type CampaignStageId = "belajar" | "latihan" | "simulasi";
 
 export type CampaignStages = {
   belajar: { unlocked: true; completed: number; total: number };
-  latihan: { unlocked: boolean; correct: number; attempts: number };
+  latihan: {
+    unlocked: boolean;
+    done: number;
+    total: number;
+    correct: number;
+    attempts: number;
+  };
   simulasi: { unlocked: boolean; completedMocks: number };
   current: CampaignStageId;
 };
@@ -12,6 +18,8 @@ export type CampaignPayload = {
   totalLevels: number;
   sideQuestAttempts: number;
   sideQuestCorrect: number;
+  sideQuestDone: number;
+  sideQuestTotal: number;
   stages: CampaignStages;
 };
 
@@ -21,6 +29,8 @@ export function buildCampaignStages(input: {
   totalLevels: number;
   sideQuestAttempts: number;
   sideQuestCorrect: number;
+  sideQuestDone: number;
+  sideQuestTotal: number;
   completedMocks: number;
 }): CampaignStages {
   const belajar = {
@@ -29,14 +39,16 @@ export function buildCampaignStages(input: {
     total: input.totalLevels,
   };
   const latihanUnlocked =
-    input.levelsCompleted >= 1 || input.sideQuestAttempts > 0;
+    input.levelsCompleted >= 1 || input.sideQuestDone > 0;
   const latihan = {
     unlocked: latihanUnlocked,
+    done: input.sideQuestDone,
+    total: input.sideQuestTotal,
     correct: input.sideQuestCorrect,
     attempts: input.sideQuestAttempts,
   };
   const simulasiUnlocked =
-    input.sideQuestAttempts >= 1 || input.completedMocks > 0;
+    input.sideQuestDone >= 1 || input.completedMocks > 0;
   const simulasi = {
     unlocked: simulasiUnlocked,
     completedMocks: input.completedMocks,
@@ -54,6 +66,8 @@ export function buildCampaignPayload(input: {
   totalLevels: number;
   sideQuestAttempts: number;
   sideQuestCorrect: number;
+  sideQuestDone: number;
+  sideQuestTotal: number;
   completedMocks: number;
 }): CampaignPayload {
   return {
@@ -61,6 +75,8 @@ export function buildCampaignPayload(input: {
     totalLevels: input.totalLevels,
     sideQuestAttempts: input.sideQuestAttempts,
     sideQuestCorrect: input.sideQuestCorrect,
+    sideQuestDone: input.sideQuestDone,
+    sideQuestTotal: input.sideQuestTotal,
     stages: buildCampaignStages(input),
   };
 }

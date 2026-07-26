@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { generatedMocks, generatedProblems, user } from "@/db/schema";
 import type { MockExam, Problem } from "@/lib/content/types";
@@ -15,6 +15,14 @@ export async function getGeneratedProblem(id: string): Promise<Problem | null> {
 
 export async function resolveProblem(id: string): Promise<Problem | null> {
   return getProblem(id) ?? (await getGeneratedProblem(id));
+}
+
+export async function countSharedProblems() {
+  const db = await getDb();
+  const [row] = await db
+    .select({ n: count() })
+    .from(generatedProblems);
+  return Number(row?.n ?? 0);
 }
 
 export async function listSharedProblems(params: {
