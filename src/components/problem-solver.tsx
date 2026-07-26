@@ -6,6 +6,10 @@ import { Markdown } from "@/components/markdown";
 import { PythonRunner } from "@/components/python-runner";
 import type { Problem } from "@/lib/content/types";
 import { TOPIC_LABELS } from "@/lib/content/types";
+import {
+  difficultyBandTextClass,
+  labelDifficultyBand,
+} from "@/lib/ai/difficulty";
 
 export function ProblemSolver({
   problem,
@@ -63,8 +67,10 @@ export function ProblemSolver({
         <span className="rounded-full bg-white/70 px-3 py-1">
           {TOPIC_LABELS[problem.topic] ?? problem.topic}
         </span>
-        <span className="rounded-full bg-white/70 px-3 py-1">
-          Diff {problem.difficulty}
+        <span
+          className={`rounded-full bg-white/70 px-3 py-1 font-semibold ${difficultyBandTextClass(problem.difficulty)}`}
+        >
+          {labelDifficultyBand(problem.difficulty)}
         </span>
         {problem.source === "ai" && (
           <span className="rounded-full bg-[rgba(196,92,38,0.15)] px-3 py-1 text-[var(--accent-2)]">

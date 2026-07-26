@@ -119,9 +119,10 @@ export default async function PracticePage({
                 key={p.id}
                 id={p.id}
                 title={p.title}
-                meta={`AI · ${p.track} · ${TOPIC_LABELS[p.topic] ?? p.topic} · D${p.difficulty}${
+                meta={`AI · ${p.track} · ${TOPIC_LABELS[p.topic] ?? p.topic}${
                   p.creatorName ? ` · ${p.creatorName}` : ""
                 }`}
+                difficulty={p.difficulty}
                 progress={progressById.get(p.id)}
               />
             ))}
@@ -137,7 +138,8 @@ export default async function PracticePage({
               key={p.id}
               id={p.id}
               title={p.title}
-              meta={`${p.track} · ${TOPIC_LABELS[p.topic] ?? p.topic} · D${p.difficulty}`}
+              meta={`${p.track} · ${TOPIC_LABELS[p.topic] ?? p.topic}`}
+              difficulty={p.difficulty}
               progress={progressById.get(p.id)}
             />
           ))}

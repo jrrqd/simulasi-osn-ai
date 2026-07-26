@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 import type { ProblemProgress } from "@/lib/attempts";
+import {
+  difficultyBandTextClass,
+  labelDifficultyBand,
+} from "@/lib/ai/difficulty";
 
 function scorePercent(score: number) {
   return Math.round(Math.max(0, Math.min(1, score)) * 100);
@@ -37,11 +41,13 @@ export function PracticeProblemCard({
   id,
   title,
   meta,
+  difficulty,
   progress,
 }: {
   id: string;
   title: string;
   meta: string;
+  difficulty: number;
   progress?: ProblemProgress;
 }) {
   const done = Boolean(progress && progress.attemptCount > 0);
@@ -59,7 +65,15 @@ export function PracticeProblemCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
           <h3 className="font-semibold">{title}</h3>
-          <p className="text-xs text-[var(--muted)]">{meta}</p>
+          <p className="text-xs text-[var(--muted)]">
+            {meta}
+            {" · "}
+            <span
+              className={`font-semibold ${difficultyBandTextClass(difficulty)}`}
+            >
+              {labelDifficultyBand(difficulty)}
+            </span>
+          </p>
         </div>
         {progress && progress.attemptCount > 0 ? (
           <ProgressBadge progress={progress} />

@@ -48,3 +48,27 @@ export function parseDifficultyMode(raw: unknown): DifficultyMode {
 export function labelDifficultyMode(mode: DifficultyMode) {
   return DIFFICULTY_MODES.find((d) => d.value === mode)?.label ?? mode;
 }
+
+/** Library display bands: Mudah / Normal / Sulit. */
+export type DifficultyBand = "easy" | "normal" | "hard";
+
+export function difficultyBand(difficulty: number): DifficultyBand {
+  if (difficulty <= 1) return "easy";
+  if (difficulty <= 3) return "normal";
+  return "hard";
+}
+
+export function labelDifficultyBand(difficulty: number): string {
+  const band = difficultyBand(difficulty);
+  if (band === "easy") return "Mudah";
+  if (band === "hard") return "Sulit";
+  return "Normal";
+}
+
+/** Text color for library difficulty labels. */
+export function difficultyBandTextClass(difficulty: number): string {
+  const band = difficultyBand(difficulty);
+  if (band === "easy") return "text-[var(--ok)]";
+  if (band === "hard") return "text-[var(--bad)]";
+  return "text-[var(--ink)]";
+}
