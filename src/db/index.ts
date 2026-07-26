@@ -216,6 +216,19 @@ async function migratePglite(client: PGlite) {
       updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
       updated_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS countdown_phases (
+      id text PRIMARY KEY,
+      label text NOT NULL,
+      date_label text NOT NULL,
+      at text NOT NULL,
+      ends_at text,
+      sort_order integer NOT NULL DEFAULT 0,
+      enabled boolean NOT NULL DEFAULT true,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS countdown_phases_sort_idx ON countdown_phases(sort_order, at);
   `);
 }
 

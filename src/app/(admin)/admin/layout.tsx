@@ -9,6 +9,7 @@ const adminLinks = [
   { href: "/admin/users", label: "Pengguna" },
   { href: "/admin/problems", label: "Bank soal" },
   { href: "/admin/mocks", label: "Bank simulasi" },
+  { href: "/admin/countdown", label: "Countdown" },
   { href: "/admin/ai", label: "LLM Bersama" },
 ];
 

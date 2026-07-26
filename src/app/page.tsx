@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { EventCountdown } from "@/components/event-countdown";
+import { listPublicCountdownPhases } from "@/lib/countdown-phases";
 import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const session = await getSession();
+  const [session, phases] = await Promise.all([
+    getSession(),
+    listPublicCountdownPhases(),
+  ]);
 
   return (
     <div>
@@ -33,7 +37,7 @@ export default async function HomePage() {
                 berwaktu, pelacak performa, dan tantangan AI.
               </p>
 
-              <EventCountdown />
+              <EventCountdown phases={phases} />
 
               <div className="flex flex-wrap gap-3">
                 <Link

@@ -258,6 +258,27 @@ export const mockOverrides = pgTable("mock_overrides", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+/** Landing-page countdown milestones (admin-managed). */
+export const countdownPhases = pgTable(
+  "countdown_phases",
+  {
+    id: text("id").primaryKey(),
+    label: text("label").notNull(),
+    dateLabel: text("date_label").notNull(),
+    /** ISO-8601 instant, typically WIB (+07:00). */
+    at: text("at").notNull(),
+    endsAt: text("ends_at"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    updatedBy: text("updated_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("countdown_phases_sort_idx").on(t.sortOrder, t.at)],
+);
+
 export const reviewThreads = pgTable("review_threads", {
   id: text("id").primaryKey(),
   userId: text("user_id")

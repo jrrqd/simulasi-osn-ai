@@ -302,13 +302,15 @@ export function AdminUserReport({ userId }: { userId: string }) {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="panel rounded-3xl p-5">
-          <h2 className="display mb-1 text-2xl">Mastery topik</h2>
-          <p className="mb-4 text-xs text-[var(--muted)]">
-            Merah = lemah · hijau = kuat
-          </p>
-          <div className="h-72">
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        <div className="panel flex flex-col rounded-3xl p-5">
+          <div className="mb-4 min-h-[3.25rem]">
+            <h2 className="display text-2xl">Mastery topik</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Merah = lemah · hijau = kuat
+            </p>
+          </div>
+          <div className="h-72 min-h-0 flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topicChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,.08)" />
@@ -328,9 +330,14 @@ export function AdminUserReport({ userId }: { userId: string }) {
           </div>
         </div>
 
-        <div className="panel rounded-3xl p-5">
-          <h2 className="display mb-4 text-2xl">Aktivitas harian</h2>
-          <div className="h-72">
+        <div className="panel flex flex-col rounded-3xl p-5">
+          <div className="mb-4 min-h-[3.25rem]">
+            <h2 className="display text-2xl">Aktivitas harian</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Hijau = attempts · oranye = menit
+            </p>
+          </div>
+          <div className="h-72 min-h-0 flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={activityChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,.08)" />
