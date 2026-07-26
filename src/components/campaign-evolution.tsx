@@ -11,19 +11,19 @@ const STAGES: {
     id: "belajar",
     label: "Belajar",
     href: "/study",
-    src: "/campaign/belajar.gif",
+    src: "/campaign/belajar.webp?v=3",
   },
   {
     id: "latihan",
     label: "Latihan",
     href: "/practice",
-    src: "/campaign/latihan.gif",
+    src: "/campaign/latihan.webp?v=3",
   },
   {
     id: "simulasi",
     label: "Simulasi",
     href: "/mock",
-    src: "/campaign/simulasi.gif",
+    src: "/campaign/simulasi.webp?v=3",
   },
 ];
 
