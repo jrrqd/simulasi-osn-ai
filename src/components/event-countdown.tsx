@@ -5,17 +5,17 @@ import {
   SELEKSI_PHASES,
   resolveSeleksiPhase,
   type SeleksiPhase,
-} from "@/lib/countdown-phases";
+} from "@/lib/seleksi-phases";
 
 export type {
   ActivePhaseState,
   SeleksiPhase,
-} from "@/lib/countdown-phases";
+} from "@/lib/seleksi-phases";
 export {
   SELEKSI_AT,
   SELEKSI_PHASES,
   resolveSeleksiPhase,
-} from "@/lib/countdown-phases";
+} from "@/lib/seleksi-phases";
 
 function parts(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));

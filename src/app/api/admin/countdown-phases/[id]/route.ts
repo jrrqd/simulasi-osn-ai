@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { countdownPhases } from "@/db/schema";
 import { requireApiAdmin, rateLimit } from "@/lib/api";
-import { isValidIsoInstant } from "@/lib/countdown-phases";
+import { isValidIsoInstant } from "@/lib/seleksi-phases";
 
 type Ctx = { params: Promise<{ id: string }> };
 

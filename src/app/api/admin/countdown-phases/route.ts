@@ -4,12 +4,12 @@ import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { countdownPhases } from "@/db/schema";
 import { requireApiAdmin, rateLimit } from "@/lib/api";
+import { listAdminCountdownPhases } from "@/lib/countdown-phases";
 import {
   SELEKSI_PHASES,
   isValidIsoInstant,
-  listAdminCountdownPhases,
   slugifyPhaseId,
-} from "@/lib/countdown-phases";
+} from "@/lib/seleksi-phases";
 
 export async function GET(req: NextRequest) {
   const authResult = await requireApiAdmin(req);
