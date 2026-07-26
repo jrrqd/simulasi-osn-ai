@@ -6,6 +6,10 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Bot, X } from "lucide-react";
 import { AssistantMessageBubble } from "@/components/assistant-message";
+import {
+  AssistantTypingIndicator,
+  shouldShowAssistantTyping,
+} from "@/components/assistant-typing";
 
 function pageHint(pathname: string, focusUserId: string): string {
   if (focusUserId) {
@@ -125,6 +129,9 @@ function AdminAssistantInner() {
                 parts={m.parts}
               />
             ))}
+            {shouldShowAssistantTyping(status, messages) ? (
+              <AssistantTypingIndicator />
+            ) : null}
             {error && (
               <p className="text-sm text-[var(--bad)]">{error.message}</p>
             )}

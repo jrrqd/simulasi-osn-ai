@@ -7,6 +7,10 @@ import { DefaultChatTransport } from "ai";
 import { X } from "lucide-react";
 import { AssistantMessageBubble } from "@/components/assistant-message";
 import {
+  AssistantTypingIndicator,
+  shouldShowAssistantTyping,
+} from "@/components/assistant-typing";
+import {
   AssistantFabIcon,
   assistantFabButtonClass,
   useAssistantPet,
@@ -113,6 +117,9 @@ function PracticeAssistantInner() {
                 parts={m.parts}
               />
             ))}
+            {shouldShowAssistantTyping(status, messages) ? (
+              <AssistantTypingIndicator />
+            ) : null}
             {error && (
               <p className="text-sm text-[var(--bad)]">{error.message}</p>
             )}

@@ -4,6 +4,10 @@ import { FormEvent, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AssistantMessageBubble } from "@/components/assistant-message";
+import {
+  AssistantTypingIndicator,
+  shouldShowAssistantTyping,
+} from "@/components/assistant-typing";
 
 export function ReviewChat({
   problemId,
@@ -45,6 +49,9 @@ export function ReviewChat({
             parts={m.parts}
           />
         ))}
+        {shouldShowAssistantTyping(status, messages) ? (
+          <AssistantTypingIndicator />
+        ) : null}
         {error && (
           <p className="text-sm text-[var(--bad)]">{error.message}</p>
         )}
