@@ -182,7 +182,7 @@ Gambar:
 - JANGAN sertakan figures; buat soal text-only tanpa placeholder {{fig:...}}.
 `;
 
-  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS, bergaya studi kasus hAIplay (cerita konkret, hitung-lalu-pilih).
+  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS, bergaya studi kasus PREDIKSI (cerita konkret, hitung-lalu-pilih).
 
 Track: ${params.track} (${TRACKS[params.track].name})
 Topic: ${params.topic} (${TOPIC_LABELS[params.topic] ?? params.topic})
@@ -197,7 +197,7 @@ Instruksi akhir:
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
 - Solusi 3–8 kalimat; rumus boleh KaTeX $...$ atau plain text.
-- Tambahkan "haiplay-style" di tags.
+- Tambahkan "prediksi-style" di tags.
 - Balas HANYA satu objek JSON SOAL (bukan JSON Schema).`;
 
   let payload: GeneratedProblemPayload | null = null;
@@ -333,7 +333,7 @@ PERINGATAN PERCOBAAN ULANG:
       answerType: answerType as GeneratedProblemPayload["answerType"],
     };
     const verified = verifyGeneratedProblem(payload, {
-      styleTag: "haiplay-style",
+      styleTag: "prediksi-style",
     });
     if (!verified.ok) {
       lastError = new Error(verified.error || "Verifikasi soal gagal");

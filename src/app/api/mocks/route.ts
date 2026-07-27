@@ -9,8 +9,38 @@ import {
   resolveMock,
   resolveProblemsForMock,
 } from "@/lib/content/shared";
+import {
+  emptyIntegrityState,
+  integritySummary,
+  mergeIntegrityUpdate,
+  normalizeIntegrityEvents,
+  type IntegrityState,
+} from "@/lib/exam-integrity";
 import { scoreAnswer } from "@/lib/scoring";
 import { recordAttempt } from "@/lib/attempts";
+
+function sessionIntegrity(session: {
+  integrityEvents?: unknown;
+  integrityViolationCount?: number | null;
+  integrityFlagged?: boolean | null;
+  integrityForcedSubmit?: boolean | null;
+}): IntegrityState {
+  return {
+    events: normalizeIntegrityEvents(session.integrityEvents),
+    violationCount: session.integrityViolationCount ?? 0,
+    flagged: Boolean(session.integrityFlagged),
+    forcedSubmit: Boolean(session.integrityForcedSubmit),
+  };
+}
+
+function integrityColumns(state: IntegrityState) {
+  return {
+    integrityEvents: state.events,
+    integrityViolationCount: state.violationCount,
+    integrityFlagged: state.flagged,
+    integrityForcedSubmit: state.forcedSubmit,
+  };
+}
 
 export async function GET(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -39,12 +69,14 @@ export async function POST(req: NextRequest) {
     orderBy: [desc(mockSessions.startedAt)],
   });
   if (existing) {
+    const integrity = sessionIntegrity(existing);
     return Response.json({
       sessionId: existing.id,
       startedAt: existing.startedAt,
       endsAt: existing.endsAt,
       answers: existing.answers ?? {},
       resumed: true,
+      integrity: integritySummary(integrity),
     });
   }
 
@@ -53,6 +85,7 @@ export async function POST(req: NextRequest) {
   const endsAt = new Date(
     startedAt.getTime() + mock.durationMinutes * 60_000,
   );
+  const integrity = emptyIntegrityState();
   await db.insert(mockSessions).values({
     id,
     userId: authResult.user.id,
@@ -61,6 +94,7 @@ export async function POST(req: NextRequest) {
     answers: {},
     startedAt,
     endsAt,
+    ...integrityColumns(integrity),
   });
 
   return Response.json({
@@ -69,6 +103,7 @@ export async function POST(req: NextRequest) {
     endsAt,
     answers: {},
     resumed: false,
+    integrity: integritySummary(integrity),
   });
 }
 
@@ -77,7 +112,12 @@ export async function PATCH(req: NextRequest) {
   if ("error" in authResult) return authResult.error;
   const body = await req.json();
   const sessionId = String(body.sessionId ?? "");
-  const answers = body.answers ?? {};
+  const hasAnswers = Object.prototype.hasOwnProperty.call(body, "answers");
+  const answers = hasAnswers ? (body.answers ?? {}) : undefined;
+  const integrityPayload =
+    body.integrity && typeof body.integrity === "object"
+      ? body.integrity
+      : null;
 
   const db = await getDb();
   const session = await db.query.mockSessions.findFirst({
@@ -96,12 +136,27 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  const patch: Record<string, unknown> = {};
+  if (hasAnswers) {
+    patch.answers = answers;
+  }
+
+  let integrity = sessionIntegrity(session);
+  if (integrityPayload) {
+    integrity = mergeIntegrityUpdate(integrity, integrityPayload);
+    Object.assign(patch, integrityColumns(integrity));
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return Response.json({ ok: true, integrity: integritySummary(integrity) });
+  }
+
   await db
     .update(mockSessions)
-    .set({ answers })
+    .set(patch)
     .where(eq(mockSessions.id, sessionId));
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, integrity: integritySummary(integrity) });
 }
 
 export async function PUT(req: NextRequest) {
@@ -132,6 +187,25 @@ export async function PUT(req: NextRequest) {
       ? body.answers
       : session.answers;
   const answers = (submittedAnswers ?? {}) as Record<string, unknown>;
+
+  let integrity = sessionIntegrity(session);
+  if (body.integrity && typeof body.integrity === "object") {
+    integrity = mergeIntegrityUpdate(integrity, body.integrity);
+  }
+  if (body.integrityForcedSubmit === true) {
+    integrity = mergeIntegrityUpdate(integrity, {
+      forcedSubmit: true,
+      flagged: true,
+      events: [
+        {
+          type: "forced_submit",
+          at: new Date().toISOString(),
+          detail: "integrity_forced",
+        },
+      ],
+    });
+  }
+
   let earned = 0;
   let correctCount = 0;
   let unansweredCount = 0;
@@ -217,6 +291,7 @@ export async function PUT(req: NextRequest) {
         score: earned,
         maxScore: problems.length,
         submittedAt: new Date(),
+        ...integrityColumns(integrity),
       })
       .where(eq(mockSessions.id, sessionId));
   }
@@ -233,5 +308,6 @@ export async function PUT(req: NextRequest) {
     byTopic,
     breakdown,
     alreadySubmitted: session.status === "submitted",
+    integrity: integritySummary(integrity),
   });
 }

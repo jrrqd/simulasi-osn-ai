@@ -223,16 +223,16 @@ export function buildAiMockPlan(params: {
     difficultyMode: params.difficultyMode,
     count,
     topicLabels: isStudyCase
-      ? ["Studi kasus hAIplay"]
+      ? ["Studi kasus PREDIKSI"]
       : preferred.length > 0
         ? preferred.slice(0, 3).map((t) => TOPIC_LABELS[t] ?? t)
         : undefined,
     topicPrompt: isStudyCase
-      ? "Studi kasus hAIplay"
+      ? "Studi kasus PREDIKSI"
       : params.topicPrompt,
   });
   const description = isStudyCase
-    ? `${count} soal AI dalam paket studi kasus hAIplay terkait (${durationMinutes} menit).`
+    ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
     : params.generationMode === "custom" && params.topicPrompt
       ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
       : `${count} soal AI baru (${durationMinutes} menit). Dibuat otomatis; dapat dikerjakan semua siswa.`;

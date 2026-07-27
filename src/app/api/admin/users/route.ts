@@ -248,6 +248,9 @@ export async function GET(req: NextRequest) {
       maxScore: m.maxScore,
       startedAt: m.startedAt,
       submittedAt: m.submittedAt,
+      integrityFlagged: Boolean(m.integrityFlagged),
+      integrityForcedSubmit: Boolean(m.integrityForcedSubmit),
+      integrityViolationCount: m.integrityViolationCount ?? 0,
     })),
   });
 }

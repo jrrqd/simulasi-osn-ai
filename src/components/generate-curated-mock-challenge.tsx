@@ -127,7 +127,7 @@ export function GenerateCuratedMockChallenge() {
   return (
     <CollapsiblePanel
       title="Susun simulasi curated / AI penuh"
-      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk mode studi kasus hAIplay.`}
+      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk mode studi kasus PREDIKSI.`}
       accent="primary"
     >
       <div className="flex flex-wrap gap-2">
@@ -156,7 +156,7 @@ export function GenerateCuratedMockChallenge() {
         {sourceMode === "curated"
           ? "Memilih & mengurutkan soal dari bank curated (bukan menulis soal baru)."
           : generationMode === "study-case"
-            ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus hAIplay terkait — progress ditampilkan di bawah.`
+            ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus PREDIKSI terkait — progress ditampilkan di bawah.`
             : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
       </p>
 
@@ -184,7 +184,7 @@ export function GenerateCuratedMockChallenge() {
             onClick={() => setGenerationMode("study-case")}
             disabled={loading}
           >
-            Studi kasus hAIplay
+            Studi kasus PREDIKSI
           </button>
         ) : null}
       </div>

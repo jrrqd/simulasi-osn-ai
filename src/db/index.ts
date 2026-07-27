@@ -107,8 +107,16 @@ async function migratePglite(client: PGlite) {
       max_score double precision,
       started_at timestamptz NOT NULL DEFAULT now(),
       ends_at timestamptz NOT NULL,
-      submitted_at timestamptz
+      submitted_at timestamptz,
+      integrity_events jsonb NOT NULL DEFAULT '[]',
+      integrity_violation_count integer NOT NULL DEFAULT 0,
+      integrity_flagged boolean NOT NULL DEFAULT false,
+      integrity_forced_submit boolean NOT NULL DEFAULT false
     );
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS integrity_events jsonb NOT NULL DEFAULT '[]';
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS integrity_violation_count integer NOT NULL DEFAULT 0;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS integrity_flagged boolean NOT NULL DEFAULT false;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS integrity_forced_submit boolean NOT NULL DEFAULT false;
     CREATE INDEX IF NOT EXISTS mock_sessions_user_idx ON mock_sessions(user_id);
     CREATE TABLE IF NOT EXISTS topic_mastery (
       id text PRIMARY KEY,

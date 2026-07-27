@@ -10,9 +10,9 @@ import {
   repairJsonObjectText,
 } from "@/lib/ai/parse-json-object";
 import {
-  HAIPLAY_FEW_SHOT_SINGLE,
-  HAIPLAY_STYLE_RULES,
-} from "@/lib/ai/haiplay-style";
+  PREDIKSI_FEW_SHOT_SINGLE,
+  PREDIKSI_STYLE_RULES,
+} from "@/lib/ai/prediksi-style";
 
 const answerTypeSchema = z.enum([
   "numeric",
@@ -180,7 +180,7 @@ export function assertSafeProviderUrl(baseUrl: string) {
   return url.toString().replace(/\/$/, "");
 }
 
-export const GENERATION_SYSTEM_PROMPT = `Kamu adalah pembuat soal olimpiade AI (EKKA / IOAI Indonesia) untuk siswa SMA/SMK, bergaya studi kasus hAIplay.
+export const GENERATION_SYSTEM_PROMPT = `Kamu adalah pembuat soal olimpiade AI (EKKA / IOAI Indonesia) untuk siswa SMA/SMK, bergaya studi kasus PREDIKSI.
 
 Aturan silabus (WAJIB):
 - Soal HARUS hanya menguji konsep pada track/topic yang diminta.
@@ -189,7 +189,7 @@ Aturan silabus (WAJIB):
 - Jangan buat soal yang butuh library/API/topik di luar cakupan SMA/SMK olimpiade AI pada modul tersebut.
 - Tingkat kesulitan harus sesuai angka difficulty, tetap dalam lingkup materi silabus.
 
-${HAIPLAY_STYLE_RULES}
+${PREDIKSI_STYLE_RULES}
 
 Kualitas soal:
 - Buat soal cerita yang menuntut pemahaman konsep, bukan hafalan.
@@ -206,10 +206,10 @@ PENTING: Balas HANYA dengan satu objek JSON SOAL (bukan JSON Schema), tanpa teks
 - Di dalam string JSON, hindari tanda kutip ganda; untuk kode/contoh pakai kutip tunggal.
 - Escape newline sebagai \\n. Jangan trailing comma. Jangan komentar.
 - Solusi cukup 3–8 kalimat; jangan terlalu panjang.
-- Tambahkan tag "haiplay-style" jika memakai pola studi kasus.
+- Tambahkan tag "prediksi-style" jika memakai pola studi kasus.
 - Field opsional figures: lihat aturan gambar di atas; gunakan {{fig:id}} di stem.
 
-${HAIPLAY_FEW_SHOT_SINGLE}
+${PREDIKSI_FEW_SHOT_SINGLE}
 `;
 
 export const REVIEW_SYSTEM_PROMPT = `Kamu adalah tutor AI untuk siswa yang sedang mereview soal EKKA/OSN AI.

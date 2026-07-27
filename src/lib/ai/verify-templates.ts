@@ -1,7 +1,7 @@
 import { parseNumericInput } from "@/lib/scoring";
 
 /**
- * Lightweight local solvers for common hAIplay compute patterns.
+ * Lightweight local solvers for common PREDIKSI compute patterns.
  * When a pattern matches confidently, overwrite the model answer.
  */
 

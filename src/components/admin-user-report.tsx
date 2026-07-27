@@ -105,6 +105,9 @@ type Report = {
     score: number | null;
     maxScore: number | null;
     startedAt: string;
+    integrityFlagged?: boolean;
+    integrityForcedSubmit?: boolean;
+    integrityViolationCount?: number;
   }[];
 };
 
@@ -405,10 +408,19 @@ export function AdminUserReport({ userId }: { userId: string }) {
           {data.mocks.map((mock) => (
             <div
               key={mock.id}
-              className="flex items-center justify-between border-b border-[var(--line)] py-2"
+              className="flex items-center justify-between gap-3 border-b border-[var(--line)] py-2"
             >
               <span>
                 {mock.mockId} · {formatDateTimeWib(mock.startedAt)}
+                {mock.integrityFlagged ? (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-[var(--bad)]">
+                    Integritas
+                    {typeof mock.integrityViolationCount === "number"
+                      ? ` · ${mock.integrityViolationCount}`
+                      : ""}
+                    {mock.integrityForcedSubmit ? " · auto" : ""}
+                  </span>
+                ) : null}
               </span>
               <span>
                 {mock.status === "submitted" &&

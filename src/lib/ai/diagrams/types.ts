@@ -136,7 +136,7 @@ export type FigureInput = z.infer<typeof figureInputSchema>;
 
 export type ProblemFigure = FigureInput & { svg: string };
 
-/** Topics that usually need a visual in hAIplay-style problems. */
+/** Topics that usually need a visual in PREDIKSI-style problems. */
 export const VISUAL_TOPICS = new Set([
   "supervised-learning",
   "unsupervised-learning",

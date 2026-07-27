@@ -115,6 +115,15 @@ export const mockSessions = pgTable(
     startedAt: timestamp("started_at").notNull().defaultNow(),
     endsAt: timestamp("ends_at").notNull(),
     submittedAt: timestamp("submitted_at"),
+    /** Integrity audit trail for hybrid proctoring during timed mocks. */
+    integrityEvents: jsonb("integrity_events").notNull().default([]),
+    integrityViolationCount: integer("integrity_violation_count")
+      .notNull()
+      .default(0),
+    integrityFlagged: boolean("integrity_flagged").notNull().default(false),
+    integrityForcedSubmit: boolean("integrity_forced_submit")
+      .notNull()
+      .default(false),
   },
   (t) => [index("mock_sessions_user_idx").on(t.userId)],
 );

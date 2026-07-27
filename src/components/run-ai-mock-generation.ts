@@ -37,7 +37,7 @@ export async function runAiMockGeneration(params: {
   onProgress(() => ({
     ...INITIAL_GENERATION_PROGRESS,
     message: isStudyCase
-      ? `Menyusun rencana studi kasus hAIplay (${sizeLabel} soal)…`
+      ? `Menyusun rencana studi kasus PREDIKSI (${sizeLabel} soal)…`
       : request.generationMode === "custom"
         ? `Menyusun rencana ${sizeLabel} soal dari brief topik…`
         : `Menyusun rencana ${sizeLabel} soal AI…`,

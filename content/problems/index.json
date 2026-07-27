@@ -521,7 +521,7 @@
     "solution": "E[jumlah hujan] = 40 · P(H) = 40 · 2/5 = 16.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -537,7 +537,7 @@
     "solution": "Dari P(H|M)=3/5 dan P(H)=2/5 didapat P(M)=1/2, sehingga P(M∩H)=P(H|M)P(M)=3/10. E=40·3/10=12.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -558,7 +558,7 @@
     "solution": "P(M∩¬H)=P(M)-P(M∩H)=1/2-3/10=1/5. P(M|¬H)=(1/5)/(3/5)=1/3.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -579,7 +579,7 @@
     "solution": "P(M|H)=P(M∩H)/P(H)=(3/10)/(2/5)=3/4. Independen: P(M∩U|H)=P(M|H)P(U|H)=(3/4)(2/5)=3/10.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -600,7 +600,7 @@
     "solution": "X~Unif(-4,4), Y~Unif(0,4) independen → E[(X,Y)]=(0,2).",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -621,7 +621,7 @@
     "solution": "Luas kolam=32. Daerah x<y berukuran ∫_0^4 (y+4) dy=24. P=24/32=3/4.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -642,7 +642,7 @@
     "solution": "Arah menuju $(2x+2,2y)$ sama dengan sinar dari pusat homoteti $(-2,0)$ melalui $(x,y)$ hingga tepi. Ekspektasi posisi akhir ≈ (1,3).",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -663,7 +663,7 @@
     "solution": "0,3·5 + 0,7·7 + 0,5 = 1,5 + 4,9 + 0,5 = 6,9.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -684,7 +684,7 @@
     "solution": "Prediksi awal: 4,6; 2,8; 3,6; 4,2; 11,9. Loss per data lalu rata-rata = 0,535.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -705,7 +705,7 @@
     "solution": "Rata-rata (∂ℓ/∂pred)·jarak. Untuk |r|≤1: ∂ℓ/∂pred = pred−aktual; untuk |r|>1: −sign(aktual−pred). Hasil −2,24.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -726,7 +726,7 @@
     "solution": "w1 ← 0,3 − 0,01·(−2,24) = 0,3224 → 0,322.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -747,7 +747,7 @@
     "solution": "Update semua parameter: gradien rata-rata untuk w1,w2,b lalu satu langkah η. L baru ≈ 0,429.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -767,7 +767,7 @@
     "solution": "Target linear pada x,y. a dan c (basis lengkap) cukup; b dan d tidak span ruang yang dibutuhkan.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -787,7 +787,7 @@
     "solution": "x·y≥0 ⇔ ‖x−y‖²≤2 ⇔ ‖x+y‖²≥2. Fitur kuadrat beda/jumlah (b,c) memungkinkan; a bilinear, d tidak ekuivalen ke ambang 2.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -807,7 +807,7 @@
     "solution": "Pada vektor satuan, x·y≥1 hanya jika x=y ⇔ ‖x−y‖²=0 ⇔ ‖x+y‖²=4. Fitur kuadrat (b,c) afine terhadap x·y sehingga cukup; pangkat empat (d) tidak afine terhadap x·y.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -835,7 +835,7 @@
     "solution": "Karena y konstan, keputusan linear di x. a,b,c bisa; d kuadratik tidak cukup umum.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -856,7 +856,7 @@
     "solution": "Batas kelas adalah garis $2x+3y=12$. Satu ambang pada fitur $2x+3y$ memisahkan sempurna (kedalaman 1).",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -877,7 +877,7 @@
     "solution": "Label bergantung kesamaan tanda x dan y ≈ tanda(xy). Satu ambang pada xy cukup.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -898,7 +898,7 @@
     "solution": "Perlu pelembutan (low-pass) agar noise kecil hilang sebelum deteksi tepi. Kernel rata-rata (d).",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -916,7 +916,7 @@
     "solution": "Erode memisahkan kontak tipis segitiga–segi lima; dilate menutup celah persegi; fill mengisi komponen hitam non-terluas (lubang dalam kontur) menjadi bentuk padat terpisah.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -937,7 +937,7 @@
     "solution": "F1 adalah F_β dengan β=1 (precision dan recall seimbang).",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -958,7 +958,7 @@
     "solution": "β<1 memberi bobot lebih pada precision → F0.5.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -979,7 +979,7 @@
     "solution": "Skor tertinggi selain bank adalah uang (12).",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -995,7 +995,7 @@
     "solution": "Target bank; max selain bank = uang → uang dapat 1, menyimpan dapat 0.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1010,7 +1010,7 @@
     "solution": "Setelah estimasi M (least squares pada pasangan), ghfy dipetakan mendekati admc.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1025,7 +1025,7 @@
     "solution": "Setelah estimasi M (least squares pada pasangan), ysbm dipetakan mendekati qbtz.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1040,7 +1040,7 @@
     "solution": "Setelah estimasi M (least squares pada pasangan), hstk dipetakan mendekati xvnm.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1055,7 +1055,7 @@
     "solution": "Setelah estimasi M (least squares pada pasangan), xtja dipetakan mendekati ydds.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1070,7 +1070,7 @@
     "solution": "Setelah estimasi M (least squares pada pasangan), rvji dipetakan mendekati gquw.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1085,7 +1085,7 @@
     "solution": "Setelah estimasi M (least squares pada pasangan), upou dipetakan mendekati jtyl.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1100,7 +1100,7 @@
     "solution": "Setelah estimasi M (least squares pada pasangan), ikwd dipetakan mendekati uxwr.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1115,7 +1115,7 @@
     "solution": "Setelah estimasi M (least squares pada pasangan), dhxr dipetakan mendekati vcrv.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1131,7 +1131,7 @@
     "solution": "House-robber DP: pilihan optimal 10+15+30+10 atau 20+5+30+10 = 65.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   },
   {
@@ -1151,7 +1151,7 @@
     "solution": "Tiga klaster k-means; pusat (terurut absis): (5.25, 14.25), (19.25, 25), (21.25, 10.5) dengan jumlah jarak kuadrat = 24.",
     "tags": [
       "osn26",
-      "haiplay"
+      "prediksi"
     ]
   }
 ]

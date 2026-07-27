@@ -77,7 +77,7 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary="Buat 10 soal baru / 30 menit (batas 2× per jam). Mode studi kasus hAIplay mengelompokkan soal terkait. Untuk 20/40 soal, pakai Generate AI penuh di panel atas."
+      summary="Buat 10 soal baru / 30 menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Untuk 20/40 soal, pakai Generate AI penuh di panel atas."
       accent="accent"
     >
       <div className="flex flex-wrap gap-2">
@@ -103,14 +103,14 @@ export function GenerateMockChallenge() {
           onClick={() => setGenerationMode("study-case")}
           disabled={loading}
         >
-          Studi kasus hAIplay
+          Studi kasus PREDIKSI
         </button>
       </div>
 
       {generationMode === "study-case" ? (
         <p className="text-xs text-[var(--muted)]">
           10 soal disusun dari beberapa studi kasus terkait (text-only, gaya
-          hAIplay).
+          PREDIKSI).
         </p>
       ) : null}
 

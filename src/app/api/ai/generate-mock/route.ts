@@ -434,7 +434,7 @@ export async function POST(req: NextRequest) {
         difficultyMode: session.meta.difficultyMode,
         difficulty: caseSlot.difficulty,
         problemCount: caseSlot.problemCount,
-        focusPrompt: `Paket simulasi studi kasus hAIplay bagian ${caseIndex + 1} dari ${session.cases.length}. Buat tepat ${caseSlot.problemCount} soal terkait.`,
+        focusPrompt: `Paket simulasi studi kasus PREDIKSI bagian ${caseIndex + 1} dari ${session.cases.length}. Buat tepat ${caseSlot.problemCount} soal terkait.`,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -443,7 +443,7 @@ export async function POST(req: NextRequest) {
 
       const problems = [...result.problems.slice(0, caseSlot.problemCount)];
 
-      // Fill short packs with single hAIplay items so the mock still completes.
+      // Fill short packs with single PREDIKSI items so the mock still completes.
       while (problems.length < caseSlot.problemCount) {
         const fillIndex = caseSlot.startIndex + problems.length;
         const slot = session.slots[fillIndex]!;
@@ -456,7 +456,7 @@ export async function POST(req: NextRequest) {
         const filler = await generateSlotProblem({
           userId: authResult.user.id,
           slot,
-          focusPrompt: `Lanjutkan studi kasus "${result.caseTitle}" (soal pelengkap, gaya hAIplay, text-only).`,
+          focusPrompt: `Lanjutkan studi kasus "${result.caseTitle}" (soal pelengkap, gaya PREDIKSI, text-only).`,
           difficultyMode: session.meta.difficultyMode,
           baseUrl: settings.baseUrl,
           apiKey: settings.apiKey,

@@ -1,9 +1,9 @@
 /**
- * hAIplay / EKKA study-case style guidance + few-shot exemplars
+ * PREDIKSI / EKKA study-case style guidance + few-shot exemplars
  * (anonymized from curated p-osn26 bank — not for copying numbers).
  */
 
-export const HAIPLAY_FIGURE_RULES = `Gambar / diagram (opsional, jika includeFigures aktif):
+export const PREDIKSI_FIGURE_RULES = `Gambar / diagram (opsional, jika includeFigures aktif):
 - Boleh menyertakan "figures": array objek { "id", "alt?", "diagram" }.
 - Di stem/preamble, sisipkan placeholder {{fig:ID}} persis di tempat gambar harus muncul.
 - diagram.kind HARUS salah satu: scatter | grid | tree | kernel | bars | table | graph.
@@ -18,7 +18,7 @@ export const HAIPLAY_FIGURE_RULES = `Gambar / diagram (opsional, jika includeFig
 - Jika soal butuh plot/citra/kernel/pohon, WAJIB isi figures + placeholder.
 - Jika soal murni hitungan teks, figures boleh kosong/dihilangkan.`;
 
-export const HAIPLAY_STYLE_RULES = `Gaya soal hAIplay / studi kasus EKKA (WAJIB diikuti):
+export const PREDIKSI_STYLE_RULES = `Gaya soal PREDIKSI / studi kasus EKKA (WAJIB diikuti):
 - Buat soal CERITA konkret (skenario dunia nyata: prediksi cuaca, kurir, kolam, metrik model, attention, embedding, dll).
 - Prefer hitung-lalu-pilih: dataset kecil + aritmetika eksak (peluang, regresi/Huber, GD satu langkah, metrik).
 - Untuk MCQ pecahan, tulis pilihan sebagai string plain seperti "1/3", "3/10", "0,535".
@@ -28,23 +28,23 @@ export const HAIPLAY_STYLE_RULES = `Gaya soal hAIplay / studi kasus EKKA (WAJIB 
 - Soal text-only tetap OK jika tidak butuh visual.
 - JANGAN menyalin contoh few-shot; ganti angka, nama, dan skenario.
 
-${HAIPLAY_FIGURE_RULES}`;
+${PREDIKSI_FIGURE_RULES}`;
 
 /** Compact few-shots for single-problem generation (structure + tone only). */
-export const HAIPLAY_FEW_SHOT_SINGLE = `Contoh gaya (JANGAN disalin angka/skenario; buat soal BARU):
+export const PREDIKSI_FEW_SHOT_SINGLE = `Contoh gaya (JANGAN disalin angka/skenario; buat soal BARU):
 
 Contoh A (numeric, probabilitas):
-{"title":"Ekspektasi kejadian","track":"A","topic":"probabilitas","difficulty":2,"answerType":"numeric","stem":"**Studi kasus: Prediksi cuaca**\\n\\nPeluang hujan $P(H)=2/5$. Asumsikan hari i.i.d.\\n\\nSelama 50 hari, berapa ekspektasi jumlah hari hujan?","answer":20,"tolerance":0,"solution":"E = 50 · (2/5) = 20.","tags":["haiplay-style"]}
+{"title":"Ekspektasi kejadian","track":"A","topic":"probabilitas","difficulty":2,"answerType":"numeric","stem":"**Studi kasus: Prediksi cuaca**\\n\\nPeluang hujan $P(H)=2/5$. Asumsikan hari i.i.d.\\n\\nSelama 50 hari, berapa ekspektasi jumlah hari hujan?","answer":20,"tolerance":0,"solution":"E = 50 · (2/5) = 20.","tags":["prediksi-style"]}
 
 Contoh B (mcq, supervised):
-{"title":"Prediksi model awal","track":"B","topic":"supervised-learning","difficulty":2,"answerType":"mcq","stem":"**Studi kasus: Kurir**\\n\\nModel: prediksi = 0,2·jarak + 0,5·berat + 0,4.\\n\\nPrediksi untuk jarak 4 dan berat 6?","choices":["3,2","4,0","4,2","5,1"],"answer":"4,2","solution":"0,2·4 + 0,5·6 + 0,4 = 0,8 + 3,0 + 0,4 = 4,2.","tags":["haiplay-style"]}
+{"title":"Prediksi model awal","track":"B","topic":"supervised-learning","difficulty":2,"answerType":"mcq","stem":"**Studi kasus: Kurir**\\n\\nModel: prediksi = 0,2·jarak + 0,5·berat + 0,4.\\n\\nPrediksi untuk jarak 4 dan berat 6?","choices":["3,2","4,0","4,2","5,1"],"answer":"4,2","solution":"0,2·4 + 0,5·6 + 0,4 = 0,8 + 3,0 + 0,4 = 4,2.","tags":["prediksi-style"]}
 
 Contoh C (short_string, feature):
-{"title":"Fitur yang cukup","track":"B","topic":"feature-engineering","difficulty":3,"answerType":"short_string","stem":"**Studi kasus: Model alternatif**\\n\\nIngin merepresentasikan keputusan linear pada x1,x2,y1,y2 dengan binary logistic.\\n\\na. [x1,x2]\\nb. [x1,x2,y1,y2]\\nc. [x1·y1,x2·y2]\\n\\nTulis semua huruf yang memungkinkan, dipisah koma (contoh: a,b).","answer":"b","solution":"Keputusan butuh semua komponen; hanya opsi b menyediakan fitur lengkap.","tags":["haiplay-style"]}`;
+{"title":"Fitur yang cukup","track":"B","topic":"feature-engineering","difficulty":3,"answerType":"short_string","stem":"**Studi kasus: Model alternatif**\\n\\nIngin merepresentasikan keputusan linear pada x1,x2,y1,y2 dengan binary logistic.\\n\\na. [x1,x2]\\nb. [x1,x2,y1,y2]\\nc. [x1·y1,x2·y2]\\n\\nTulis semua huruf yang memungkinkan, dipisah koma (contoh: a,b).","answer":"b","solution":"Keputusan butuh semua komponen; hanya opsi b menyediakan fitur lengkap.","tags":["prediksi-style"]}`;
 
-export const STUDY_CASE_SYSTEM_PROMPT = `Kamu adalah pembuat STUDI KASUS olimpiade AI bergaya hAIplay / EKKA untuk SMA/SMK.
+export const STUDY_CASE_SYSTEM_PROMPT = `Kamu adalah pembuat STUDI KASUS olimpiade AI bergaya PREDIKSI / EKKA untuk SMA/SMK.
 
-${HAIPLAY_STYLE_RULES}
+${PREDIKSI_STYLE_RULES}
 
 Struktur keluaran: SATU objek JSON studi kasus (bukan JSON Schema):
 {
@@ -95,7 +95,7 @@ export function buildStudyCaseUserPrompt(params: {
     ? `\nBrief tambahan siswa:\n"""\n${params.focusPrompt.trim()}\n"""\n`
     : "";
 
-  return `Buat SATU studi kasus baru bergaya hAIplay dengan ${params.problemCount} soal terkait.
+  return `Buat SATU studi kasus baru bergaya PREDIKSI dengan ${params.problemCount} soal terkait.
 
 Track: ${params.track} (${params.trackName})
 Topic: ${params.topic} (${params.topicLabel})

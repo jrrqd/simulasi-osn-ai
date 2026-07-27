@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Countdown } from "@/components/countdown";
 import { Markdown } from "@/components/markdown";
+import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
 import {
   TOPIC_LABELS,
   TRACKS,
-  type Problem,
 } from "@/lib/content/types";
+import {
+  INTEGRITY_FLAG_AT,
+  INTEGRITY_FORCE_SUBMIT_AT,
+  type IntegrityState,
+} from "@/lib/exam-integrity";
+import { useExamIntegrity } from "@/hooks/use-exam-integrity";
 
 type Result = {
   score: number;
@@ -31,6 +37,11 @@ type Result = {
       topic: string;
     }
   >;
+  integrity?: {
+    violationCount: number;
+    flagged: boolean;
+    forcedSubmit: boolean;
+  };
 };
 
 function formatDuration(ms: number) {
@@ -47,7 +58,7 @@ export function MockExamClient({
   mockId: string;
   title: string;
   durationMinutes: number;
-  problems: Problem[];
+  problems: ExamFacingProblem[];
 }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<string | null>(null);
@@ -56,6 +67,117 @@ export function MockExamClient({
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
+  const [initialIntegrity, setInitialIntegrity] =
+    useState<Partial<IntegrityState> | null>(null);
+
+  const answersRef = useRef(answers);
+  const submittingRef = useRef(submitting);
+  const sessionIdRef = useRef(sessionId);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+  useEffect(() => {
+    submittingRef.current = submitting;
+  }, [submitting]);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  const persistIntegrity = (state: IntegrityState) => {
+    const id = sessionIdRef.current;
+    if (!id) return;
+    void fetch("/api/mocks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: id,
+        integrity: {
+          events: state.events,
+          violationCount: state.violationCount,
+          flagged: state.flagged,
+          forcedSubmit: state.forcedSubmit,
+        },
+      }),
+    });
+  };
+
+  const submitExam = async (
+    force = false,
+    options?: { integrityForced?: boolean; integrity?: IntegrityState },
+  ) => {
+    const id = sessionIdRef.current;
+    if (!id || submittingRef.current) return;
+    const unanswered = problems.length - answeredCountRef.current;
+    if (
+      !force &&
+      !options?.integrityForced &&
+      !window.confirm(
+        unanswered
+          ? `Masih ada ${unanswered} soal kosong. Tetap akhiri ujian?`
+          : "Akhiri ujian dan tampilkan nilai?",
+      )
+    ) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    const response = await fetch("/api/mocks", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: id,
+        answers: answersRef.current,
+        integrityForcedSubmit: options?.integrityForced === true,
+        integrity: options?.integrity
+          ? {
+              events: options.integrity.events,
+              violationCount: options.integrity.violationCount,
+              flagged: options.integrity.flagged,
+              forcedSubmit: options.integrity.forcedSubmit,
+            }
+          : undefined,
+      }),
+    });
+    const data = await response.json();
+    setSubmitting(false);
+    if (!response.ok) {
+      setError(data.error || "Gagal mengirim jawaban");
+      return;
+    }
+    setResult(data);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const answeredCount = useMemo(
+    () =>
+      problems.reduce(
+        (count, problem) =>
+          answers[problem.id]?.trim() ? count + 1 : count,
+        0,
+      ),
+    [answers, problems],
+  );
+  const answeredCountRef = useRef(answeredCount);
+  useEffect(() => {
+    answeredCountRef.current = answeredCount;
+  }, [answeredCount]);
+
+  const {
+    integrity,
+    showReturnOverlay,
+    dismissOverlay,
+    requestFullscreen,
+  } = useExamIntegrity({
+    enabled: Boolean(sessionId && endsAt && !result),
+    sessionId,
+    initial: initialIntegrity,
+    onPersist: persistIntegrity,
+    onForceSubmit: (state) => {
+      void submitExam(true, { integrityForced: true, integrity: state });
+    },
+  });
 
   useEffect(() => {
     if (!sessionId) return;
@@ -80,19 +202,11 @@ export function MockExamClient({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [result, sessionId]);
 
-  const answeredCount = useMemo(
-    () =>
-      problems.reduce(
-        (count, problem) =>
-          answers[problem.id]?.trim() ? count + 1 : count,
-        0,
-      ),
-    [answers, problems],
-  );
-
   async function start() {
     setStarting(true);
     setError("");
+    // Request while still in the click gesture (best-effort).
+    void requestFullscreen();
     const response = await fetch("/api/mocks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -104,40 +218,12 @@ export function MockExamClient({
       setError(data.error || "Gagal memulai simulasi");
       return;
     }
+    if (data.integrity) {
+      setInitialIntegrity(data.integrity);
+    }
     setSessionId(data.sessionId);
     setEndsAt(data.endsAt);
     setAnswers(data.answers ?? {});
-  }
-
-  async function submit(force = false) {
-    if (!sessionId || submitting) return;
-    const unanswered = problems.length - answeredCount;
-    if (
-      !force &&
-      !window.confirm(
-        unanswered
-          ? `Masih ada ${unanswered} soal kosong. Tetap akhiri ujian?`
-          : "Akhiri ujian dan tampilkan nilai?",
-      )
-    ) {
-      return;
-    }
-
-    setSubmitting(true);
-    setError("");
-    const response = await fetch("/api/mocks", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, answers }),
-    });
-    const data = await response.json();
-    setSubmitting(false);
-    if (!response.ok) {
-      setError(data.error || "Gagal mengirim jawaban");
-      return;
-    }
-    setResult(data);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   if (result) {
@@ -166,6 +252,20 @@ export function MockExamClient({
           <li>AI tutor dinonaktifkan selama ujian.</li>
           <li>Sesi aktif akan dilanjutkan jika halaman sempat tertutup.</li>
           <li>Ujian otomatis dikumpulkan saat waktu habis.</li>
+          <li>
+            Mode layar penuh akan diminta saat mulai. Jangan pindah tab/jendela
+            atau memakai alat eksternal (termasuk ekstensi AI).
+          </li>
+          <li>
+            Pemantauan integritas aktif: meninggalkan halaman ≥1,5 detik
+            dihitung sebagai peringatan. {INTEGRITY_FLAG_AT} peringatan → sesi
+            ditandai; {INTEGRITY_FORCE_SUBMIT_AT} peringatan → ujian dikumpulkan
+            otomatis.
+          </li>
+          <li>
+            Platform web tidak bisa sepenuhnya memblokir ekstensi AI atau
+            perangkat kedua — ini adalah deteksi dan audit, bukan lockdown.
+          </li>
         </ul>
         {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
         <button
@@ -181,6 +281,27 @@ export function MockExamClient({
 
   return (
     <div className="space-y-5">
+      {showReturnOverlay && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
+          <div className="panel max-w-md space-y-4 rounded-3xl p-6 text-center shadow-lg">
+            <h2 className="display text-2xl">Kembali ke ujian</h2>
+            <p className="text-sm text-[var(--muted)]">
+              Kamu meninggalkan halaman simulasi. Ini tercatat sebagai peringatan
+              integritas ({integrity.violationCount}/
+              {INTEGRITY_FORCE_SUBMIT_AT}).
+            </p>
+            {integrity.flagged && (
+              <p className="text-sm font-semibold text-[var(--bad)]">
+                Sesi ini sudah ditandai untuk tinjauan admin.
+              </p>
+            )}
+            <button className="btn btn-primary w-full" onClick={dismissOverlay}>
+              Lanjutkan ujian
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="sticky top-[68px] z-30 rounded-2xl border border-[var(--line)] bg-[rgba(243,239,230,0.95)] p-3 shadow-sm backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -189,11 +310,22 @@ export function MockExamClient({
               Terjawab {answeredCount}/{problems.length} · tersimpan otomatis
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Countdown endsAt={endsAt} onExpire={() => submit(true)} />
+          <div className="flex flex-wrap items-center gap-3">
+            {integrity.violationCount > 0 && (
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  integrity.flagged
+                    ? "bg-red-100 text-[var(--bad)]"
+                    : "bg-amber-100 text-amber-900"
+                }`}
+              >
+                Peringatan: {integrity.violationCount}
+              </span>
+            )}
+            <Countdown endsAt={endsAt} onExpire={() => void submitExam(true)} />
             <button
               className="btn btn-accent"
-              onClick={() => submit(false)}
+              onClick={() => void submitExam(false)}
               disabled={submitting}
             >
               {submitting ? "Mengirim…" : "Akhiri ujian"}
@@ -201,6 +333,13 @@ export function MockExamClient({
           </div>
         </div>
       </div>
+
+      {integrity.flagged && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--bad)]">
+          Sesi ditandai karena terlalu sering meninggalkan halaman. Hasil tetap
+          dinilai, tetapi admin dapat melihat catatan integritas.
+        </p>
+      )}
 
       {error && (
         <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-[var(--bad)]">
@@ -284,7 +423,7 @@ export function MockExamClient({
           ))}
           <button
             className="btn btn-accent w-full"
-            onClick={() => submit(false)}
+            onClick={() => void submitExam(false)}
             disabled={submitting}
           >
             {submitting ? "Mengirim jawaban…" : "Selesai & lihat laporan nilai"}
@@ -310,7 +449,7 @@ function ScoringReport({
   result,
 }: {
   title: string;
-  problems: Problem[];
+  problems: ExamFacingProblem[];
   result: Result;
 }) {
   const trackRows = Object.entries(result.byTrack).sort(([a], [b]) =>
@@ -319,6 +458,7 @@ function ScoringReport({
   const topicRows = Object.entries(result.byTopic).sort(
     ([, a], [, b]) => a.score / a.maxScore - b.score / b.maxScore,
   );
+  const integrity = result.integrity;
 
   return (
     <div className="space-y-6">
@@ -328,6 +468,20 @@ function ScoringReport({
         </p>
         <h1 className="display text-4xl">Hasil {title}</h1>
       </div>
+
+      {integrity?.flagged && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--bad)]">
+          <p className="font-semibold">
+            {integrity.forcedSubmit
+              ? "Ujian dikumpulkan otomatis karena batas peringatan integritas."
+              : "Sesi ditandai catatan integritas."}
+          </p>
+          <p className="mt-1">
+            Peringatan meninggalkan halaman: {integrity.violationCount}. Skor
+            di atas tetap dihitung seperti biasa.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <ExamFact

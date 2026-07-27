@@ -69,7 +69,7 @@ export function GenerateChallenge() {
       total: isCase ? problemCount : 1,
       phase: "planning",
       message: isCase
-        ? "Menyiapkan studi kasus hAIplay…"
+        ? "Menyiapkan studi kasus PREDIKSI…"
         : generationMode === "custom"
           ? "Menyiapkan generate dari brief topik…"
           : "Menyiapkan generate soal AI…",
@@ -197,7 +197,7 @@ export function GenerateChallenge() {
       <h2 className="display text-2xl">Generate tantangan AI</h2>
       <p className="text-sm text-[var(--muted)]">
         Soal masuk bank AI bersama dan bisa dikerjakan siswa lain. Mode{" "}
-        <strong>Studi kasus</strong> membuat 3–5 soal terkait bergaya hAIplay.
+        <strong>Studi kasus</strong> membuat 3–5 soal terkait bergaya PREDIKSI.
         Aktifkan <strong>Sertakan gambar</strong> untuk scatter/grid/kernel/dll
         (dirender akurat dari spek model). Progress & thinking model ditampilkan
         seperti di Simulasi.
@@ -226,7 +226,7 @@ export function GenerateChallenge() {
           onClick={() => setGenerationMode("study-case")}
           disabled={loading}
         >
-          Studi kasus hAIplay
+          Studi kasus PREDIKSI
         </button>
       </div>
 

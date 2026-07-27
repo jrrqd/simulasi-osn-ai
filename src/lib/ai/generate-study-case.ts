@@ -18,7 +18,7 @@ import { parseStudyCaseJson } from "@/lib/ai/parse-json-object";
 import {
   STUDY_CASE_SYSTEM_PROMPT,
   buildStudyCaseUserPrompt,
-} from "@/lib/ai/haiplay-style";
+} from "@/lib/ai/prediksi-style";
 import { verifyGeneratedProblem } from "@/lib/ai/verify-generated-answer";
 import { materializeFigures } from "@/lib/ai/diagrams";
 import { getLessonsForTopic } from "@/lib/content/load";
@@ -391,12 +391,12 @@ PERINGATAN: respons sebelumnya kosong/invalid. Tulis JSON studi kasus langsung d
         tolerance: item.tolerance,
         choices: item.choices,
         solution: item.solution,
-        tags: ["haiplay-style", "study-case", caseId],
+        tags: ["prediksi-style", "study-case", caseId],
       }),
     );
 
     const verified = verifyGeneratedProblem(rawPayload, {
-      styleTag: "haiplay-style",
+      styleTag: "prediksi-style",
     });
     if (!verified.ok) {
       throw new Error(

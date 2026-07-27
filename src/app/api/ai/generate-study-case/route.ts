@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   return createNdjsonStreamResponse(async (send) => {
     await send({
       type: "status",
-      message: "Menyiapkan generate studi kasus hAIplay…",
+      message: "Menyiapkan generate studi kasus PREDIKSI…",
       index: 0,
       total: problemCount,
     });
