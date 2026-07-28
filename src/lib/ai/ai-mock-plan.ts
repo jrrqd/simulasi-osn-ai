@@ -48,7 +48,11 @@ export function aiMockSizeMeta(size: AiMockSize) {
   return AI_MOCK_SIZES.find((s) => s.value === size) ?? AI_MOCK_SIZES[0]!;
 }
 
-export type AiMockAnswerType = "numeric" | "mcq" | "short_string";
+export type AiMockAnswerType =
+  | "numeric"
+  | "mcq"
+  | "short_string"
+  | "python_output";
 
 export type AiMockSlot = {
   index: number;
@@ -126,6 +130,7 @@ const ANSWER_TYPES: AiMockAnswerType[] = [
   "mcq",
   "short_string",
   "numeric",
+  "python_output",
 ];
 
 const TRACK_CYCLE = Object.keys(TRACKS) as TrackId[];

@@ -45,6 +45,20 @@ export function verifyGeneratedProblem(
     };
   }
 
+  if (next.answerType === "python_output") {
+    const starter = next.starterCode?.trim();
+    if (!starter) {
+      return {
+        ok: false,
+        payload: next,
+        warnings,
+        error:
+          "python_output wajib punya starterCode (runner in-exam; jangan minta siswa pindah tab)",
+      };
+    }
+    next.starterCode = starter;
+  }
+
   applyTemplateOverwrite(next, warnings);
 
   if (next.answerType === "mcq") {

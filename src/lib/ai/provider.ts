@@ -13,6 +13,7 @@ import {
   PREDIKSI_FEW_SHOT_SINGLE,
   PREDIKSI_STYLE_RULES,
 } from "@/lib/ai/prediksi-style";
+import { extractPythonStarterFromStem } from "@/lib/ai/exam-python-policy";
 
 const answerTypeSchema = z.enum([
   "numeric",
@@ -73,6 +74,10 @@ export function normalizeGeneratedProblem(
   raw: z.infer<typeof generatedProblemSchema>,
 ): GeneratedProblemPayload {
   const answer = raw.answer;
+  let starterCode = raw.starterCode?.trim() || undefined;
+  if (raw.answerType === "python_output" && !starterCode) {
+    starterCode = extractPythonStarterFromStem(raw.stem);
+  }
   return {
     ...raw,
     title: raw.title.trim().slice(0, 160),
@@ -84,6 +89,7 @@ export function normalizeGeneratedProblem(
           : "false"
         : answer,
     choices: raw.choices?.map(String),
+    starterCode,
     figures: raw.figures,
   };
 }

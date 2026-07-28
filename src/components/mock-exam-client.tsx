@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Countdown } from "@/components/countdown";
 import { Markdown } from "@/components/markdown";
+import { PythonRunner, preloadPyodide } from "@/components/python-runner";
 import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
+import { needsExamPythonRunner } from "@/lib/ai/exam-python-policy";
 import {
   TOPIC_LABELS,
   TRACKS,
@@ -74,6 +76,11 @@ export function MockExamClient({
   const submittingRef = useRef(submitting);
   const sessionIdRef = useRef(sessionId);
 
+  const hasPythonQuestions = useMemo(
+    () => problems.some((p) => needsExamPythonRunner(p)),
+    [problems],
+  );
+
   useEffect(() => {
     answersRef.current = answers;
   }, [answers]);
@@ -83,6 +90,12 @@ export function MockExamClient({
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  useEffect(() => {
+    if (sessionId && hasPythonQuestions) {
+      preloadPyodide();
+    }
+  }, [sessionId, hasPythonQuestions]);
 
   const persistIntegrity = (state: IntegrityState) => {
     const id = sessionIdRef.current;
@@ -254,7 +267,8 @@ export function MockExamClient({
           <li>Ujian otomatis dikumpulkan saat waktu habis.</li>
           <li>
             Mode layar penuh akan diminta saat mulai. Jangan pindah tab/jendela
-            atau memakai alat eksternal (termasuk ekstensi AI).
+            atau memakai alat eksternal (termasuk ekstensi AI). Soal Python
+            memakai runner di dalam ujian — jangan buka IDE di luar halaman.
           </li>
           <li>
             Pemantauan integritas aktif: meninggalkan halaman ≥1,5 detik
@@ -418,6 +432,25 @@ export function MockExamClient({
                   placeholder="Tulis jawaban"
                   autoComplete="off"
                 />
+              )}
+              {needsExamPythonRunner(problem) && (
+                <div className="space-y-2 rounded-2xl border border-[var(--line)] bg-white/50 p-4">
+                  <p className="text-xs text-[var(--muted)]">
+                    Jalankan di sini — jangan pindah tab (integritas aktif).
+                    Output otomatis mengisi kolom jawaban di atas.
+                  </p>
+                  <PythonRunner
+                    initialCode={
+                      problem.starterCode || "# tulis kode\nprint(0)"
+                    }
+                    onOutput={(out) =>
+                      setAnswers((current) => ({
+                        ...current,
+                        [problem.id]: out,
+                      }))
+                    }
+                  />
+                </div>
               )}
             </article>
           ))}
