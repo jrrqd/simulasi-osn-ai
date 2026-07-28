@@ -3,6 +3,11 @@ export const INTEGRITY_FLAG_AT = 3;
 export const INTEGRITY_FORCE_SUBMIT_AT = 5;
 export const INTEGRITY_EVENTS_CAP = 100;
 
+/**
+ * Soft proctoring: only Page Visibility "hidden" (left the tab) starts an
+ * away timer. In-tab blur/focus and Esc-from-fullscreen are permitted.
+ * Legacy event types (blur, fullscreen_exit) may still appear in stored logs.
+ */
 export type IntegrityEventType =
   | "visibility_hidden"
   | "blur"
