@@ -112,6 +112,14 @@ export const mockSessions = pgTable(
     answers: jsonb("answers").notNull().default({}),
     score: doublePrecision("score"),
     maxScore: doublePrecision("max_score"),
+    /** Weighted section summary (OSN AI 2026 scoring). */
+    scoreSummary: jsonb("score_summary"),
+    /** ICPC-style penalty minutes (tie-breaker). */
+    totalAttempts: integer("total_attempts").notNull().default(0),
+    penaltyMinutes: integer("penalty_minutes").notNull().default(0),
+    lastSubmitAt: timestamp("last_submit_at"),
+    /** Per-problem attempt/lock state for live tracker. */
+    penaltyState: jsonb("penalty_state").notNull().default({}),
     startedAt: timestamp("started_at").notNull().defaultNow(),
     endsAt: timestamp("ends_at").notNull(),
     submittedAt: timestamp("submitted_at"),
@@ -126,6 +134,28 @@ export const mockSessions = pgTable(
       .default(false),
   },
   (t) => [index("mock_sessions_user_idx").on(t.userId)],
+);
+
+/** Per-problem submit log for ICPC-style penalty / tie-breaker. */
+export const submissionEvents = pgTable(
+  "submission_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    mockSessionId: text("mock_session_id")
+      .notNull()
+      .references(() => mockSessions.id, { onDelete: "cascade" }),
+    problemId: text("problem_id").notNull(),
+    kind: text("kind").notNull(), // submit | lock
+    correct: boolean("correct"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("submission_events_session_idx").on(t.mockSessionId),
+    index("submission_events_user_idx").on(t.userId),
+  ],
 );
 
 export const topicMastery = pgTable(
@@ -167,6 +197,53 @@ export const lessonProgress = pgTable(
   (t) => [
     uniqueIndex("lesson_progress_user_lesson_uidx").on(t.userId, t.lessonId),
     index("lesson_progress_user_idx").on(t.userId),
+  ],
+);
+
+/** Spaced-repetition state per lesson check-question (SM-2 lite). */
+export const checkAttempts = pgTable(
+  "check_attempts",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    lessonId: text("lesson_id").notNull(),
+    questionId: text("question_id").notNull(),
+    lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+    correctCount: integer("correct_count").notNull().default(0),
+    wrongStreak: integer("wrong_streak").notNull().default(0),
+    ease: doublePrecision("ease").notNull().default(2.5),
+    intervalDays: doublePrecision("interval_days").notNull().default(0),
+    dueAt: timestamp("due_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("check_attempts_user_lesson_q_uidx").on(
+      t.userId,
+      t.lessonId,
+      t.questionId,
+    ),
+    index("check_attempts_user_due_idx").on(t.userId, t.dueAt),
+  ],
+);
+
+/** AI/admin-generated extra check questions for a lesson (soft-deletable). */
+export const generatedLessonChecks = pgTable(
+  "generated_lesson_checks",
+  {
+    id: text("id").primaryKey(),
+    lessonId: text("lesson_id").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    hidden: boolean("hidden").notNull().default(false),
+    createdBy: text("created_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("generated_lesson_checks_lesson_idx").on(t.lessonId),
   ],
 );
 
@@ -248,6 +325,10 @@ export const generatedMocks = pgTable(
     problemIds: jsonb("problem_ids").notNull().$type<string[]>(),
     track: text("track").notNull(),
     kind: text("kind").notNull().default("ai"),
+    penaltyEnabled: boolean("penalty_enabled").notNull().default(true),
+    penaltyMinutesPerWrong: integer("penalty_minutes_per_wrong")
+      .notNull()
+      .default(20),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [

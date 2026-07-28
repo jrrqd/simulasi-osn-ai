@@ -5,7 +5,65 @@ export type AnswerType =
   | "short_string"
   | "multi_part"
   | "python_output"
+  | "codeSpec"
   | "mcq";
+
+/** Strict answer format for numeric short-fill (OSN AI 2026). */
+export type NumericFormat =
+  | "integer"
+  | "decimal"
+  | "space_separated"
+  | "comma_separated";
+
+export type CodeSpecTestCase = {
+  input: string;
+  expectedOutput: string;
+  weight?: number;
+};
+
+export type CodeSpec = {
+  /** Full program containing lockedMarkers open/close. */
+  skeleton: string;
+  lockedMarkers?: { open: string; close: string };
+  /**
+   * Optional 1-based inclusive line ranges that must stay locked.
+   * Preferred enforcement is lockedMarkers; ranges are converted to
+   * markers when markers are missing (see ensureCodeSpecMarkers).
+   */
+  lockedRanges?: [number, number][];
+  /** At least 3 cases for non-legacy coding problems. */
+  testCases: CodeSpecTestCase[];
+  timeLimitMs: number;
+  memoryLimitMb: number;
+  forbiddenImports?: string[];
+};
+
+/** Resolve numericFormat with expectedFormat alias. */
+export function resolveNumericFormat(problem: {
+  numericFormat?: NumericFormat;
+  expectedFormat?: NumericFormat;
+}): NumericFormat | undefined {
+  return problem.numericFormat ?? problem.expectedFormat;
+}
+
+/** Infer multi-box count from answer tokens when format is separated. */
+export function inferNumericPartCount(
+  format: NumericFormat | undefined,
+  answer: string | number | string[] | undefined,
+): number | undefined {
+  if (format !== "space_separated" && format !== "comma_separated") {
+    return undefined;
+  }
+  const sep = format === "space_separated" ? " " : ",";
+  const raw = Array.isArray(answer)
+    ? answer.map(String).join(sep)
+    : String(answer ?? "");
+  const tokens = raw
+    .split(sep)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return tokens.length >= 2 ? tokens.length : undefined;
+}
 
 export type ProblemPart = {
   id: string;
@@ -42,6 +100,48 @@ export type Problem = {
   starterCode?: string;
   /** AI-rendered SVG figures referenced from stem markdown. */
   figures?: ProblemFigure[];
+  /** Strict format for numeric answers (OSN AI 2026). */
+  numericFormat?: NumericFormat;
+  /** Per-question weight (coding default 2, others default 1). */
+  weight?: number;
+  /** Coding with locked skeleton + multi test cases. */
+  codeSpec?: CodeSpec;
+  /**
+   * Alias of numericFormat (plan name: expectedFormat).
+   * Prefer numericFormat; both accepted at load/score time.
+   */
+  expectedFormat?: NumericFormat;
+  /**
+   * Part count for space/comma separated answers (UI multi-box).
+   * Inferred from answer at load when omitted.
+   */
+  numericPartCount?: number;
+  /**
+   * Soft flag for bank items without OSN-2026 fields.
+   * Scored via legacy (forgiving) path.
+   */
+  legacy?: boolean;
+};
+
+/** Mini active-recall item inside a lesson (OSN-aligned formats). */
+export type CheckQuestionAnswerType = "numeric" | "short_string" | "mcq";
+
+export type CheckQuestion = {
+  id: string;
+  prompt: string;
+  answerType: CheckQuestionAnswerType;
+  answer: string | number | string[];
+  choices?: string[];
+  tolerance?: number;
+  /** Optional strict numeric format (OSN AI 2026). */
+  numericFormat?: NumericFormat;
+  explanation: string;
+  difficulty?: 1 | 2 | 3;
+  conceptTags?: string[];
+  hints?: string[];
+  /** Soft-deleted AI/admin extras are filtered at load time. */
+  hidden?: boolean;
+  source?: "curated" | "ai" | "admin";
 };
 
 export type Lesson = {
@@ -51,12 +151,7 @@ export type Lesson = {
   title: string;
   summary: string;
   body: string;
-  checkQuestions: {
-    id: string;
-    prompt: string;
-    answer: string;
-    explanation: string;
-  }[];
+  checkQuestions: CheckQuestion[];
 };
 
 export type MockExam = {
@@ -65,6 +160,10 @@ export type MockExam = {
   description: string;
   durationMinutes: number;
   problemIds: string[];
+  /** ICPC-style wrong-submit penalty as tie-breaker (default true for AI mocks). */
+  penaltyEnabled?: boolean;
+  /** Minutes added per wrong submit on a eventually-solved problem (default 20). */
+  penaltyMinutesPerWrong?: number;
 };
 
 export const TRACKS: Record<
@@ -135,3 +234,27 @@ export const TOPIC_LABELS: Record<string, string> = {
   "tfidf-embedding": "TF-IDF & Embedding",
   "transformer-dasar": "Transformer Dasar",
 };
+
+/** Default weight: coding 2×, everything else 1× (OSN AI 2026). */
+export function defaultProblemWeight(problem: {
+  answerType?: string | null;
+  weight?: number | null;
+  codeSpec?: unknown;
+}): number {
+  if (typeof problem.weight === "number" && Number.isFinite(problem.weight)) {
+    return Math.max(0, problem.weight);
+  }
+  if (problem.answerType === "codeSpec" || problem.codeSpec) return 2;
+  return 1;
+}
+
+export function isCodingProblem(problem: {
+  answerType?: string | null;
+  codeSpec?: unknown;
+}): boolean {
+  return (
+    problem.answerType === "codeSpec" ||
+    Boolean(problem.codeSpec) ||
+    problem.answerType === "python_output"
+  );
+}

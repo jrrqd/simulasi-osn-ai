@@ -1,3 +1,10 @@
+import type {
+  CheckQuestion,
+  CodeSpecTestCase,
+  NumericFormat,
+} from "@/lib/content/types";
+import { assertSkeletonUnlockedOnly } from "@/lib/ai/code-skeleton";
+
 export function normalizeText(value: string) {
   return value
     .trim()
@@ -54,6 +61,92 @@ export function parseNumericInput(raw: string | number): number {
   return Number(compact);
 }
 
+/** Strict token-level format check (OSN AI 2026). */
+export function validateStrictFormat(
+  format: NumericFormat,
+  submitted: string,
+): { ok: boolean; hint?: string } {
+  const raw = String(submitted ?? "");
+  // Reject leading/trailing whitespace mismatches for strict formats
+  if (raw !== raw.trim()) {
+    return {
+      ok: false,
+      hint: "Jangan pakai spasi di awal/akhir jawaban",
+    };
+  }
+
+  switch (format) {
+    case "integer": {
+      if (!/^-?\d+$/.test(raw)) {
+        return {
+          ok: false,
+          hint: 'Format integer: bilangan bulat saja (contoh "25", bukan "25.0")',
+        };
+      }
+      return { ok: true };
+    }
+    case "decimal": {
+      if (!/^-?\d+(\.\d+)?$/.test(raw)) {
+        return {
+          ok: false,
+          hint: 'Format decimal: angka dengan titik (contoh "0.5" atau "3")',
+        };
+      }
+      return { ok: true };
+    }
+    case "space_separated": {
+      if (!raw || /\s{2,}/.test(raw) || raw !== raw.trim()) {
+        return {
+          ok: false,
+          hint: 'Format space_separated: angka dipisah spasi tunggal (contoh "1 2 3")',
+        };
+      }
+      const tokens = raw.split(" ");
+      if (tokens.length < 2) {
+        return {
+          ok: false,
+          hint: "Space-separated butuh minimal 2 angka",
+        };
+      }
+      for (const t of tokens) {
+        if (!/^-?\d+(\.\d+)?$/.test(t)) {
+          return {
+            ok: false,
+            hint: `Token "${t}" bukan angka valid`,
+          };
+        }
+      }
+      return { ok: true };
+    }
+    case "comma_separated": {
+      if (!raw || raw.includes(" ")) {
+        return {
+          ok: false,
+          hint: 'Format comma_separated: angka dipisah koma tanpa spasi (contoh "1,2,3")',
+        };
+      }
+      const tokens = raw.split(",");
+      if (tokens.length < 2) {
+        return {
+          ok: false,
+          hint: "Comma-separated butuh minimal 2 angka",
+        };
+      }
+      for (const t of tokens) {
+        if (!/^-?\d+(\.\d+)?$/.test(t)) {
+          return {
+            ok: false,
+            hint: `Token "${t}" bukan angka valid`,
+          };
+        }
+      }
+      return { ok: true };
+    }
+    default:
+      return { ok: true };
+  }
+}
+
 export function scoreNumeric(
   submitted: string | number,
   expected: number,
@@ -67,6 +160,75 @@ export function scoreNumeric(
   return { correct: ok, score: ok ? 1 : 0 };
 }
 
+/**
+ * Strict numeric scoring when numericFormat is set.
+ * Token-precise compare first; then numeric equality if format matches.
+ */
+export function scoreNumericStrict(params: {
+  submitted: string | number;
+  expected: string | number | string[];
+  format: NumericFormat;
+  tolerance?: number;
+}): { correct: boolean; score: number; formatHint?: string } {
+  const submitted = String(params.submitted ?? "");
+  const formatCheck = validateStrictFormat(params.format, submitted);
+  if (!formatCheck.ok) {
+    return { correct: false, score: 0, formatHint: formatCheck.hint };
+  }
+
+  const expectedRaw = Array.isArray(params.expected)
+    ? params.expected.map(String)
+    : [String(params.expected)];
+
+  // Exact string match against any expected alias (token-precise)
+  if (expectedRaw.some((e) => e === submitted)) {
+    return { correct: true, score: 1 };
+  }
+
+  if (
+    params.format === "space_separated" ||
+    params.format === "comma_separated"
+  ) {
+    const sep = params.format === "space_separated" ? " " : ",";
+    const subTokens = submitted.split(sep);
+    for (const exp of expectedRaw) {
+      const formatOk = validateStrictFormat(params.format, exp);
+      if (!formatOk.ok) continue;
+      const expTokens = exp.split(sep);
+      if (expTokens.length !== subTokens.length) continue;
+      let allMatch = true;
+      for (let i = 0; i < expTokens.length; i++) {
+        const a = Number(subTokens[i]);
+        const b = Number(expTokens[i]);
+        if (!Number.isFinite(a) || !Number.isFinite(b) || a !== b) {
+          allMatch = false;
+          break;
+        }
+      }
+      if (allMatch) return { correct: true, score: 1 };
+    }
+    return { correct: false, score: 0 };
+  }
+
+  // integer / decimal: numeric compare but reject format mismatch already done
+  const expectedNum =
+    typeof params.expected === "number"
+      ? params.expected
+      : parseNumericInput(String(expectedRaw[0]));
+  if (!Number.isFinite(expectedNum)) {
+    return { correct: false, score: 0 };
+  }
+
+  // For integer format, require exact integer equality (no tolerance soft-pass of 25.0)
+  if (params.format === "integer") {
+    const n = Number(submitted);
+    const ok = Number.isInteger(n) && n === expectedNum;
+    return { correct: ok, score: ok ? 1 : 0 };
+  }
+
+  return scoreNumeric(submitted, expectedNum, params.tolerance ?? 0);
+}
+
 export function scoreShortString(
   submitted: string,
   expected: string | string[],
@@ -77,14 +239,125 @@ export function scoreShortString(
   return { correct: ok, score: ok ? 1 : 0 };
 }
 
+/** Format hint for lesson check questions (OSN-aligned). */
+export function validateCheckFormat(
+  question: Pick<CheckQuestion, "answerType" | "numericFormat" | "answer">,
+  submittedAnswer: string,
+): { ok: boolean; hint?: string } {
+  if (question.answerType !== "numeric") return { ok: true };
+  if (question.numericFormat) {
+    return validateStrictFormat(question.numericFormat, submittedAnswer);
+  }
+  // Soft path: must parse as a number (or match string expected)
+  const n = parseNumericInput(submittedAnswer);
+  if (!Number.isFinite(n) && String(question.answer).trim() !== "") {
+    // Allow short exact string matches for legacy numeric answers like "P(A)P(B)"
+    if (typeof question.answer === "string" && !/^-?\d/.test(question.answer)) {
+      return { ok: true };
+    }
+    if (!Number.isFinite(n)) {
+      return { ok: false, hint: "Jawaban harus berupa angka" };
+    }
+  }
+  return { ok: true };
+}
+
+/** Score a lesson check-question (multi-format active recall). */
+export function scoreCheckQuestion(
+  question: CheckQuestion,
+  submittedAnswer: unknown,
+): { correct: boolean; score: number; formatHint?: string } {
+  const submitted = String(submittedAnswer ?? "");
+  const format = validateCheckFormat(question, submitted);
+  if (!format.ok) {
+    return { correct: false, score: 0, formatHint: format.hint };
+  }
+
+  if (question.answerType === "numeric") {
+    if (question.numericFormat) {
+      return scoreNumericStrict({
+        submitted,
+        expected: question.answer,
+        format: question.numericFormat,
+        tolerance: question.tolerance,
+      });
+    }
+    // Legacy / free numeric: try numeric first, fall back to string
+    const expectedNum =
+      typeof question.answer === "number"
+        ? question.answer
+        : parseNumericInput(String(question.answer));
+    if (Number.isFinite(expectedNum)) {
+      return scoreNumeric(submitted, expectedNum, question.tolerance ?? 1e-3);
+    }
+    return scoreShortString(submitted, question.answer as string | string[]);
+  }
+
+  if (question.answerType === "mcq") {
+    return scoreShortString(submitted, question.answer as string | string[]);
+  }
+
+  return scoreShortString(submitted, question.answer as string | string[]);
+}
+
+export type CodeSpecRunResult = {
+  passedWeight: number;
+  totalWeight: number;
+  timedOut?: boolean;
+  memoryExceeded?: boolean;
+  skeletonViolated?: boolean;
+  passedCount?: number;
+  totalCount?: number;
+};
+
+/** Score from client-side test-case runner result (0–1 fraction). */
+export function scoreCodeSpecResult(
+  result: CodeSpecRunResult | null | undefined,
+): { correct: boolean; score: number } {
+  if (!result) return { correct: false, score: 0 };
+  if (result.timedOut || result.memoryExceeded || result.skeletonViolated) {
+    return { correct: false, score: 0 };
+  }
+  const total = result.totalWeight;
+  if (!total || total <= 0) return { correct: false, score: 0 };
+  const ratio = Math.max(0, Math.min(1, result.passedWeight / total));
+  return { correct: ratio === 1, score: ratio };
+}
+
 export function scoreAnswer(params: {
   answerType: string;
   submitted: unknown;
   expected: string | number | string[];
   tolerance?: number;
+  numericFormat?: NumericFormat;
+  /** Alias accepted for plan compatibility. */
+  expectedFormat?: NumericFormat;
+  legacy?: boolean;
+  codeSpecResult?: CodeSpecRunResult | null;
 }) {
-  const { answerType, submitted, expected, tolerance } = params;
+  const {
+    answerType,
+    submitted,
+    expected,
+    tolerance,
+    legacy,
+    codeSpecResult,
+  } = params;
+  const numericFormat = params.numericFormat ?? params.expectedFormat;
+
+  if (answerType === "codeSpec") {
+    return scoreCodeSpecResult(codeSpecResult);
+  }
+
   if (answerType === "numeric") {
+    if (numericFormat && !legacy) {
+      return scoreNumericStrict({
+        submitted: submitted as string | number,
+        expected,
+        format: numericFormat,
+        tolerance,
+      });
+    }
     const expectedNum =
       typeof expected === "number"
         ? expected
@@ -169,4 +442,33 @@ export function scoreProblemParts(
     max,
     details,
   };
+}
+
+/** Normalize stdout for test-case comparison. */
+export function normalizeStdout(raw: string): string {
+  return String(raw ?? "")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n+$/g, "")
+    .trimEnd();
+}
+
+export function compareStdout(actual: string, expected: string): boolean {
+  return normalizeStdout(actual) === normalizeStdout(expected);
+}
+
+export function sumTestCaseWeights(cases: CodeSpecTestCase[]): number {
+  return cases.reduce((sum, c) => sum + (c.weight ?? 1), 0);
+}
+
+export function validateUserCodeAgainstSkeleton(params: {
+  skeleton: string;
+  userCode: string;
+  markers?: { open: string; close: string } | null;
+}): { ok: boolean; error?: string } {
+  return assertSkeletonUnlockedOnly(
+    params.skeleton,
+    params.userCode,
+    params.markers,
+  );
 }

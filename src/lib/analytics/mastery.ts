@@ -76,6 +76,42 @@ export function rankGaps(
     .sort((a, b) => b.gapScore - a.gapScore);
 }
 
+/** Map top gaps → unfinished lessons for study recommendations. */
+export function suggestedLessonsFromGaps(params: {
+  gaps: { topic: string; track: TrackId | string; mastery: number }[];
+  lessons: { id: string; topic: string; track: string; title: string }[];
+  completedLessonIds: Set<string>;
+  limit?: number;
+}) {
+  const limit = params.limit ?? 3;
+  const out: {
+    lessonId: string;
+    title: string;
+    topic: string;
+    track: string;
+    mastery: number;
+  }[] = [];
+  for (const gap of params.gaps) {
+    const candidates = params.lessons.filter(
+      (l) =>
+        l.topic === gap.topic &&
+        !params.completedLessonIds.has(l.id),
+    );
+    for (const lesson of candidates) {
+      if (out.some((o) => o.lessonId === lesson.id)) continue;
+      out.push({
+        lessonId: lesson.id,
+        title: lesson.title,
+        topic: lesson.topic,
+        track: lesson.track,
+        mastery: gap.mastery,
+      });
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}
+
 export function overallMastery(
   items: { mastery: number; attemptsCount: number }[],
 ) {

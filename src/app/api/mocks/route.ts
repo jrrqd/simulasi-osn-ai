@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
-import { mockSessions } from "@/db/schema";
+import { mockSessions, submissionEvents } from "@/db/schema";
 import { requireApiUser } from "@/lib/api";
 import {
   listAllMocks,
@@ -16,8 +16,18 @@ import {
   normalizeIntegrityEvents,
   type IntegrityState,
 } from "@/lib/exam-integrity";
-import { scoreAnswer } from "@/lib/scoring";
+import { scoreMockProblems } from "@/lib/mocks/scoring";
+import { defaultProblemWeight } from "@/lib/content/types";
+import { scoreAnswer, type CodeSpecRunResult } from "@/lib/scoring/index";
 import { recordAttempt } from "@/lib/attempts";
+import {
+  DEFAULT_PENALTY_MINUTES_PER_WRONG,
+  formatPenaltySummary,
+  normalizePenaltyState,
+  recordSubmission,
+  totalAttempts,
+  totalPenaltyMinutes,
+} from "@/lib/exam/penalty";
 
 function sessionIntegrity(session: {
   integrityEvents?: unknown;
@@ -39,6 +49,17 @@ function integrityColumns(state: IntegrityState) {
     integrityViolationCount: state.violationCount,
     integrityFlagged: state.flagged,
     integrityForcedSubmit: state.forcedSubmit,
+  };
+}
+
+function penaltySummaryPayload(state: ReturnType<typeof normalizePenaltyState>) {
+  const summary = formatPenaltySummary(state);
+  return {
+    penaltyState: state,
+    scoreboard: summary.rows,
+    totalAttempts: summary.totalAttempts,
+    penaltyMinutes: summary.penaltyMinutes,
+    solvedCount: summary.solvedCount,
   };
 }
 
@@ -70,6 +91,7 @@ export async function POST(req: NextRequest) {
   });
   if (existing) {
     const integrity = sessionIntegrity(existing);
+    const penaltyState = normalizePenaltyState(existing.penaltyState);
     return Response.json({
       sessionId: existing.id,
       startedAt: existing.startedAt,
@@ -77,6 +99,10 @@ export async function POST(req: NextRequest) {
       answers: existing.answers ?? {},
       resumed: true,
       integrity: integritySummary(integrity),
+      penaltyEnabled: mock.penaltyEnabled !== false,
+      penaltyMinutesPerWrong:
+        mock.penaltyMinutesPerWrong ?? DEFAULT_PENALTY_MINUTES_PER_WRONG,
+      ...penaltySummaryPayload(penaltyState),
     });
   }
 
@@ -94,6 +120,9 @@ export async function POST(req: NextRequest) {
     answers: {},
     startedAt,
     endsAt,
+    penaltyState: {},
+    totalAttempts: 0,
+    penaltyMinutes: 0,
     ...integrityColumns(integrity),
   });
 
@@ -104,6 +133,10 @@ export async function POST(req: NextRequest) {
     answers: {},
     resumed: false,
     integrity: integritySummary(integrity),
+    penaltyEnabled: mock.penaltyEnabled !== false,
+    penaltyMinutesPerWrong:
+      mock.penaltyMinutesPerWrong ?? DEFAULT_PENALTY_MINUTES_PER_WRONG,
+    ...penaltySummaryPayload({}),
   });
 }
 
@@ -112,12 +145,7 @@ export async function PATCH(req: NextRequest) {
   if ("error" in authResult) return authResult.error;
   const body = await req.json();
   const sessionId = String(body.sessionId ?? "");
-  const hasAnswers = Object.prototype.hasOwnProperty.call(body, "answers");
-  const answers = hasAnswers ? (body.answers ?? {}) : undefined;
-  const integrityPayload =
-    body.integrity && typeof body.integrity === "object"
-      ? body.integrity
-      : null;
+  const action = String(body.action ?? "");
 
   const db = await getDb();
   const session = await db.query.mockSessions.findFirst({
@@ -136,9 +164,131 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  // Per-problem graded submit (ICPC-style penalty tracker)
+  if (action === "submit_problem") {
+    const mockMeta = await resolveMock(session.mockId);
+    if (mockMeta?.penaltyEnabled === false) {
+      return Response.json(
+        { error: "Submission penalty tidak aktif untuk simulasi ini" },
+        { status: 400 },
+      );
+    }
+    const problemId = String(body.problemId ?? "");
+    const problems = await resolveProblemsForMock(session.mockId);
+    const problem = problems.find((p) => p.id === problemId);
+    if (!problem) {
+      return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+    }
+
+    const answer = body.answer;
+    const codeResult =
+      body.codeResult && typeof body.codeResult === "object"
+        ? (body.codeResult as CodeSpecRunResult)
+        : undefined;
+
+    const graded = scoreAnswer({
+      answerType: problem.answerType,
+      submitted: answer,
+      expected: (problem.answer ?? "") as string | number | string[],
+      tolerance: problem.tolerance,
+      numericFormat: problem.numericFormat ?? problem.expectedFormat,
+      legacy: problem.legacy,
+      codeSpecResult: codeResult,
+    });
+
+    // ICPC lock only on full solve
+    const isCorrect = graded.correct === true;
+    const minutesFromStart = Math.max(
+      0,
+      Math.floor((Date.now() - session.startedAt.getTime()) / 60_000),
+    );
+    const prevState = normalizePenaltyState(session.penaltyState);
+    const recorded = recordSubmission({
+      state: prevState,
+      problemId,
+      isCorrect,
+      minutesFromStart,
+      penaltyMinutesPerWrong:
+        mockMeta?.penaltyMinutesPerWrong ?? DEFAULT_PENALTY_MINUTES_PER_WRONG,
+    });
+
+    if (!recorded.changed) {
+      return Response.json({
+        ok: true,
+        alreadyLocked: true,
+        correct: recorded.problem.solved,
+        score: graded.score,
+        formatHint:
+          "formatHint" in graded
+            ? (graded as { formatHint?: string }).formatHint
+            : undefined,
+        ...penaltySummaryPayload(recorded.state),
+      });
+    }
+
+    const mergedAnswers = {
+      ...((session.answers as Record<string, unknown>) ?? {}),
+      [problemId]: answer,
+    };
+
+    await db.insert(submissionEvents).values({
+      id: nanoid(),
+      userId: authResult.user.id,
+      mockSessionId: sessionId,
+      problemId,
+      kind: recorded.kind,
+      correct: isCorrect,
+    });
+
+    const attempts = totalAttempts(recorded.state);
+    const penaltyMinutes = totalPenaltyMinutes(recorded.state);
+
+    await db
+      .update(mockSessions)
+      .set({
+        answers: mergedAnswers,
+        penaltyState: recorded.state,
+        totalAttempts: attempts,
+        penaltyMinutes,
+        lastSubmitAt: new Date(),
+      })
+      .where(eq(mockSessions.id, sessionId));
+
+    return Response.json({
+      ok: true,
+      correct: isCorrect,
+      score: graded.score,
+      locked: recorded.problem.solved,
+      problemPenalty: recorded.problem,
+      formatHint:
+        "formatHint" in graded
+          ? (graded as { formatHint?: string }).formatHint
+          : undefined,
+      ...penaltySummaryPayload(recorded.state),
+    });
+  }
+
+  const hasAnswers = Object.prototype.hasOwnProperty.call(body, "answers");
+  const answers = hasAnswers ? (body.answers ?? {}) : undefined;
+  const integrityPayload =
+    body.integrity && typeof body.integrity === "object"
+      ? body.integrity
+      : null;
+
   const patch: Record<string, unknown> = {};
   if (hasAnswers) {
-    patch.answers = answers;
+    // Do not overwrite locked problem answers from autosave
+    const penaltyState = normalizePenaltyState(session.penaltyState);
+    const incoming = (answers ?? {}) as Record<string, unknown>;
+    const current = (session.answers as Record<string, unknown>) ?? {};
+    const merged: Record<string, unknown> = { ...current };
+    for (const [pid, value] of Object.entries(incoming)) {
+      if (penaltyState[pid]?.solved || penaltyState[pid]?.lockedAt) {
+        continue;
+      }
+      merged[pid] = value;
+    }
+    patch.answers = merged;
   }
 
   let integrity = sessionIntegrity(session);
@@ -148,7 +298,11 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (Object.keys(patch).length === 0) {
-    return Response.json({ ok: true, integrity: integritySummary(integrity) });
+    return Response.json({
+      ok: true,
+      integrity: integritySummary(integrity),
+      ...penaltySummaryPayload(normalizePenaltyState(session.penaltyState)),
+    });
   }
 
   await db
@@ -156,7 +310,11 @@ export async function PATCH(req: NextRequest) {
     .set(patch)
     .where(eq(mockSessions.id, sessionId));
 
-  return Response.json({ ok: true, integrity: integritySummary(integrity) });
+  return Response.json({
+    ok: true,
+    integrity: integritySummary(integrity),
+    ...penaltySummaryPayload(normalizePenaltyState(session.penaltyState)),
+  });
 }
 
 export async function PUT(req: NextRequest) {
@@ -187,6 +345,10 @@ export async function PUT(req: NextRequest) {
       ? body.answers
       : session.answers;
   const answers = (submittedAnswers ?? {}) as Record<string, unknown>;
+  const codeResultsRaw =
+    body.codeResults && typeof body.codeResults === "object"
+      ? (body.codeResults as Record<string, CodeSpecRunResult>)
+      : {};
 
   let integrity = sessionIntegrity(session);
   if (body.integrity && typeof body.integrity === "object") {
@@ -206,25 +368,6 @@ export async function PUT(req: NextRequest) {
     });
   }
 
-  let earned = 0;
-  let correctCount = 0;
-  let unansweredCount = 0;
-  const breakdown: Record<
-    string,
-    {
-      correct: boolean;
-      score: number;
-      expected: unknown;
-      submitted: unknown;
-      track: string;
-      topic: string;
-    }
-  > = {};
-  const byTrack: Record<string, { score: number; maxScore: number }> = {};
-  const byTopic: Record<string, { score: number; maxScore: number }> = {};
-
-  // Use one clock for elapsed time. Cap by planned mock duration when endsAt
-  // is valid; if endsAt is corrupt (e.g. tz mismatch), fall back to mock meta.
   const startedMs = session.startedAt.getTime();
   const rawElapsedMs = Math.max(0, Date.now() - startedMs);
   const plannedMs = session.endsAt.getTime() - startedMs;
@@ -233,37 +376,19 @@ export async function PUT(req: NextRequest) {
   const elapsedMs = Math.min(rawElapsedMs, capMs);
   const durationPerQuestion = Math.round(elapsedMs / problems.length);
 
-  for (const p of problems) {
-    const submitted = answers[p.id];
-    const unanswered =
-      submitted === undefined ||
-      submitted === null ||
-      String(submitted).trim() === "";
-    const r = scoreAnswer({
-      answerType: p.answerType,
-      submitted,
-      expected: p.answer as string | number | string[],
-      tolerance: p.tolerance,
-    });
-    breakdown[p.id] = {
-      correct: r.correct,
-      score: r.score,
-      expected: p.answer,
-      submitted: submitted ?? "",
-      track: p.track,
-      topic: p.topic,
-    };
-    earned += r.score;
-    if (r.correct) correctCount += 1;
-    if (unanswered) unansweredCount += 1;
-    byTrack[p.track] ??= { score: 0, maxScore: 0 };
-    byTrack[p.track].score += r.score;
-    byTrack[p.track].maxScore += 1;
-    byTopic[p.topic] ??= { score: 0, maxScore: 0 };
-    byTopic[p.topic].score += r.score;
-    byTopic[p.topic].maxScore += 1;
+  const scored = scoreMockProblems({
+    problems,
+    answers,
+    codeResults: codeResultsRaw,
+  });
 
-    if (session.status !== "submitted") {
+  const penaltyState = normalizePenaltyState(session.penaltyState);
+  const penaltyPayload = penaltySummaryPayload(penaltyState);
+
+  if (session.status !== "submitted") {
+    for (const p of problems) {
+      const detail = scored.breakdown[p.id]!;
+      const weight = defaultProblemWeight(p);
       await recordAttempt({
         userId: authResult.user.id,
         problemId: p.id,
@@ -272,24 +397,26 @@ export async function PUT(req: NextRequest) {
         topic: p.topic,
         difficulty: p.difficulty,
         answerType: p.answerType,
-        submittedAnswer: submitted ?? "",
-        isCorrect: r.correct,
-        score: r.score,
-        maxScore: 1,
+        submittedAnswer: answers[p.id] ?? "",
+        isCorrect: detail.correct,
+        score: detail.weightedScore,
+        maxScore: weight,
         durationMs: durationPerQuestion,
         mockSessionId: sessionId,
       });
     }
-  }
 
-  if (session.status !== "submitted") {
     await db
       .update(mockSessions)
       .set({
         status: "submitted",
         answers,
-        score: earned,
-        maxScore: problems.length,
+        score: scored.summary.earnedWeight,
+        maxScore: scored.summary.totalWeight,
+        scoreSummary: scored.summary,
+        totalAttempts: penaltyPayload.totalAttempts,
+        penaltyMinutes: penaltyPayload.penaltyMinutes,
+        penaltyState,
         submittedAt: new Date(),
         ...integrityColumns(integrity),
       })
@@ -297,17 +424,21 @@ export async function PUT(req: NextRequest) {
   }
 
   return Response.json({
-    score: earned,
-    maxScore: problems.length,
-    percentage: Math.round((earned / problems.length) * 10000) / 100,
-    correctCount,
-    incorrectCount: problems.length - correctCount - unansweredCount,
-    unansweredCount,
+    score: scored.summary.earnedWeight,
+    maxScore: scored.summary.totalWeight,
+    percentage: scored.summary.percentage,
+    correctCount: scored.correctCount,
+    incorrectCount:
+      problems.length - scored.correctCount - scored.unansweredCount,
+    unansweredCount: scored.unansweredCount,
     elapsedMs,
-    byTrack,
-    byTopic,
-    breakdown,
+    byTrack: scored.byTrack,
+    byTopic: scored.byTopic,
+    breakdown: scored.breakdown,
+    summary: scored.summary,
     alreadySubmitted: session.status === "submitted",
     integrity: integritySummary(integrity),
+    penaltyEnabled: mockMeta?.penaltyEnabled !== false,
+    ...penaltyPayload,
   });
 }

@@ -157,6 +157,12 @@ type Report = {
     sideQuestTotal: number;
     stages: CampaignStages;
   };
+  checkConcept?: {
+    questionsTouched: number;
+    correctCount: number;
+    avgEase: number;
+    dueNow: number;
+  };
   sessionScores: {
     index: number;
     id: string;
@@ -579,6 +585,35 @@ export function AdminUserReport({ userId }: { userId: string }) {
           <p className="text-sm text-[var(--muted)]">Belum ada data tahap.</p>
         )}
       </div>
+
+      {data.checkConcept ? (
+        <div className="panel rounded-3xl p-5">
+          <h2 className="display mb-1 text-2xl">Cek konsep (SRS)</h2>
+          <p className="mb-4 text-sm text-[var(--muted)]">
+            Active recall di modul belajar — benar menambah mastery topik.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl bg-black/[0.03] px-3 py-2 text-center">
+              <p className="text-xs text-[var(--muted)]">Soal disentuh</p>
+              <p className="font-semibold">{data.checkConcept.questionsTouched}</p>
+            </div>
+            <div className="rounded-2xl bg-black/[0.03] px-3 py-2 text-center">
+              <p className="text-xs text-[var(--muted)]">Total benar</p>
+              <p className="font-semibold">{data.checkConcept.correctCount}</p>
+            </div>
+            <div className="rounded-2xl bg-black/[0.03] px-3 py-2 text-center">
+              <p className="text-xs text-[var(--muted)]">Avg ease</p>
+              <p className="font-semibold">
+                {data.checkConcept.avgEase.toFixed(2)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-black/[0.03] px-3 py-2 text-center">
+              <p className="text-xs text-[var(--muted)]">Due sekarang</p>
+              <p className="font-semibold">{data.checkConcept.dueNow}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="panel rounded-3xl p-5">
         <h2 className="display mb-1 text-2xl">Skor per sesi mock</h2>

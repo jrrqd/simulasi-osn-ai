@@ -4,6 +4,12 @@ import {
   upsertLessonProgress,
 } from "@/lib/lesson-progress";
 import { getLesson } from "@/lib/content/load";
+import {
+  getLessonCheckQuestions,
+  getUserCheckAttempts,
+  recordCheckAttempt,
+} from "@/lib/lesson-checks";
+import { recordAttempt } from "@/lib/attempts";
 
 export async function GET(req: Request) {
   const authResult = await requireApiUser(req);
@@ -34,13 +40,15 @@ export async function POST(req: Request) {
     lessonId?: unknown;
     checksPassed?: unknown;
     complete?: unknown;
+    checkResult?: { questionId?: unknown; correct?: unknown };
   } | null;
 
   if (!body || typeof body.lessonId !== "string" || !body.lessonId.trim()) {
     return Response.json({ error: "lessonId wajib" }, { status: 400 });
   }
 
-  if (!getLesson(body.lessonId)) {
+  const lesson = getLesson(body.lessonId);
+  if (!lesson) {
     return Response.json({ error: "Modul tidak ditemukan" }, { status: 404 });
   }
 
@@ -60,14 +68,93 @@ export async function POST(req: Request) {
     }
   }
 
+  let srs: {
+    questionId: string;
+    wrongStreak: number;
+    dueAt: string;
+  } | null = null;
+
   try {
+    const checkResult = body.checkResult;
+    if (
+      checkResult &&
+      typeof checkResult.questionId === "string" &&
+      typeof checkResult.correct === "boolean"
+    ) {
+      const questions = await getLessonCheckQuestions(body.lessonId);
+      const q = questions.find((x) => x.id === checkResult.questionId);
+      const row = await recordCheckAttempt({
+        userId: authResult.user.id,
+        lessonId: body.lessonId,
+        questionId: checkResult.questionId,
+        correct: checkResult.correct,
+      });
+      srs = {
+        questionId: row.questionId,
+        wrongStreak: row.wrongStreak,
+        dueAt: row.dueAt.toISOString(),
+      };
+
+      // Feed topic mastery when correct (lightweight telemetry)
+      if (checkResult.correct && q) {
+        await recordAttempt({
+          userId: authResult.user.id,
+          problemId: `lesson-check:${body.lessonId}:${q.id}`,
+          source: "curated",
+          track: lesson.track,
+          topic: lesson.topic,
+          difficulty: q.difficulty ?? 2,
+          answerType: q.answerType,
+          submittedAnswer: { check: true },
+          isCorrect: true,
+          score: 1,
+          maxScore: 1,
+          durationMs: 0,
+        });
+      }
+    }
+
     const row = await upsertLessonProgress({
       userId: authResult.user.id,
       lessonId: body.lessonId,
       checksPassed,
       complete: body.complete === true,
     });
-    return Response.json({ progress: row });
+
+    // Auto-complete when all current checks passed
+    const allChecks = await getLessonCheckQuestions(body.lessonId);
+    const passedMap = row.checksPassed;
+    const allPassed =
+      allChecks.length > 0 && allChecks.every((q) => passedMap[q.id] === true);
+    let progress = row;
+    if (allPassed && row.status !== "completed") {
+      progress = await upsertLessonProgress({
+        userId: authResult.user.id,
+        lessonId: body.lessonId,
+        complete: true,
+      });
+    }
+
+    const attemptsMap = await getUserCheckAttempts(
+      authResult.user.id,
+      body.lessonId,
+    );
+
+    return Response.json({
+      progress,
+      srs,
+      srsByQuestion: Object.fromEntries(
+        [...attemptsMap.entries()].map(([id, a]) => [
+          id,
+          {
+            questionId: id,
+            wrongStreak: a.wrongStreak,
+            dueAt: a.dueAt.toISOString(),
+            correctCount: a.correctCount,
+          },
+        ]),
+      ),
+    });
   } catch (e) {
     return Response.json(
       { error: e instanceof Error ? e.message : "Gagal menyimpan" },

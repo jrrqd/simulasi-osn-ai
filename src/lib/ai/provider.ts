@@ -14,14 +14,47 @@ import {
   PREDIKSI_STYLE_RULES,
 } from "@/lib/ai/prediksi-style";
 import { extractPythonStarterFromStem } from "@/lib/ai/exam-python-policy";
+import {
+  DEFAULT_WRITE_CLOSE,
+  DEFAULT_WRITE_OPEN,
+} from "@/lib/ai/code-skeleton";
+import type { CodeSpec, NumericFormat } from "@/lib/content/types";
 
 const answerTypeSchema = z.enum([
   "numeric",
   "short_string",
   "multi_part",
   "python_output",
+  "codeSpec",
   "mcq",
 ]);
+
+const numericFormatSchema = z.enum([
+  "integer",
+  "decimal",
+  "space_separated",
+  "comma_separated",
+]);
+
+const codeSpecTestCaseSchema = z.object({
+  input: z.coerce.string().default(""),
+  expectedOutput: z.coerce.string(),
+  weight: z.coerce.number().optional(),
+});
+
+const codeSpecSchema = z.object({
+  skeleton: z.coerce.string().min(1),
+  lockedMarkers: z
+    .object({
+      open: z.coerce.string(),
+      close: z.coerce.string(),
+    })
+    .optional(),
+  testCases: z.array(codeSpecTestCaseSchema).min(1),
+  timeLimitMs: z.coerce.number().default(2000),
+  memoryLimitMb: z.coerce.number().default(256),
+  forbiddenImports: z.array(z.coerce.string()).optional(),
+});
 
 export const generatedProblemSchema = z.object({
   title: z.coerce.string().min(3).max(240),
@@ -45,6 +78,9 @@ export const generatedProblemSchema = z.object({
   solution: z.coerce.string().min(10),
   tags: z.array(z.coerce.string()).optional(),
   starterCode: z.coerce.string().optional(),
+  numericFormat: numericFormatSchema.optional(),
+  weight: z.coerce.number().optional(),
+  codeSpec: codeSpecSchema.optional(),
   /** Raw figure specs from the model; materialized after id assignment. */
   figures: z.array(z.unknown()).optional(),
 });
@@ -59,6 +95,7 @@ export type GeneratedProblemPayload = {
     | "short_string"
     | "multi_part"
     | "python_output"
+    | "codeSpec"
     | "mcq";
   stem: string;
   answer: string | number | string[];
@@ -67,19 +104,54 @@ export type GeneratedProblemPayload = {
   solution: string;
   tags?: string[];
   starterCode?: string;
+  numericFormat?: NumericFormat;
+  weight?: number;
+  codeSpec?: CodeSpec;
   figures?: unknown[];
+  legacy?: boolean;
 };
+
+function normalizeCodeSpec(
+  raw: z.infer<typeof codeSpecSchema> | undefined,
+): CodeSpec | undefined {
+  if (!raw) return undefined;
+  return {
+    skeleton: raw.skeleton,
+    lockedMarkers: raw.lockedMarkers ?? {
+      open: DEFAULT_WRITE_OPEN,
+      close: DEFAULT_WRITE_CLOSE,
+    },
+    testCases: raw.testCases.map((c) => ({
+      input: c.input ?? "",
+      expectedOutput: c.expectedOutput,
+      weight: c.weight,
+    })),
+    timeLimitMs: raw.timeLimitMs,
+    memoryLimitMb: raw.memoryLimitMb,
+    forbiddenImports: raw.forbiddenImports,
+  };
+}
 
 export function normalizeGeneratedProblem(
   raw: z.infer<typeof generatedProblemSchema>,
 ): GeneratedProblemPayload {
   const answer = raw.answer;
   let starterCode = raw.starterCode?.trim() || undefined;
-  if (raw.answerType === "python_output" && !starterCode) {
+  if (
+    (raw.answerType === "python_output" || raw.answerType === "codeSpec") &&
+    !starterCode
+  ) {
     starterCode = extractPythonStarterFromStem(raw.stem);
+  }
+  const codeSpec = normalizeCodeSpec(raw.codeSpec);
+  // If codeSpec present but answerType still python_output, upgrade
+  let answerType = raw.answerType;
+  if (codeSpec && answerType === "python_output") {
+    answerType = "codeSpec";
   }
   return {
     ...raw,
+    answerType,
     title: raw.title.trim().slice(0, 160),
     answer: Array.isArray(answer)
       ? answer.map(String)
@@ -89,8 +161,14 @@ export function normalizeGeneratedProblem(
           : "false"
         : answer,
     choices: raw.choices?.map(String),
-    starterCode,
+    starterCode: codeSpec?.skeleton ?? starterCode,
+    numericFormat: raw.numericFormat,
+    weight:
+      raw.weight ??
+      (answerType === "codeSpec" || codeSpec ? 2 : undefined),
+    codeSpec,
     figures: raw.figures,
+    legacy: false,
   };
 }
 
@@ -201,8 +279,10 @@ Kualitas soal:
 - Buat soal cerita yang menuntut pemahaman konsep, bukan hafalan.
 - Jawaban harus deterministik dan bisa dinilai otomatis.
 - Tulis stem dan solusi dalam Bahasa Indonesia.
-- Untuk numeric, berikan angka eksak atau dengan toleransi yang masuk akal.
+- Untuk numeric: WAJIB isi "numericFormat" (integer|decimal|space_separated|comma_separated). Jawaban harus PERSIS sesuai format (contoh integer: "25" BUKAN "25.0").
 - Untuk mcq, sediakan choices dan answer harus SALINAN PERSIS (karakter demi karakter) salah satu string di choices.
+- Untuk codeSpec: WAJIB isi codeSpec (skeleton + marker WRITE HERE/END + ≥3 testCases + timeLimitMs + memoryLimitMb), weight=2.
+- Konteks matematika non-SMA (eigenvalue, softmax, attention, IoU, mAP, cross-entropy, dll): tulis 1–3 kalimat definisi/rumus di awal stem.
 - Solusi harus menjelaskan langkah demi langkah secara detail, merujuk konsep dari materi silabus.
 
 PENTING: Balas HANYA dengan satu objek JSON SOAL (bukan JSON Schema), tanpa teks lain, tanpa markdown fence, tanpa penjelasan.

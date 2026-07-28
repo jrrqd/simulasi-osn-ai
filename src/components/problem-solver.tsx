@@ -1,16 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
 import { PythonRunner } from "@/components/python-runner";
+import { CodeRunner } from "@/components/code-runner";
+import { NumericInput } from "@/components/numeric-input";
 import type { Problem } from "@/lib/content/types";
-import { TOPIC_LABELS } from "@/lib/content/types";
+import {
+  TOPIC_LABELS,
+  defaultProblemWeight,
+  resolveNumericFormat,
+} from "@/lib/content/types";
 import {
   difficultyBandTextClass,
   labelDifficultyBand,
 } from "@/lib/ai/difficulty";
 import { StudyCaseNav } from "@/components/study-case-nav";
+import { needsCodeSpecRunner } from "@/lib/ai/exam-python-policy";
+import type { CodeSpecRunResult } from "@/lib/scoring/index";
+import type { RunCodeSpecAggregate } from "@/lib/scoring/test-case-runner";
 
 export function ProblemSolver({
   problem,
@@ -20,6 +29,7 @@ export function ProblemSolver({
   reviewMode?: boolean;
 }) {
   const [answer, setAnswer] = useState("");
+  const [codeResult, setCodeResult] = useState<CodeSpecRunResult | null>(null);
   const [started] = useState(() => Date.now());
   const [result, setResult] = useState<{
     correct: boolean;
@@ -27,11 +37,16 @@ export function ProblemSolver({
     solution: string;
     expected: unknown;
     attemptId?: string;
+    formatHint?: string;
   } | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const canSubmit = !reviewMode;
+  const isCodeSpec = needsCodeSpecRunner(problem);
+  const weight = defaultProblemWeight(problem);
+  const numericFormat = resolveNumericFormat(problem);
+  const isNumeric = problem.answerType === "numeric" || Boolean(numericFormat);
 
   async function submit() {
     setLoading(true);
@@ -42,10 +57,8 @@ export function ProblemSolver({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           problemId: problem.id,
-          answer:
-            problem.answerType === "mcq" || problem.answerType === "short_string"
-              ? answer
-              : answer,
+          answer,
+          codeSpecResult: isCodeSpec ? codeResult : undefined,
           durationMs: Date.now() - started,
         }),
       });
@@ -58,6 +71,15 @@ export function ProblemSolver({
       setLoading(false);
     }
   }
+
+  function handleCodeResult(agg: RunCodeSpecAggregate, userCode: string) {
+    setCodeResult(agg);
+    setAnswer(userCode);
+  }
+
+  const canClickSubmit = isCodeSpec
+    ? Boolean(codeResult) && !loading
+    : Boolean(answer) && !loading;
 
   return (
     <div className="space-y-5">
@@ -74,6 +96,14 @@ export function ProblemSolver({
         >
           {labelDifficultyBand(problem.difficulty)}
         </span>
+        <span className="rounded-full bg-white/70 px-3 py-1">
+          Bobot {weight}
+        </span>
+        {isCodeSpec ? (
+          <span className="rounded-full bg-[rgba(31,122,76,0.14)] px-3 py-1 text-[var(--ok)]">
+            Coding
+          </span>
+        ) : null}
         {problem.source === "ai" && (
           <span className="rounded-full bg-[rgba(196,92,38,0.15)] px-3 py-1 text-[var(--accent-2)]">
             AI-generated
@@ -85,7 +115,13 @@ export function ProblemSolver({
 
       {canSubmit && (
         <div className="panel space-y-3 rounded-3xl p-5">
-          {problem.answerType === "mcq" && problem.choices ? (
+          {isCodeSpec && problem.codeSpec ? (
+            <CodeRunner
+              codeSpec={problem.codeSpec}
+              onResult={handleCodeResult}
+              onCodeChange={setAnswer}
+            />
+          ) : problem.answerType === "mcq" && problem.choices ? (
             <div className="space-y-2">
               {problem.choices.map((c) => (
                 <label
@@ -103,26 +139,35 @@ export function ProblemSolver({
                 </label>
               ))}
             </div>
+          ) : isNumeric ? (
+            <NumericInput
+              value={answer}
+              onChange={setAnswer}
+              numericFormat={numericFormat}
+              partCount={problem.numericPartCount}
+            />
           ) : (
             <input
               className="input"
-              placeholder="Jawaban singkat / numerik"
+              placeholder="Jawaban singkat"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
             />
           )}
 
-          {(problem.answerType === "python_output" || problem.starterCode) && (
-            <PythonRunner
-              initialCode={problem.starterCode || "# tulis kode\nprint(0)"}
-              onOutput={(out) => setAnswer(out)}
-            />
-          )}
+          {!isCodeSpec &&
+            (problem.answerType === "python_output" ||
+              Boolean(problem.starterCode)) && (
+              <PythonRunner
+                initialCode={problem.starterCode || "# tulis kode\nprint(0)"}
+                onOutput={(out) => setAnswer(out)}
+              />
+            )}
 
           <button
             className="btn btn-primary"
             onClick={submit}
-            disabled={loading || !answer}
+            disabled={!canClickSubmit}
           >
             {loading ? "Menilai…" : "Kumpulkan jawaban"}
           </button>
@@ -140,6 +185,9 @@ export function ProblemSolver({
             {result.correct ? "Benar" : "Belum tepat"} · skor{" "}
             {(result.score * 100).toFixed(0)}%
           </p>
+          {result.formatHint ? (
+            <p className="text-sm text-[var(--bad)]">{result.formatHint}</p>
+          ) : null}
           <div>
             <h2 className="display mb-2 text-xl">Pembahasan</h2>
             <Markdown content={result.solution} />
@@ -157,7 +205,5 @@ export function ProblemSolver({
 }
 
 export function useClientProblem(problem: Problem) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return useMemo(() => (mounted ? problem : problem), [mounted, problem]);
+  return problem;
 }

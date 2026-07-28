@@ -1,11 +1,16 @@
 import type { Problem } from "@/lib/content/types";
+import { resolveNumericFormat } from "@/lib/content/types";
 
 /** Problem shape safe to send to the exam client (no keys/solutions). */
-export type ExamFacingProblem = Omit<Problem, "answer" | "solution" | "parts"> & {
+export type ExamFacingProblem = Omit<
+  Problem,
+  "answer" | "solution" | "parts"
+> & {
   parts?: Omit<NonNullable<Problem["parts"]>[number], "answer">[];
 };
 
 export function toExamFacingProblem(problem: Problem): ExamFacingProblem {
+  const numericFormat = resolveNumericFormat(problem);
   return {
     id: problem.id,
     title: problem.title,
@@ -20,6 +25,20 @@ export function toExamFacingProblem(problem: Problem): ExamFacingProblem {
     source: problem.source,
     starterCode: problem.starterCode,
     figures: problem.figures,
+    numericFormat,
+    expectedFormat: problem.expectedFormat ?? numericFormat,
+    numericPartCount: problem.numericPartCount,
+    weight: problem.weight,
+    codeSpec: problem.codeSpec
+      ? {
+          ...problem.codeSpec,
+          // Hide expected outputs from exam client? Keep them for in-exam
+          // self-check against sample cases — OSN practice shows sample tests.
+          // Full hidden tests would strip expectedOutput; for simulation we keep.
+          testCases: problem.codeSpec.testCases,
+        }
+      : undefined,
+    legacy: problem.legacy,
     parts: problem.parts?.map((part) => ({
       id: part.id,
       prompt: part.prompt,

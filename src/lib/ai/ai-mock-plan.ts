@@ -4,6 +4,10 @@ import {
 } from "@/lib/ai/difficulty";
 import {
   CURATED_MOCK_SIZES,
+  DEFAULT_CODING_RATIO,
+  DEFAULT_CODING_WEIGHT,
+  DEFAULT_NUMERIC_WEIGHT,
+  codingCountForTotal,
   type CuratedMockSize,
 } from "@/lib/ai/curated-mock-size";
 import {
@@ -29,12 +33,14 @@ export const AI_MOCK_SIZES: {
   label: string;
   count: number;
   durationMinutes: number;
+  codingRatio: number;
 }[] = [
   {
     value: "quick",
     label: "10 soal · 30 menit",
     count: MOCK_QUESTION_COUNT,
     durationMinutes: MOCK_DURATION_MINUTES,
+    codingRatio: DEFAULT_CODING_RATIO,
   },
   ...CURATED_MOCK_SIZES,
 ];
@@ -48,11 +54,13 @@ export function aiMockSizeMeta(size: AiMockSize) {
   return AI_MOCK_SIZES.find((s) => s.value === size) ?? AI_MOCK_SIZES[0]!;
 }
 
+/** Keep mcq/short_string as numeric-adjacent short-fill (plan: keep-all-migrate). */
 export type AiMockAnswerType =
   | "numeric"
   | "mcq"
   | "short_string"
-  | "python_output";
+  | "python_output"
+  | "codeSpec";
 
 export type AiMockSlot = {
   index: number;
@@ -60,6 +68,7 @@ export type AiMockSlot = {
   topic: string;
   difficulty: 1 | 2 | 3 | 4 | 5;
   answerType: AiMockAnswerType;
+  weight: number;
 };
 
 export type AiMockGenerationMode = "standard" | "custom" | "study-case";
@@ -85,6 +94,8 @@ export type AiMockPlanMeta = {
   questionCount: number;
   durationMinutes: number;
   size: AiMockSize;
+  codingCount: number;
+  numericCount: number;
 };
 
 /** Split total questions into study-case sizes of 3–5 that sum exactly. */
@@ -125,15 +136,61 @@ export function partitionStudyCaseSizes(total: number): number[] {
   return parts;
 }
 
-const ANSWER_TYPES: AiMockAnswerType[] = [
+/** Non-coding short-fill rotation (numeric-heavy, keep mcq/short_string). */
+const NUMERIC_ADJACENT: AiMockAnswerType[] = [
   "numeric",
   "mcq",
   "short_string",
   "numeric",
-  "python_output",
 ];
 
+/**
+ * Plan ~70% short-fill + ~30% coding (codeSpec), coding weight 2×.
+ * Shuffle so coding slots are spread through the exam.
+ */
+export function planMockMix(
+  total: number,
+  opts?: {
+    codingRatio?: number;
+    codingWeight?: number;
+    numericWeight?: number;
+  },
+): { answerType: AiMockAnswerType; weight: number }[] {
+  const codingRatio = opts?.codingRatio ?? DEFAULT_CODING_RATIO;
+  const codingWeight = opts?.codingWeight ?? DEFAULT_CODING_WEIGHT;
+  const numericWeight = opts?.numericWeight ?? DEFAULT_NUMERIC_WEIGHT;
+  const { codingCount, numericCount } = codingCountForTotal(total, codingRatio);
+
+  const mix: { answerType: AiMockAnswerType; weight: number }[] = [];
+  for (let i = 0; i < numericCount; i++) {
+    mix.push({
+      answerType: NUMERIC_ADJACENT[i % NUMERIC_ADJACENT.length]!,
+      weight: numericWeight,
+    });
+  }
+  for (let i = 0; i < codingCount; i++) {
+    mix.push({ answerType: "codeSpec", weight: codingWeight });
+  }
+
+  // Fisher–Yates shuffle
+  for (let i = mix.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = mix[i]!;
+    mix[i] = mix[j]!;
+    mix[j] = tmp;
+  }
+  return mix;
+}
+
 const TRACK_CYCLE = Object.keys(TRACKS) as TrackId[];
+
+const ALL_ANSWER_TYPES: AiMockAnswerType[] = [
+  "numeric",
+  "mcq",
+  "short_string",
+  "python_output",
+  "codeSpec",
+];
 
 export function buildAiMockPlan(params: {
   generationMode: AiMockGenerationMode;
@@ -163,6 +220,19 @@ export function buildAiMockPlan(params: {
     track = topicPairs[0]!.track;
   }
 
+  // Study-case keeps related numeric-adjacent types; standard/custom use 70:30 mix
+  const mix = isStudyCase
+    ? Array.from({ length: count }, (_, i) => ({
+        answerType: NUMERIC_ADJACENT[i % NUMERIC_ADJACENT.length]!,
+        weight: DEFAULT_NUMERIC_WEIGHT,
+      }))
+    : planMockMix(count, { codingRatio: sizeMeta.codingRatio });
+
+  const { codingCount, numericCount } = codingCountForTotal(
+    count,
+    sizeMeta.codingRatio,
+  );
+
   const slots: AiMockSlot[] = [];
   for (let i = 0; i < count; i++) {
     const difficulty = resolveDifficulty(params.difficultyMode);
@@ -183,12 +253,14 @@ export function buildAiMockPlan(params: {
       topic = pickTopicForTrack(track, params.preferredTopic);
     }
 
+    const slotMix = mix[i]!;
     slots.push({
       index: i,
       track: questionTrack,
       topic,
       difficulty,
-      answerType: ANSWER_TYPES[i % ANSWER_TYPES.length]!,
+      answerType: slotMix.answerType,
+      weight: slotMix.weight,
     });
   }
 
@@ -240,7 +312,7 @@ export function buildAiMockPlan(params: {
     ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
     : params.generationMode === "custom" && params.topicPrompt
       ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
-      : `${count} soal AI baru (${durationMinutes} menit). Dibuat otomatis; dapat dikerjakan semua siswa.`;
+      : `${count} soal AI baru (${durationMinutes} menit; ~${numericCount} isian + ~${codingCount} coding). Dibuat otomatis; dapat dikerjakan semua siswa.`;
 
   return {
     slots,
@@ -255,6 +327,8 @@ export function buildAiMockPlan(params: {
       questionCount: count,
       durationMinutes,
       size,
+      codingCount: isStudyCase ? 0 : codingCount,
+      numericCount: isStudyCase ? count : numericCount,
     },
   };
 }
@@ -268,7 +342,7 @@ export function isAiMockSlot(value: unknown): value is AiMockSlot {
   const difficulty = Number(v.difficulty);
   if (!TRACKS[track as TrackId]) return false;
   if (!TRACKS[track as TrackId].topics.includes(topic)) return false;
-  if (!ANSWER_TYPES.includes(answerType as AiMockAnswerType)) return false;
+  if (!ALL_ANSWER_TYPES.includes(answerType as AiMockAnswerType)) return false;
   if (![1, 2, 3, 4, 5].includes(difficulty)) return false;
   return true;
 }

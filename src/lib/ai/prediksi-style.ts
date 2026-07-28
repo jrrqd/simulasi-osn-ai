@@ -30,6 +30,26 @@ export const PREDIKSI_STYLE_RULES = `Gaya soal PREDIKSI / studi kasus EKKA (WAJI
 - Soal text-only tetap OK jika tidak butuh visual.
 - JANGAN menyalin contoh few-shot; ganti angka, nama, dan skenario.
 
+### Format jawaban numeric (OSN AI 2026 — WAJIB untuk answerType=numeric)
+Pilih salah satu dan tulis di field "numericFormat":
+- "integer" — bilangan bulat, contoh jawaban: "25" (BUKAN "25.0")
+- "decimal" — angka dengan/tanpa titik desimal, contoh: "0.5"
+- "space_separated" — beberapa angka dipisah spasi tunggal, contoh: "1 2 3"
+- "comma_separated" — beberapa angka dipisah koma tanpa spasi, contoh: "1,2,3"
+Sebutkan format yang diminta juga di deskripsi soal (stem).
+
+### Format soal coding Python (answerType=codeSpec)
+- WAJIB isi "codeSpec.skeleton" dengan marker "# >>> WRITE HERE <<<" … "# <<< END <<<"
+- WAJIB isi "codeSpec.testCases" ≥ 3 (normal + edge case)
+- WAJIB isi "codeSpec.timeLimitMs" (500–10000) dan "codeSpec.memoryLimitMb" (64–1024)
+- Kode DI LUAR marker tidak boleh diubah peserta
+- weight coding = 2 (numeric/mcq/short_string = 1)
+
+### Konteks matematika non-SMA
+Jika soal memakai konsep di luar SMA (eigenvalue, softmax, attention, IoU, mAP, gradient norm, cross-entropy):
+- Tulis 1–3 kalimat definisi/rumus di awal stem.
+- Jangan andalkan prasyarat SMA.
+
 ${PREDIKSI_FIGURE_RULES}
 
 ${EXAM_PYTHON_POLICY}`;
@@ -38,7 +58,7 @@ ${EXAM_PYTHON_POLICY}`;
 export const PREDIKSI_FEW_SHOT_SINGLE = `Contoh gaya (JANGAN disalin angka/skenario; buat soal BARU):
 
 Contoh A (numeric, probabilitas):
-{"title":"Ekspektasi kejadian","track":"A","topic":"probabilitas","difficulty":2,"answerType":"numeric","stem":"**Studi kasus: Prediksi cuaca**\\n\\nPeluang hujan $P(H)=2/5$. Asumsikan hari i.i.d.\\n\\nSelama 50 hari, berapa ekspektasi jumlah hari hujan?","answer":20,"tolerance":0,"solution":"E = 50 · (2/5) = 20.","tags":["prediksi-style"]}
+{"title":"Ekspektasi kejadian","track":"A","topic":"probabilitas","difficulty":2,"answerType":"numeric","numericFormat":"integer","weight":1,"stem":"**Studi kasus: Prediksi cuaca**\\n\\nPeluang hujan $P(H)=2/5$. Asumsikan hari i.i.d.\\n\\nSelama 50 hari, berapa ekspektasi jumlah hari hujan? (jawaban bilangan bulat)","answer":20,"tolerance":0,"solution":"E = 50 · (2/5) = 20.","tags":["prediksi-style"]}
 
 Contoh B (mcq, supervised):
 {"title":"Prediksi model awal","track":"B","topic":"supervised-learning","difficulty":2,"answerType":"mcq","stem":"**Studi kasus: Kurir**\\n\\nModel: prediksi = 0,2·jarak + 0,5·berat + 0,4.\\n\\nPrediksi untuk jarak 4 dan berat 6?","choices":["3,2","4,0","4,2","5,1"],"answer":"4,2","solution":"0,2·4 + 0,5·6 + 0,4 = 0,8 + 3,0 + 0,4 = 4,2.","tags":["prediksi-style"]}
@@ -63,12 +83,15 @@ Struktur keluaran: SATU objek JSON studi kasus (bukan JSON Schema):
   "problems": [
     {
       "title": "judul soal singkat",
-      "answerType": "numeric|mcq|short_string|python_output",
+      "answerType": "numeric|mcq|short_string|python_output|codeSpec",
       "prompt": "teks pertanyaan saja (preamble sudah diberikan terpisah)",
       "answer": "nilai atau string",
       "tolerance": 0.001,
+      "numericFormat": "integer|decimal|space_separated|comma_separated (wajib jika numeric)",
       "choices": ["opsional untuk mcq"],
       "starterCode": "wajib jika python_output — program lengkap untuk runner in-exam",
+      "codeSpec": "wajib jika codeSpec — skeleton+testCases+limits",
+      "weight": 1,
       "solution": "3-8 kalimat"
     }
   ]

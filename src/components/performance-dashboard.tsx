@@ -36,6 +36,13 @@ type Perf = {
     lessonId?: string;
     practiceId?: string;
   }[];
+  suggestedLessons?: {
+    lessonId: string;
+    title: string;
+    topic: string;
+    track: string;
+    mastery: number;
+  }[];
   trend: { day: string; accuracy: number; attempts: number }[];
   readiness: {
     score: number;
@@ -340,6 +347,32 @@ export function PerformanceDashboard() {
           ))}
         </div>
       </div>
+
+      {data.suggestedLessons && data.suggestedLessons.length > 0 ? (
+        <div className="panel rounded-3xl p-5">
+          <h2 className="display mb-1 text-2xl">Lesson yang disarankan</h2>
+          <p className="mb-3 text-sm text-[var(--muted)]">
+            Topik lemah → modul belajar yang belum kamu selesaikan.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {data.suggestedLessons.map((s) => (
+              <Link
+                key={s.lessonId}
+                href={`/study/${s.lessonId}`}
+                className="rounded-2xl border border-[var(--line)] bg-white/60 p-4 hover:bg-white"
+              >
+                <p className="text-xs uppercase tracking-wide text-[var(--accent)]">
+                  Track {s.track}
+                </p>
+                <p className="mt-1 font-semibold">{s.title}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Mastery topik {Math.round(s.mastery * 100)}%
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="panel rounded-3xl p-5">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

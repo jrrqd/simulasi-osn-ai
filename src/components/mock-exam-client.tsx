@@ -5,11 +5,18 @@ import Link from "next/link";
 import { Countdown } from "@/components/countdown";
 import { Markdown } from "@/components/markdown";
 import { PythonRunner, preloadPyodide } from "@/components/python-runner";
+import { CodeRunner } from "@/components/code-runner";
+import { NumericInput } from "@/components/numeric-input";
 import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
-import { needsExamPythonRunner } from "@/lib/ai/exam-python-policy";
+import {
+  needsCodeSpecRunner,
+  needsExamPythonRunner,
+} from "@/lib/ai/exam-python-policy";
 import {
   TOPIC_LABELS,
   TRACKS,
+  defaultProblemWeight,
+  resolveNumericFormat,
 } from "@/lib/content/types";
 import {
   INTEGRITY_FLAG_AT,
@@ -17,6 +24,14 @@ import {
   type IntegrityState,
 } from "@/lib/exam-integrity";
 import { useExamIntegrity } from "@/hooks/use-exam-integrity";
+import type { CodeSpecRunResult } from "@/lib/scoring/index";
+import type { MockScoreSummary } from "@/lib/mocks/scoring";
+import type {
+  ProblemPenaltyState,
+  ScoreboardRow,
+  SessionPenaltyState,
+} from "@/lib/exam/penalty";
+import { DEFAULT_PENALTY_MINUTES_PER_WRONG } from "@/lib/exam/penalty";
 
 type Result = {
   score: number;
@@ -33,17 +48,27 @@ type Result = {
     {
       correct: boolean;
       score: number;
+      weightedScore?: number;
+      weight?: number;
       expected: unknown;
       submitted: unknown;
       track: string;
       topic: string;
+      isCoding?: boolean;
+      passedCount?: number;
+      totalCount?: number;
     }
   >;
+  summary?: MockScoreSummary;
   integrity?: {
     violationCount: number;
     flagged: boolean;
     forcedSubmit: boolean;
   };
+  penaltyEnabled?: boolean;
+  penaltyMinutes?: number;
+  totalAttempts?: number;
+  scoreboard?: ScoreboardRow[];
 };
 
 function formatDuration(ms: number) {
@@ -56,28 +81,53 @@ export function MockExamClient({
   title,
   durationMinutes,
   problems,
+  penaltyEnabled: penaltyEnabledProp = true,
+  penaltyMinutesPerWrong: penaltyPerWrongProp = DEFAULT_PENALTY_MINUTES_PER_WRONG,
 }: {
   mockId: string;
   title: string;
   durationMinutes: number;
   problems: ExamFacingProblem[];
+  penaltyEnabled?: boolean;
+  penaltyMinutesPerWrong?: number;
 }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [codeResults, setCodeResults] = useState<
+    Record<string, CodeSpecRunResult>
+  >({});
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [gradingProblemId, setGradingProblemId] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
+  const [submitFeedback, setSubmitFeedback] = useState<
+    Record<string, string>
+  >({});
   const [initialIntegrity, setInitialIntegrity] =
     useState<Partial<IntegrityState> | null>(null);
+  const [penaltyEnabled, setPenaltyEnabled] = useState(penaltyEnabledProp);
+  const [penaltyMinutesPerWrong, setPenaltyMinutesPerWrong] = useState(
+    penaltyPerWrongProp,
+  );
+  const [penaltyState, setPenaltyState] = useState<SessionPenaltyState>({});
+  const [penaltyMinutes, setPenaltyMinutes] = useState(0);
+  const [totalAttemptsCount, setTotalAttemptsCount] = useState(0);
 
   const answersRef = useRef(answers);
+  const codeResultsRef = useRef(codeResults);
   const submittingRef = useRef(submitting);
   const sessionIdRef = useRef(sessionId);
+  const penaltyStateRef = useRef(penaltyState);
 
   const hasPythonQuestions = useMemo(
     () => problems.some((p) => needsExamPythonRunner(p)),
+    [problems],
+  );
+
+  const totalWeight = useMemo(
+    () => problems.reduce((sum, p) => sum + defaultProblemWeight(p), 0),
     [problems],
   );
 
@@ -85,11 +135,41 @@ export function MockExamClient({
     answersRef.current = answers;
   }, [answers]);
   useEffect(() => {
+    codeResultsRef.current = codeResults;
+  }, [codeResults]);
+  useEffect(() => {
     submittingRef.current = submitting;
   }, [submitting]);
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+  useEffect(() => {
+    penaltyStateRef.current = penaltyState;
+  }, [penaltyState]);
+
+  function applyPenaltyPayload(data: {
+    penaltyState?: SessionPenaltyState;
+    penaltyMinutes?: number;
+    totalAttempts?: number;
+    penaltyEnabled?: boolean;
+    penaltyMinutesPerWrong?: number;
+  }) {
+    if (typeof data.penaltyEnabled === "boolean") {
+      setPenaltyEnabled(data.penaltyEnabled);
+    }
+    if (typeof data.penaltyMinutesPerWrong === "number") {
+      setPenaltyMinutesPerWrong(data.penaltyMinutesPerWrong);
+    }
+    if (data.penaltyState && typeof data.penaltyState === "object") {
+      setPenaltyState(data.penaltyState);
+    }
+    if (typeof data.penaltyMinutes === "number") {
+      setPenaltyMinutes(data.penaltyMinutes);
+    }
+    if (typeof data.totalAttempts === "number") {
+      setTotalAttemptsCount(data.totalAttempts);
+    }
+  }
 
   useEffect(() => {
     if (sessionId && hasPythonQuestions) {
@@ -113,6 +193,59 @@ export function MockExamClient({
         },
       }),
     });
+  };
+
+  const submitProblem = async (problemId: string) => {
+    const id = sessionIdRef.current;
+    if (!id || !penaltyEnabled) return;
+    const row = penaltyStateRef.current[problemId];
+    if (row?.solved || row?.lockedAt) return;
+
+    setGradingProblemId(problemId);
+    setError("");
+    const response = await fetch("/api/mocks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: id,
+        action: "submit_problem",
+        problemId,
+        answer: answersRef.current[problemId] ?? "",
+        codeResult: codeResultsRef.current[problemId],
+      }),
+    });
+    const data = await response.json();
+    setGradingProblemId(null);
+    if (!response.ok) {
+      setError(data.error || "Gagal menilai soal");
+      return;
+    }
+    applyPenaltyPayload(data);
+    if (data.formatHint) {
+      setSubmitFeedback((c) => ({
+        ...c,
+        [problemId]: data.formatHint as string,
+      }));
+    } else if (data.correct) {
+      setSubmitFeedback((c) => ({
+        ...c,
+        [problemId]: "Accepted — soal terkunci",
+      }));
+    } else if (data.alreadyLocked) {
+      setSubmitFeedback((c) => ({
+        ...c,
+        [problemId]: "Soal sudah terkunci",
+      }));
+    } else {
+      const attempts = (data.problemPenalty as ProblemPenaltyState | undefined)
+        ?.attempts;
+      setSubmitFeedback((c) => ({
+        ...c,
+        [problemId]: `Wrong answer${
+          attempts ? ` · percobaan ke-${attempts}` : ""
+        }`,
+      }));
+    }
   };
 
   const submitExam = async (
@@ -142,6 +275,7 @@ export function MockExamClient({
       body: JSON.stringify({
         sessionId: id,
         answers: answersRef.current,
+        codeResults: codeResultsRef.current,
         integrityForcedSubmit: options?.integrityForced === true,
         integrity: options?.integrity
           ? {
@@ -234,6 +368,7 @@ export function MockExamClient({
     if (data.integrity) {
       setInitialIntegrity(data.integrity);
     }
+    applyPenaltyPayload(data);
     setSessionId(data.sessionId);
     setEndsAt(data.endsAt);
     setAnswers(data.answers ?? {});
@@ -257,11 +392,15 @@ export function MockExamClient({
         <div className="grid gap-3 sm:grid-cols-3">
           <ExamFact label="Jumlah soal" value={`${problems.length} soal`} />
           <ExamFact label="Durasi" value={`${durationMinutes / 60} jam`} />
-          <ExamFact label="Skor maksimum" value={`${problems.length} poin`} />
+          <ExamFact label="Skor maksimum" value={`${totalWeight} poin`} />
         </div>
         <ul className="list-disc space-y-2 pl-5 text-sm text-[var(--muted)]">
           <li>Timer dimulai setelah tombol mulai ditekan.</li>
           <li>Semua soal ditampilkan dalam satu halaman dan tersimpan otomatis.</li>
+          <li>
+            Bobot: isian singkat = 1 poin · coding Python = 2 poin (skor
+            dinormalisasi ke 100%).
+          </li>
           <li>AI tutor dinonaktifkan selama ujian.</li>
           <li>Sesi aktif akan dilanjutkan jika halaman sempat tertutup.</li>
           <li>Ujian otomatis dikumpulkan saat waktu habis.</li>
@@ -271,6 +410,14 @@ export function MockExamClient({
             runner Python di halaman). Jangan memakai alat eksternal / ekstensi
             AI.
           </li>
+          {penaltyEnabledProp ? (
+            <li>
+              Submission penalty (tie-breaker ICPC): kumpulkan per soal untuk
+              mendapat Accepted. Salah = +{penaltyPerWrongProp} menit penalti
+              (jika akhirnya benar) + waktu tempuh. Skor utama tetap bobot
+              kebenaran.
+            </li>
+          ) : null}
           <li>
             Pemantauan integritas: hanya meninggalkan tab (≥1,5 detik halaman
             tersembunyi) yang dihitung sebagai peringatan. {INTEGRITY_FLAG_AT}{" "}
@@ -328,6 +475,9 @@ export function MockExamClient({
             <h1 className="display text-2xl">{title}</h1>
             <p className="text-xs text-[var(--muted)]">
               Terjawab {answeredCount}/{problems.length} · tersimpan otomatis
+              {penaltyEnabled
+                ? ` · penalti ${penaltyMinutes} mnt · ${totalAttemptsCount} submit`
+                : ""}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -352,6 +502,13 @@ export function MockExamClient({
             </button>
           </div>
         </div>
+        {penaltyEnabled ? (
+          <SubmissionTracker
+            problems={problems}
+            penaltyState={penaltyState}
+            penaltyMinutesPerWrong={penaltyMinutesPerWrong}
+          />
+        ) : null}
       </div>
 
       {integrity.flagged && (
@@ -371,24 +528,48 @@ export function MockExamClient({
         <aside className="panel rounded-3xl p-4 lg:sticky lg:top-[160px]">
           <p className="mb-3 text-sm font-semibold">Navigasi soal</p>
           <div className="grid grid-cols-5 gap-2 lg:grid-cols-4">
-            {problems.map((problem, index) => (
+            {problems.map((problem, index) => {
+              const locked = Boolean(
+                penaltyState[problem.id]?.solved ||
+                  penaltyState[problem.id]?.lockedAt,
+              );
+              const answered = Boolean(answers[problem.id]?.trim());
+              return (
               <a
                 key={problem.id}
                 href={`#question-${index + 1}`}
                 className={`flex h-8 items-center justify-center rounded-lg text-xs ${
-                  answers[problem.id]?.trim()
-                    ? "bg-[var(--accent)] text-white"
-                    : "bg-white/70 text-[var(--muted)]"
+                  locked
+                    ? "bg-[var(--ok)] text-white"
+                    : answered
+                      ? "bg-[var(--accent)] text-white"
+                      : "bg-white/70 text-[var(--muted)]"
                 }`}
+                title={
+                  locked
+                    ? "Accepted"
+                    : penaltyState[problem.id]
+                      ? `${penaltyState[problem.id]!.attempts} attempts`
+                      : undefined
+                }
               >
                 {index + 1}
               </a>
-            ))}
+              );
+            })}
           </div>
         </aside>
 
         <div className="space-y-5">
-          {problems.map((problem, index) => (
+          {problems.map((problem, index) => {
+            const locked = Boolean(
+              penaltyState[problem.id]?.solved ||
+                penaltyState[problem.id]?.lockedAt,
+            );
+            const numericFormat = resolveNumericFormat(problem);
+            const isNumeric =
+              problem.answerType === "numeric" || Boolean(numericFormat);
+            return (
             <article
               id={`question-${index + 1}`}
               key={problem.id}
@@ -399,11 +580,44 @@ export function MockExamClient({
                   {index + 1}. {problem.title}
                 </h2>
                 <span className="shrink-0 rounded-full bg-white/70 px-2 py-1 text-xs text-[var(--muted)]">
-                  1 poin
+                  {defaultProblemWeight(problem)} poin
+                  {needsCodeSpecRunner(problem) ||
+                  problem.answerType === "python_output"
+                    ? " · coding"
+                    : " · isian"}
+                  {locked ? " · ✓ locked" : ""}
                 </span>
               </div>
               <Markdown content={problem.stem} />
-              {problem.answerType === "mcq" && problem.choices ? (
+              {needsCodeSpecRunner(problem) && problem.codeSpec ? (
+                <div className="space-y-2 rounded-2xl border border-[var(--line)] bg-white/50 p-4">
+                  <p className="text-xs text-[var(--muted)]">
+                    Isi zona WRITE HERE saja. Jalankan test case sebelum
+                    mengumpulkan — skor = bobot × (test case lulus).
+                  </p>
+                  <CodeRunner
+                    codeSpec={problem.codeSpec}
+                    onResult={(agg, userCode) => {
+                      if (locked) return;
+                      setCodeResults((current) => ({
+                        ...current,
+                        [problem.id]: agg,
+                      }));
+                      setAnswers((current) => ({
+                        ...current,
+                        [problem.id]: userCode,
+                      }));
+                    }}
+                    onCodeChange={(userCode) => {
+                      if (locked) return;
+                      setAnswers((current) => ({
+                        ...current,
+                        [problem.id]: userCode,
+                      }));
+                    }}
+                  />
+                </div>
+              ) : problem.answerType === "mcq" && problem.choices ? (
                 <div className="space-y-2">
                   {problem.choices.map((choice) => (
                     <label
@@ -414,6 +628,7 @@ export function MockExamClient({
                         type="radio"
                         name={problem.id}
                         checked={answers[problem.id] === choice}
+                        disabled={locked}
                         onChange={() =>
                           setAnswers((current) => ({
                             ...current,
@@ -425,10 +640,25 @@ export function MockExamClient({
                     </label>
                   ))}
                 </div>
+              ) : isNumeric ? (
+                <NumericInput
+                  id={`ans-${problem.id}`}
+                  value={answers[problem.id] ?? ""}
+                  disabled={locked}
+                  numericFormat={numericFormat}
+                  partCount={problem.numericPartCount}
+                  onChange={(next) =>
+                    setAnswers((current) => ({
+                      ...current,
+                      [problem.id]: next,
+                    }))
+                  }
+                />
               ) : (
                 <input
                   className="input"
                   value={answers[problem.id] ?? ""}
+                  disabled={locked}
                   onChange={(event) =>
                     setAnswers((current) => ({
                       ...current,
@@ -439,7 +669,8 @@ export function MockExamClient({
                   autoComplete="off"
                 />
               )}
-              {needsExamPythonRunner(problem) && (
+              {!needsCodeSpecRunner(problem) &&
+                needsExamPythonRunner(problem) && (
                 <div className="space-y-2 rounded-2xl border border-[var(--line)] bg-white/50 p-4">
                   <p className="text-xs text-[var(--muted)]">
                     Jalankan di sini — tetap di tab ujian. Output otomatis
@@ -449,17 +680,60 @@ export function MockExamClient({
                     initialCode={
                       problem.starterCode || "# tulis kode\nprint(0)"
                     }
-                    onOutput={(out) =>
+                    onOutput={(out) => {
+                      if (locked) return;
                       setAnswers((current) => ({
                         ...current,
                         [problem.id]: out,
-                      }))
-                    }
+                      }));
+                    }}
                   />
                 </div>
               )}
+              {penaltyEnabled ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={
+                      locked ||
+                      gradingProblemId === problem.id ||
+                      !answers[problem.id]?.trim()
+                    }
+                    onClick={() => void submitProblem(problem.id)}
+                  >
+                    {locked
+                      ? "Terkunci (Accepted)"
+                      : gradingProblemId === problem.id
+                        ? "Menilai…"
+                        : "Kumpulkan soal ini"}
+                  </button>
+                  {submitFeedback[problem.id] ? (
+                    <p
+                      className={`text-sm ${
+                        locked || submitFeedback[problem.id]?.startsWith("Accepted")
+                          ? "text-[var(--ok)]"
+                          : "text-[var(--bad)]"
+                      }`}
+                    >
+                      {submitFeedback[problem.id]}
+                    </p>
+                  ) : null}
+                  {penaltyState[problem.id] ? (
+                    <p className="text-xs text-[var(--muted)]">
+                      {penaltyState[problem.id]!.attempts} attempts
+                      {penaltyState[problem.id]!.solved
+                        ? ` · penalti ${penaltyState[problem.id]!.penaltyMin} mnt`
+                        : penaltyState[problem.id]!.wrongCount
+                          ? ` · ${penaltyState[problem.id]!.wrongCount} WA`
+                          : ""}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </article>
-          ))}
+            );
+          })}
           <button
             className="btn btn-accent w-full"
             onClick={() => void submitExam(false)}
@@ -482,6 +756,61 @@ function ExamFact({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SubmissionTracker({
+  problems,
+  penaltyState,
+  penaltyMinutesPerWrong,
+}: {
+  problems: ExamFacingProblem[];
+  penaltyState: SessionPenaltyState;
+  penaltyMinutesPerWrong: number;
+}) {
+  return (
+    <div className="mt-3 border-t border-[var(--line)] pt-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+        Submission tracker · +{penaltyMinutesPerWrong} mnt / WA (jika Accepted)
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {problems.map((problem, index) => {
+          const row = penaltyState[problem.id];
+          const solved = Boolean(row?.solved);
+          const attempts = row?.attempts ?? 0;
+          return (
+            <a
+              key={problem.id}
+              href={`#question-${index + 1}`}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                solved
+                  ? "bg-[rgba(31,122,76,0.18)] text-[var(--ok)]"
+                  : attempts > 0
+                    ? "bg-amber-100 text-amber-900"
+                    : "bg-white/70 text-[var(--muted)]"
+              }`}
+              title={
+                solved
+                  ? `Accepted · penalti ${row?.penaltyMin ?? 0} mnt`
+                  : attempts
+                    ? `${attempts} attempts · ${row?.wrongCount ?? 0} WA`
+                    : "Belum submit"
+              }
+            >
+              <span>{index + 1}</span>
+              <span>
+                {solved ? "✓" : attempts ? `${attempts}` : "–"}
+              </span>
+              {solved ? (
+                <span className="font-normal opacity-80">
+                  {row?.penaltyMin ?? 0}m
+                </span>
+              ) : null}
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ScoringReport({
   title,
   problems,
@@ -498,6 +827,8 @@ function ScoringReport({
     ([, a], [, b]) => a.score / a.maxScore - b.score / b.maxScore,
   );
   const integrity = result.integrity;
+  const summary = result.summary;
+  const showPenalty = result.penaltyEnabled !== false;
 
   return (
     <div className="space-y-6">
@@ -524,8 +855,8 @@ function ScoringReport({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <ExamFact
-          label="Skor"
-          value={`${result.score}/${result.maxScore}`}
+          label="Skor berbobot"
+          value={`${roundScore(result.score)}/${roundScore(result.maxScore)}`}
         />
         <ExamFact label="Persentase" value={`${result.percentage}%`} />
         <ExamFact label="Benar" value={String(result.correctCount)} />
@@ -536,12 +867,93 @@ function ScoringReport({
         <ExamFact label="Waktu" value={formatDuration(result.elapsedMs)} />
       </div>
 
+      {showPenalty ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ExamFact
+            label="Tie-breaker (penalti)"
+            value={`${result.penaltyMinutes ?? 0} menit`}
+          />
+          <ExamFact
+            label="Total submit"
+            value={String(result.totalAttempts ?? 0)}
+          />
+          <ExamFact
+            label="Soal Accepted (lock)"
+            value={String(
+              (result.scoreboard ?? []).filter((r) => r.solved).length,
+            )}
+          />
+        </div>
+      ) : null}
+
+      {summary ? (
+        <section className="panel grid gap-3 rounded-3xl p-5 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Bagian isian singkat
+            </p>
+            <p className="mt-1 font-semibold">
+              {summary.numericCount} soal × bobot 1 = {roundScore(summary.numericWeight)} poin
+            </p>
+            <p className="text-sm text-[var(--muted)]">
+              Perolehan: {roundScore(summary.numericEarned)}/
+              {roundScore(summary.numericWeight)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Bagian coding Python
+            </p>
+            <p className="mt-1 font-semibold">
+              {summary.codingCount} soal × bobot 2 = {roundScore(summary.codingWeight)} poin
+            </p>
+            <p className="text-sm text-[var(--muted)]">
+              Perolehan: {roundScore(summary.codingEarned)}/
+              {roundScore(summary.codingWeight)}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {showPenalty && (result.scoreboard?.length ?? 0) > 0 ? (
+        <section className="panel rounded-3xl p-5">
+          <h2 className="display mb-3 text-2xl">Rincian penalti per soal</h2>
+          <div className="space-y-2 text-sm">
+            {problems.map((problem, index) => {
+              const row = result.scoreboard?.find(
+                (r) => r.problemId === problem.id,
+              );
+              return (
+                <div
+                  key={problem.id}
+                  className="flex justify-between border-b border-[var(--line)] py-2"
+                >
+                  <span>
+                    {index + 1}. {problem.title}
+                  </span>
+                  <strong>
+                    {row?.solved
+                      ? `Accepted · ${row.attempts} att · ${row.penaltyMin} mnt`
+                      : row
+                        ? `${row.attempts} att · belum Accepted`
+                        : "–"}
+                  </strong>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="panel rounded-3xl p-5">
           <h2 className="display mb-4 text-2xl">Skor per materi</h2>
           <div className="space-y-3">
             {trackRows.map(([track, item]) => {
-              const percentage = Math.round((item.score / item.maxScore) * 100);
+              const percentage =
+                item.maxScore === 0
+                  ? 0
+                  : Math.round((item.score / item.maxScore) * 100);
               return (
                 <div key={track}>
                   <div className="mb-1 flex justify-between text-sm">
@@ -550,7 +962,8 @@ function ScoringReport({
                       {TRACKS[track as keyof typeof TRACKS]?.name ?? ""}
                     </span>
                     <strong>
-                      {item.score}/{item.maxScore} ({percentage}%)
+                      {roundScore(item.score)}/{roundScore(item.maxScore)} (
+                      {percentage}%)
                     </strong>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-black/10">
@@ -575,8 +988,11 @@ function ScoringReport({
               >
                 <span>{TOPIC_LABELS[topic] ?? topic}</span>
                 <strong>
-                  {item.score}/{item.maxScore} ·{" "}
-                  {Math.round((item.score / item.maxScore) * 100)}%
+                  {roundScore(item.score)}/{roundScore(item.maxScore)} ·{" "}
+                  {item.maxScore === 0
+                    ? 0
+                    : Math.round((item.score / item.maxScore) * 100)}
+                  %
                 </strong>
               </div>
             ))}
@@ -592,6 +1008,7 @@ function ScoringReport({
             item?.submitted === undefined ||
             item?.submitted === null ||
             String(item?.submitted).trim() === "";
+          const weight = item?.weight ?? defaultProblemWeight(problem);
           return (
             <div key={problem.id} className="panel rounded-2xl p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -600,8 +1017,17 @@ function ScoringReport({
                     {index + 1}. {problem.title}
                   </p>
                   <p className="mt-1 text-xs text-[var(--muted)]">
+                    {item?.isCoding ? "Coding" : "Isian"} · bobot {weight}
+                    {item?.passedCount != null && item?.totalCount != null
+                      ? ` · test case ${item.passedCount}/${item.totalCount}`
+                      : ""}
+                    {" · "}
                     Jawabanmu:{" "}
-                    {unanswered ? "Tidak dijawab" : String(item.submitted)}
+                    {unanswered
+                      ? "Tidak dijawab"
+                      : item?.isCoding
+                        ? "(kode dikumpulkan)"
+                        : String(item.submitted)}
                     {" · "}Kunci: {String(item?.expected)}
                   </p>
                 </div>
@@ -612,7 +1038,13 @@ function ScoringReport({
                       : "text-sm font-semibold text-[var(--bad)]"
                   }
                 >
-                  {item?.correct ? "Benar" : unanswered ? "Kosong" : "Salah"}
+                  {item?.correct
+                    ? `Benar (+${roundScore(item.weightedScore ?? weight)})`
+                    : unanswered
+                      ? "Kosong"
+                      : item?.score && item.score > 0
+                        ? `Parsial ${roundScore(item.weightedScore ?? 0)}/${weight}`
+                        : "Salah"}
                 </span>
               </div>
               <Link
@@ -627,4 +1059,8 @@ function ScoringReport({
       </section>
     </div>
   );
+}
+
+function roundScore(n: number) {
+  return Math.round(n * 100) / 100;
 }

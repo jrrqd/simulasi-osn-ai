@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Check } from "lucide-react";
 import { requireUser } from "@/lib/session";
@@ -7,9 +6,14 @@ import { TOPIC_LABELS } from "@/lib/content/types";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { Markdown } from "@/components/markdown";
 import {
-  LessonChecks,
-  LessonSideQuestLink,
-} from "@/components/lesson-checks";
+  extractMarkdownToc,
+  LessonStudyClient,
+} from "@/components/lesson-study-client";
+import {
+  dueQuestionIds,
+  getLessonCheckQuestions,
+  getUserCheckAttempts,
+} from "@/lib/lesson-checks";
 
 export default async function LessonPage({
   params,
@@ -33,6 +37,25 @@ export default async function LessonPage({
   const progress = progressMap.get(lesson.id);
   const completed = progress?.status === "completed";
 
+  const questions = await getLessonCheckQuestions(lesson.id);
+  const srsMap = await getUserCheckAttempts(user.id, lesson.id);
+  const dueIds = dueQuestionIds(
+    srsMap,
+    questions.map((q) => q.id),
+  );
+  const initialSrs = Object.fromEntries(
+    [...srsMap.entries()].map(([qid, row]) => [
+      qid,
+      {
+        questionId: qid,
+        wrongStreak: row.wrongStreak,
+        dueAt: row.dueAt.toISOString(),
+      },
+    ]),
+  );
+
+  const toc = extractMarkdownToc(lesson.body);
+
   return (
     <article className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -55,24 +78,19 @@ export default async function LessonPage({
       <div className="panel rounded-3xl p-6">
         <Markdown content={lesson.body} />
       </div>
-      <LessonChecks
+      <LessonStudyClient
         lessonId={lesson.id}
-        questions={lesson.checkQuestions}
+        track={lesson.track}
+        topic={lesson.topic}
+        bodyHtmlIds={toc}
+        initialQuestions={questions}
         initialChecksPassed={progress?.checksPassed ?? {}}
         initiallyCompleted={completed}
+        initialSrs={initialSrs}
+        dueQuestionIds={dueIds}
+        nextLessonId={nextLesson?.id ?? null}
+        nextLessonHref={nextLesson ? `/study/${nextLesson.id}` : "/study"}
       />
-      <div className="flex flex-wrap gap-2">
-        <LessonSideQuestLink track={lesson.track} topic={lesson.topic} />
-        {nextLesson ? (
-          <Link href={`/study/${nextLesson.id}`} className="btn btn-primary">
-            Level berikutnya
-          </Link>
-        ) : (
-          <Link href="/study" className="btn btn-primary">
-            Kembali ke checklist
-          </Link>
-        )}
-      </div>
     </article>
   );
 }

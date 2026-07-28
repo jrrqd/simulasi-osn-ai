@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { generatedMocks, generatedProblems } from "@/db/schema";
 import type { Problem } from "@/lib/content/types";
+import { normalizeProblem } from "@/lib/content/load";
 import {
   countVisibleAiProblems,
   listVisibleAiProblems,
@@ -21,11 +22,15 @@ export async function getGeneratedProblem(id: string): Promise<Problem | null> {
     where: eq(generatedProblems.id, id),
   });
   if (!row) return null;
-  return row.payload as Problem;
+  return normalizeProblem({
+    ...(row.payload as Problem),
+    source: (row.payload as Problem).source ?? "ai",
+  });
 }
 
 export async function resolveProblem(id: string): Promise<Problem | null> {
-  return resolvePracticeProblem(id);
+  const p = await resolvePracticeProblem(id);
+  return p ? normalizeProblem(p) : null;
 }
 
 export async function countSharedProblems() {

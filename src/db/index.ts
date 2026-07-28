@@ -117,7 +117,23 @@ async function migratePglite(client: PGlite) {
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS integrity_violation_count integer NOT NULL DEFAULT 0;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS integrity_flagged boolean NOT NULL DEFAULT false;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS integrity_forced_submit boolean NOT NULL DEFAULT false;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS score_summary jsonb;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS total_attempts integer NOT NULL DEFAULT 0;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_minutes integer NOT NULL DEFAULT 0;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS last_submit_at timestamptz;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_state jsonb NOT NULL DEFAULT '{}';
     CREATE INDEX IF NOT EXISTS mock_sessions_user_idx ON mock_sessions(user_id);
+    CREATE TABLE IF NOT EXISTS submission_events (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      mock_session_id text NOT NULL REFERENCES mock_sessions(id) ON DELETE CASCADE,
+      problem_id text NOT NULL,
+      kind text NOT NULL,
+      correct boolean,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS submission_events_session_idx ON submission_events(mock_session_id);
+    CREATE INDEX IF NOT EXISTS submission_events_user_idx ON submission_events(user_id);
     CREATE TABLE IF NOT EXISTS topic_mastery (
       id text PRIMARY KEY,
       user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
@@ -183,6 +199,8 @@ async function migratePglite(client: PGlite) {
       created_at timestamptz NOT NULL DEFAULT now()
     );
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'ai';
+    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_enabled boolean NOT NULL DEFAULT true;
+    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 20;
     CREATE INDEX IF NOT EXISTS generated_mocks_created_by_idx ON generated_mocks(created_by);
     CREATE INDEX IF NOT EXISTS generated_mocks_created_at_idx ON generated_mocks(created_at);
     CREATE TABLE IF NOT EXISTS review_threads (
@@ -210,6 +228,34 @@ async function migratePglite(client: PGlite) {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS lesson_progress_user_lesson_uidx ON lesson_progress(user_id, lesson_id);
     CREATE INDEX IF NOT EXISTS lesson_progress_user_idx ON lesson_progress(user_id);
+    CREATE TABLE IF NOT EXISTS check_attempts (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      lesson_id text NOT NULL,
+      question_id text NOT NULL,
+      last_seen_at timestamptz NOT NULL DEFAULT now(),
+      correct_count integer NOT NULL DEFAULT 0,
+      wrong_streak integer NOT NULL DEFAULT 0,
+      ease double precision NOT NULL DEFAULT 2.5,
+      interval_days double precision NOT NULL DEFAULT 0,
+      due_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS check_attempts_user_lesson_q_uidx
+      ON check_attempts(user_id, lesson_id, question_id);
+    CREATE INDEX IF NOT EXISTS check_attempts_user_due_idx
+      ON check_attempts(user_id, due_at);
+    CREATE TABLE IF NOT EXISTS generated_lesson_checks (
+      id text PRIMARY KEY,
+      lesson_id text NOT NULL,
+      payload jsonb NOT NULL,
+      hidden boolean NOT NULL DEFAULT false,
+      created_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS generated_lesson_checks_lesson_idx
+      ON generated_lesson_checks(lesson_id);
     CREATE TABLE IF NOT EXISTS problem_overrides (
       id text PRIMARY KEY,
       payload jsonb,
@@ -261,6 +307,27 @@ async function createDb(): Promise<AppDb> {
 
   const url = process.env.DATABASE_URL!;
   const client = postgres(url, { max: 10 });
+  // Soft-migrate additive columns/tables used by OSN AI 2026 penalty features.
+  await client.unsafe(`
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS score_summary jsonb;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS total_attempts integer NOT NULL DEFAULT 0;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_minutes integer NOT NULL DEFAULT 0;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS last_submit_at timestamptz;
+    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_state jsonb NOT NULL DEFAULT '{}';
+    CREATE TABLE IF NOT EXISTS submission_events (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      mock_session_id text NOT NULL REFERENCES mock_sessions(id) ON DELETE CASCADE,
+      problem_id text NOT NULL,
+      kind text NOT NULL,
+      correct boolean,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS submission_events_session_idx ON submission_events(mock_session_id);
+    CREATE INDEX IF NOT EXISTS submission_events_user_idx ON submission_events(user_id);
+    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_enabled boolean NOT NULL DEFAULT true;
+    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 20;
+  `);
   return drizzlePg(client, { schema });
 }
 

@@ -20,6 +20,8 @@ export type MockOverridePayload = {
   problemIds: string[];
   track?: string;
   difficultyMode?: string;
+  penaltyEnabled?: boolean;
+  penaltyMinutesPerWrong?: number;
 };
 
 export type MockOverrideRow = {
@@ -47,6 +49,12 @@ function asOverridePayload(raw: unknown): MockOverridePayload | null {
     difficultyMode: o.difficultyMode
       ? String(o.difficultyMode)
       : undefined,
+    penaltyEnabled:
+      typeof o.penaltyEnabled === "boolean" ? o.penaltyEnabled : undefined,
+    penaltyMinutesPerWrong:
+      typeof o.penaltyMinutesPerWrong === "number"
+        ? Math.max(0, Math.round(o.penaltyMinutesPerWrong))
+        : undefined,
   };
 }
 
@@ -147,9 +155,20 @@ function applyCuratedOverride(
       source: "curated",
       track: ov.payload.track,
       difficultyMode: ov.payload.difficultyMode,
+      penaltyEnabled:
+        ov.payload.penaltyEnabled ?? base.penaltyEnabled ?? true,
+      penaltyMinutesPerWrong:
+        ov.payload.penaltyMinutesPerWrong ??
+        base.penaltyMinutesPerWrong ??
+        20,
     };
   }
-  return { ...base, source: "curated" };
+  return {
+    ...base,
+    source: "curated",
+    penaltyEnabled: base.penaltyEnabled ?? true,
+    penaltyMinutesPerWrong: base.penaltyMinutesPerWrong ?? 20,
+  };
 }
 
 export async function resolvePracticeMock(
@@ -188,6 +207,12 @@ export async function resolvePracticeMock(
         override.payload.difficultyMode ?? row.difficultyMode,
       creatorName: creator?.name ?? null,
       createdAt: row.createdAt,
+      penaltyEnabled:
+        override.payload.penaltyEnabled ?? row.penaltyEnabled ?? true,
+      penaltyMinutesPerWrong:
+        override.payload.penaltyMinutesPerWrong ??
+        row.penaltyMinutesPerWrong ??
+        20,
     };
   }
 
@@ -203,6 +228,8 @@ export async function resolvePracticeMock(
     difficultyMode: row.difficultyMode,
     creatorName: creator?.name ?? null,
     createdAt: row.createdAt,
+    penaltyEnabled: row.penaltyEnabled ?? true,
+    penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 20,
   };
 }
 
@@ -240,6 +267,8 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
       kind: generatedMocks.kind,
       createdAt: generatedMocks.createdAt,
       creatorName: user.name,
+      penaltyEnabled: generatedMocks.penaltyEnabled,
+      penaltyMinutesPerWrong: generatedMocks.penaltyMinutesPerWrong,
     })
     .from(generatedMocks)
     .leftJoin(user, eq(generatedMocks.createdBy, user.id))
@@ -262,6 +291,12 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
         difficultyMode: ov.payload.difficultyMode ?? row.difficultyMode,
         creatorName: row.creatorName,
         createdAt: row.createdAt,
+        penaltyEnabled:
+          ov.payload.penaltyEnabled ?? row.penaltyEnabled ?? true,
+        penaltyMinutesPerWrong:
+          ov.payload.penaltyMinutesPerWrong ??
+          row.penaltyMinutesPerWrong ??
+          20,
       };
     }
     return {
@@ -276,6 +311,8 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
       difficultyMode: row.difficultyMode,
       creatorName: row.creatorName,
       createdAt: row.createdAt,
+      penaltyEnabled: row.penaltyEnabled ?? true,
+      penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 20,
     };
   });
 

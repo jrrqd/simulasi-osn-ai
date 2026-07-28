@@ -30,6 +30,8 @@ const mockBodySchema = z.object({
     .transform((v) => parseDifficultyMode(v))
     .catch("medium"),
   kind: z.enum(["ai", "curated_assembled"]).catch("ai"),
+  penaltyEnabled: z.boolean().optional().default(true),
+  penaltyMinutesPerWrong: z.coerce.number().int().min(0).max(120).optional().default(20),
 });
 
 async function validateProblemIds(ids: string[]) {
@@ -51,6 +53,8 @@ function toPayload(
     problemIds: parsed.problemIds.map(String),
     track: parsed.track,
     difficultyMode: parsed.difficultyMode,
+    penaltyEnabled: parsed.penaltyEnabled,
+    penaltyMinutesPerWrong: parsed.penaltyMinutesPerWrong,
   };
 }
 
@@ -145,6 +149,8 @@ export async function POST(req: NextRequest) {
     problemIds: parsed.problemIds,
     track: parsed.track,
     kind: parsed.kind,
+    penaltyEnabled: parsed.penaltyEnabled ?? true,
+    penaltyMinutesPerWrong: parsed.penaltyMinutesPerWrong ?? 20,
   });
 
   const mock = await resolvePracticeMock(id);
@@ -234,6 +240,9 @@ export async function PATCH(req: NextRequest) {
       track: payload.track ?? existing.track,
       difficultyMode: payload.difficultyMode ?? existing.difficultyMode,
       kind: parsed.kind,
+      penaltyEnabled: parsed.penaltyEnabled ?? existing.penaltyEnabled,
+      penaltyMinutesPerWrong:
+        parsed.penaltyMinutesPerWrong ?? existing.penaltyMinutesPerWrong,
     })
     .where(eq(generatedMocks.id, id));
 

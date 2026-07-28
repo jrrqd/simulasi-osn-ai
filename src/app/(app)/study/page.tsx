@@ -22,8 +22,9 @@ export default async function StudyPage() {
       <div>
         <h1 className="display text-4xl">Belajar</h1>
         <p className="text-[var(--muted)]">
-          Tutorial EKKA 2026 — selesaikan level per track. Latihan soal jadi side
-          quest setelah tiap modul.
+          Tutorial EKKA 2026 — selesaikan level per track. Tiap modul punya cek
+          konsep multi-format (numeric / singkat / MCQ) + spaced repetition.
+          Latihan soal jadi side quest setelah tiap modul.
         </p>
         <div className="mt-4 max-w-md">
           <div className="flex items-baseline justify-between gap-3 text-sm">

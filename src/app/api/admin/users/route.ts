@@ -3,6 +3,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   attempts,
+  checkAttempts,
   mockSessions,
   topicMastery,
   user,
@@ -201,6 +202,22 @@ export async function GET(req: NextRequest) {
     completedMocks: submitted.length,
   });
 
+  const checkRows = await db
+    .select()
+    .from(checkAttempts)
+    .where(eq(checkAttempts.userId, userId));
+  const checkCorrect = checkRows.reduce((s, r) => s + r.correctCount, 0);
+  const checkReviews = checkRows.length;
+  const checkConcept = {
+    questionsTouched: checkReviews,
+    correctCount: checkCorrect,
+    avgEase:
+      checkReviews === 0
+        ? 0
+        : checkRows.reduce((s, r) => s + r.ease, 0) / checkReviews,
+    dueNow: checkRows.filter((r) => r.dueAt.getTime() <= Date.now()).length,
+  };
+
   return Response.json({
     user: {
       ...summary,
@@ -216,6 +233,7 @@ export async function GET(req: NextRequest) {
     },
     readiness,
     campaign,
+    checkConcept,
     sessionScores,
     topics: Array.from(topicStats, ([topic, stats]) => ({
       topic,

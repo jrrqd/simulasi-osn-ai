@@ -41,7 +41,14 @@ const studyCaseItemSchema = z.object({
     .string()
     .transform((v) => v.trim().toLowerCase())
     .pipe(
-      z.enum(["numeric", "short_string", "mcq", "python_output", "multi_part"]),
+      z.enum([
+        "numeric",
+        "short_string",
+        "mcq",
+        "python_output",
+        "codeSpec",
+        "multi_part",
+      ]),
     )
     .catch("numeric"),
   // Models sometimes use stem/question instead of prompt

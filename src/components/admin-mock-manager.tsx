@@ -28,6 +28,8 @@ type MockForm = {
   track: TrackId;
   difficultyMode: DifficultyMode;
   kind: "ai" | "curated_assembled";
+  penaltyEnabled: boolean;
+  penaltyMinutesPerWrong: number;
 };
 
 const EMPTY_FORM: MockForm = {
@@ -38,6 +40,8 @@ const EMPTY_FORM: MockForm = {
   track: "B",
   difficultyMode: "medium",
   kind: "ai",
+  penaltyEnabled: true,
+  penaltyMinutesPerWrong: 20,
 };
 
 function toForm(mock: Record<string, unknown>): MockForm {
@@ -63,6 +67,8 @@ function toForm(mock: Record<string, unknown>): MockForm {
     track,
     difficultyMode,
     kind,
+    penaltyEnabled: mock.penaltyEnabled !== false,
+    penaltyMinutesPerWrong: Number(mock.penaltyMinutesPerWrong) || 20,
   };
 }
 
@@ -79,6 +85,8 @@ function formPayload(form: MockForm) {
     track: form.track,
     difficultyMode: form.difficultyMode,
     kind: form.kind,
+    penaltyEnabled: form.penaltyEnabled,
+    penaltyMinutesPerWrong: form.penaltyMinutesPerWrong,
   };
 }
 
@@ -469,6 +477,41 @@ export function AdminMockManager() {
                 <option value="ai">ai</option>
                 <option value="curated_assembled">curated_assembled</option>
               </select>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--line)] bg-white/50 p-4 space-y-3">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={form.penaltyEnabled}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      penaltyEnabled: e.target.checked,
+                    }))
+                  }
+                />
+                Enable submission penalty (tie-breaker ICPC)
+              </label>
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                <label className="text-sm text-[var(--muted)]">
+                  Menit penalti per wrong answer
+                </label>
+                <input
+                  className="input w-28"
+                  type="number"
+                  min={0}
+                  max={120}
+                  disabled={!form.penaltyEnabled}
+                  value={form.penaltyMinutesPerWrong}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      penaltyMinutesPerWrong: Number(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
             </div>
 
             <div className="space-y-1">

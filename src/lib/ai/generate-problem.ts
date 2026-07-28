@@ -47,6 +47,7 @@ const ANSWER_TYPES = [
   "short_string",
   "mcq",
   "python_output",
+  "codeSpec",
 ] as const;
 
 const MAX_LESSON_BODY_CHARS = 2200;
@@ -117,6 +118,8 @@ export async function generateAndStoreProblem(params: {
   answerType?: string;
   /** Pre-resolved difficulty (for mock batch normal distribution). */
   difficulty?: 1 | 2 | 3 | 4 | 5;
+  /** Override per-question weight (coding=2, numeric=1). */
+  weight?: number;
   /** Free-text student focus for custom mock generation. */
   focusPrompt?: string;
   /** When true, prompt model for diagram specs and materialize SVG figures. */
@@ -193,15 +196,34 @@ ${syllabus}
 ${focusBlock}
 ${figureBlock}
 ${
-  answerType === "python_output"
-    ? `Instruksi Python (simulasi berwaktu):
+  answerType === "codeSpec"
+    ? `Instruksi coding Python (OSN AI 2026 / codeSpec):
+- WAJIB isi "codeSpec" dengan skeleton berisi marker "# >>> WRITE HERE <<<" … "# <<< END <<<".
+  (opsional: lockedRanges [[startLine,endLine],…] 1-based bila marker belum ada)
+- WAJIB ≥ 3 testCases {input, expectedOutput}; sertakan edge case.
+- WAJIB timeLimitMs (500–10000) dan memoryLimitMb (64–1024).
+- weight = 2.
+- answer boleh string ringkas (mis. "lihat testCases") — penilaian dari test case.
+- Jangan minta siswa pindah tab / buka IDE eksternal.
+`
+    : answerType === "python_output"
+      ? `Instruksi Python legacy (python_output):
 - WAJIB isi "starterCode" dengan program lengkap untuk runner in-exam.
 - Jangan minta siswa pindah tab / buka IDE eksternal.
 - Jawaban = stdout deterministik dari starterCode.
 `
-    : ""
+      : answerType === "numeric"
+        ? `Instruksi numeric (OSN AI 2026):
+- WAJIB isi "numericFormat": integer | decimal | space_separated | comma_separated.
+  (alias "expectedFormat" juga diterima, tapi prefer numericFormat)
+- Jawaban harus PERSIS sesuai format (integer: "25" bukan "25.0").
+- Sebutkan format di stem.
+- weight = 1.
+`
+        : ""
 }Instruksi akhir:
 - Soal harus dapat diselesaikan hanya dengan materi di atas + prasyarat sangat dasar.
+- Jika memakai konsep matematika non-SMA, jelaskan 1–3 kalimat di awal stem.
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
 - Solusi 3–8 kalimat; rumus boleh KaTeX $...$ atau plain text.
@@ -397,6 +419,11 @@ PERINGATAN PERCOBAAN ULANG:
     source: "ai",
     difficulty,
     figures: problemFigures,
+    legacy: false,
+    weight:
+      params.weight ??
+      payload.weight ??
+      (payload.answerType === "codeSpec" || payload.codeSpec ? 2 : 1),
   };
 
   const db = await getDb();

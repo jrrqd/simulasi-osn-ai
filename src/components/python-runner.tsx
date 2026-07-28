@@ -1,47 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { getPyodide, preloadPyodide } from "@/lib/pyodide-client";
 
-declare global {
-  interface Window {
-    loadPyodide?: (opts?: { indexURL?: string }) => Promise<{
-      runPythonAsync: (code: string) => Promise<unknown>;
-      setStdout: (opts: { batched: (s: string) => void }) => void;
-    }>;
-  }
-}
-
-let pyodidePromise: Promise<NonNullable<Window["loadPyodide"]> extends (
-  ...args: infer _A
-) => Promise<infer R>
-  ? R
-  : never> | null = null;
-
-async function getPyodide() {
-  if (!pyodidePromise) {
-    if (!window.loadPyodide) {
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js";
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error("Gagal memuat Pyodide"));
-        document.head.appendChild(script);
-      });
-    }
-    pyodidePromise = window.loadPyodide!({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/",
-    });
-  }
-  return pyodidePromise;
-}
-
-/** Fire-and-forget warm-up so the first "Jalankan" in an exam is faster. */
-export function preloadPyodide(): void {
-  if (typeof window === "undefined") return;
-  void getPyodide().catch(() => {
-    // Non-blocking: exam continues without a preloaded runtime.
-  });
-}
+export { preloadPyodide };
 
 export function PythonRunner({
   initialCode = "print('hello')",

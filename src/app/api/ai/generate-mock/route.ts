@@ -72,7 +72,7 @@ async function generateSlotProblem(params: {
     "numeric",
     "mcq",
     "short_string",
-    "python_output",
+    "codeSpec",
   ];
   let lastSlotError: unknown;
   let problem: Awaited<ReturnType<typeof generateAndStoreProblem>> | null =
@@ -117,6 +117,7 @@ async function generateSlotProblem(params: {
         difficulty: params.slot.difficulty,
         focusPrompt,
         answerType: answerRotation[slotAttempt % answerRotation.length],
+        weight: params.slot.weight,
         baseUrl: params.baseUrl,
         apiKey: params.apiKey,
         modelId: params.modelId,

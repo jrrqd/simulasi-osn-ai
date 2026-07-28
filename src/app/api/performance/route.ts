@@ -3,7 +3,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import { attempts, mockSessions, topicMastery } from "@/db/schema";
 import { requireApiUser } from "@/lib/api";
-import { overallMastery, rankGaps } from "@/lib/analytics/mastery";
+import { overallMastery, rankGaps, suggestedLessonsFromGaps } from "@/lib/analytics/mastery";
 import {
   computeOsnReadiness,
   syllabusTopicsFromMastery,
@@ -69,11 +69,24 @@ export async function GET(req: NextRequest) {
   const gaps = rankGaps(allTopics).slice(0, 5);
   const lessons = getLessons();
   const problems = getProblems();
+  const completedLessonIds = new Set(
+    [...lessonProgressMap.entries()]
+      .filter(([, row]) => row.status === "completed")
+      .map(([id]) => id),
+  );
   const recommendations = gaps.map((g) => ({
     ...g,
-    lessonId: lessons.find((l) => l.topic === g.topic)?.id,
+    lessonId: lessons.find(
+      (l) => l.topic === g.topic && !completedLessonIds.has(l.id),
+    )?.id ?? lessons.find((l) => l.topic === g.topic)?.id,
     practiceId: problems.find((p) => p.topic === g.topic)?.id,
   }));
+  const suggestedLessons = suggestedLessonsFromGaps({
+    gaps,
+    lessons,
+    completedLessonIds,
+    limit: 3,
+  });
 
   const byDay: Record<string, { correct: number; total: number }> = {};
   for (const a of recentAttempts) {
@@ -209,6 +222,7 @@ export async function GET(req: NextRequest) {
     overall: overallMastery(allTopics),
     topics: allTopics,
     gaps: recommendations,
+    suggestedLessons,
     trend,
     typeBreakdown,
     readiness,

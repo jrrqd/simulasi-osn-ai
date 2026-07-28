@@ -23,7 +23,7 @@ type ProblemForm = {
   track: TrackId;
   topic: string;
   difficulty: number;
-  answerType: "numeric" | "short_string" | "mcq" | "python_output";
+  answerType: "numeric" | "short_string" | "mcq" | "python_output" | "codeSpec";
   stem: string;
   answer: string;
   tolerance: string;
@@ -63,7 +63,7 @@ function toForm(problem: Record<string, unknown>): ProblemForm {
     track,
     topic,
     difficulty: Number(problem.difficulty) || 2,
-    answerType: (["numeric", "short_string", "mcq", "python_output"].includes(
+    answerType: (["numeric", "short_string", "mcq", "python_output", "codeSpec"].includes(
       String(problem.answerType),
     )
       ? String(problem.answerType)
@@ -501,7 +501,7 @@ export function AdminProblemManager() {
                   }))
                 }
               >
-                {["numeric", "short_string", "mcq", "python_output"].map(
+                {["numeric", "short_string", "mcq", "python_output", "codeSpec"].map(
                   (t) => (
                     <option key={t} value={t}>
                       {t}

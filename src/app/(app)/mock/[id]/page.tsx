@@ -26,6 +26,8 @@ export default async function MockPage({
       title={displayMockTitle(mock)}
       durationMinutes={mock.durationMinutes}
       problems={problems.map(toExamFacingProblem)}
+      penaltyEnabled={mock.penaltyEnabled !== false}
+      penaltyMinutesPerWrong={mock.penaltyMinutesPerWrong ?? 20}
     />
   );
 }
