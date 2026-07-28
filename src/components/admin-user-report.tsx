@@ -33,6 +33,13 @@ type ResetAction = {
   description: string;
 };
 
+type SessionDeleteAction = {
+  mockSessionId: string;
+  behavior: ResetBehavior;
+  label: string;
+  description: string;
+};
+
 const RESET_ACTIONS: Record<string, ResetAction> = {
   delete_in_progress: {
     scope: "in_progress_only",
@@ -67,6 +74,28 @@ const RESET_ACTIONS: Record<string, ResetAction> = {
       "Hapus mockSessions, attempts, topicMastery, dan lessonProgress.",
   },
 };
+
+function sessionDeleteAction(
+  mockSessionId: string,
+  behavior: ResetBehavior,
+): SessionDeleteAction {
+  if (behavior === "hard_delete") {
+    return {
+      mockSessionId,
+      behavior,
+      label: "Hapus sesi ini",
+      description:
+        "Hapus satu sesi mock ini. Jika sudah disubmit, attempts terkait dan topic mastery siswa ikut dihapus.",
+    };
+  }
+  return {
+    mockSessionId,
+    behavior,
+    label: "Tandai abandoned",
+    description:
+      "Set status sesi ini menjadi abandoned. Data tetap tersimpan untuk audit.",
+  };
+}
 
 function MockStatusBadge({ status }: { status: string }) {
   if (status === "abandoned") {
@@ -192,6 +221,8 @@ export function AdminUserReport({ userId }: { userId: string }) {
   const [data, setData] = useState<Report | null>(null);
   const [error, setError] = useState("");
   const [resetPending, setResetPending] = useState<ResetAction | null>(null);
+  const [sessionPending, setSessionPending] =
+    useState<SessionDeleteAction | null>(null);
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
@@ -208,6 +239,37 @@ export function AdminUserReport({ userId }: { userId: string }) {
   };
 
   useEffect(loadReport, [userId]);
+
+  const formatCountsMessage = (
+    behavior: ResetBehavior,
+    counts:
+      | {
+          mockSessions?: number;
+          attempts?: number;
+          topicMastery?: number;
+          lessonProgress?: number;
+          abandoned?: number;
+        }
+      | undefined,
+  ) => {
+    const parts: string[] = [];
+    if (behavior === "soft_abandon") {
+      parts.push(
+        `${counts?.abandoned ?? counts?.mockSessions ?? 0} sesi ditandai abandoned`,
+      );
+    } else {
+      if ((counts?.mockSessions ?? 0) > 0)
+        parts.push(`${counts?.mockSessions} mockSessions`);
+      if ((counts?.attempts ?? 0) > 0)
+        parts.push(`${counts?.attempts} attempts`);
+      if ((counts?.topicMastery ?? 0) > 0)
+        parts.push(`${counts?.topicMastery} topic mastery`);
+      if ((counts?.lessonProgress ?? 0) > 0)
+        parts.push(`${counts?.lessonProgress} lesson progress`);
+      parts.push("dihapus");
+    }
+    return parts.join(", ");
+  };
 
   const performReset = async (action: ResetAction) => {
     setResetBusy(true);
@@ -228,36 +290,42 @@ export function AdminUserReport({ userId }: { userId: string }) {
       if (!response.ok) {
         throw new Error(body.error || "Gagal mereset sesi");
       }
-      const counts = body.counts as
-        | {
-            mockSessions?: number;
-            attempts?: number;
-            topicMastery?: number;
-            lessonProgress?: number;
-            abandoned?: number;
-          }
-        | undefined;
-      const parts: string[] = [];
-      if (action.behavior === "soft_abandon") {
-        parts.push(
-          `${counts?.abandoned ?? counts?.mockSessions ?? 0} sesi ditandai abandoned`,
-        );
-      } else {
-        if ((counts?.mockSessions ?? 0) > 0)
-          parts.push(`${counts?.mockSessions} mockSessions`);
-        if ((counts?.attempts ?? 0) > 0)
-          parts.push(`${counts?.attempts} attempts`);
-        if ((counts?.topicMastery ?? 0) > 0)
-          parts.push(`${counts?.topicMastery} topic mastery`);
-        if ((counts?.lessonProgress ?? 0) > 0)
-          parts.push(`${counts?.lessonProgress} lesson progress`);
-        parts.push("dihapus");
-      }
-      setResetMessage(parts.join(", "));
+      setResetMessage(formatCountsMessage(action.behavior, body.counts));
       setResetPending(null);
       loadReport();
     } catch (err) {
       setResetError(err instanceof Error ? err.message : "Gagal mereset sesi");
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  const performSessionDelete = async (action: SessionDeleteAction) => {
+    setResetBusy(true);
+    setResetError("");
+    setResetMessage("");
+    try {
+      const response = await fetch("/api/admin/users/delete-mock-session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          mockSessionId: action.mockSessionId,
+          behavior: action.behavior,
+          confirm: true,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || "Gagal menghapus sesi");
+      }
+      setResetMessage(formatCountsMessage(action.behavior, body.counts));
+      setSessionPending(null);
+      loadReport();
+    } catch (err) {
+      setResetError(
+        err instanceof Error ? err.message : "Gagal menghapus sesi",
+      );
     } finally {
       setResetBusy(false);
     }
@@ -620,6 +688,36 @@ export function AdminUserReport({ userId }: { userId: string }) {
 
       <div className="panel rounded-3xl p-5">
         <h2 className="display mb-3 text-2xl">Riwayat mock</h2>
+        <p className="mb-3 text-sm text-[var(--muted)]">
+          Hapus atau tandai abandoned satu sesi tertentu (mis. sesi outlier di
+          grafik skor).
+        </p>
+        {sessionPending && (
+          <div className="mb-4 rounded-2xl border border-[var(--bad)]/40 bg-[var(--bad)]/5 p-4">
+            <p className="text-sm font-semibold">{sessionPending.label}?</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {sessionPending.description}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => performSessionDelete(sessionPending)}
+                disabled={resetBusy}
+                className="rounded-full bg-[var(--bad)] px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {resetBusy ? "Memproses…" : "Konfirmasi"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionPending(null)}
+                disabled={resetBusy}
+                className="rounded-full border border-[var(--line)] px-4 py-1.5 text-sm transition hover:border-[var(--bad)] disabled:opacity-50"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
         <div className="space-y-2 text-sm">
           {data.mocks.map((mock) => (
             <div
@@ -649,25 +747,23 @@ export function AdminUserReport({ userId }: { userId: string }) {
               {(mock.status === "in_progress" ||
                 mock.status === "submitted") && (
                 <span className="flex shrink-0 gap-2">
-                  {mock.status === "in_progress" && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setResetPending(RESET_ACTIONS.delete_in_progress)
-                      }
-                      disabled={resetBusy}
-                      className="rounded-full border border-[var(--line)] px-3 py-1 text-xs transition hover:border-[var(--bad)] disabled:opacity-50"
-                    >
-                      Hapus sesi
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() =>
-                      setResetPending(
-                        mock.status === "in_progress"
-                          ? RESET_ACTIONS.mark_abandoned_in_progress
-                          : RESET_ACTIONS.mark_abandoned_submitted,
+                      setSessionPending(
+                        sessionDeleteAction(mock.id, "hard_delete"),
+                      )
+                    }
+                    disabled={resetBusy}
+                    className="rounded-full border border-[var(--line)] px-3 py-1 text-xs transition hover:border-[var(--bad)] disabled:opacity-50"
+                  >
+                    Hapus sesi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSessionPending(
+                        sessionDeleteAction(mock.id, "soft_abandon"),
                       )
                     }
                     disabled={resetBusy}
