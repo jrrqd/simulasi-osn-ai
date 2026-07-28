@@ -7,6 +7,8 @@ export type MockProgress = {
   /** Submitted sessions only. */
   attemptCount: number;
   hasInProgress: boolean;
+  /** True if any admin-abandoned session exists for this mock. */
+  hasAbandoned: boolean;
   /** Best submitted score ratio 0–1. */
   bestScoreRatio: number | null;
   /** Most recent submitted score ratio 0–1. */
@@ -52,6 +54,7 @@ export async function getUserMockProgress(
       mockId: row.mockId,
       attemptCount: 0,
       hasInProgress: false,
+      hasAbandoned: false,
       bestScoreRatio: null as number | null,
       lastScoreRatio: null as number | null,
       lastSubmittedAt: null as Date | null,
@@ -72,6 +75,8 @@ export async function getUserMockProgress(
             ? r
             : Math.max(existing.bestScoreRatio, r);
       }
+    } else if (row.status === "abandoned") {
+      existing.hasAbandoned = true;
     }
 
     map.set(row.mockId, existing);
