@@ -133,3 +133,41 @@ export async function recordAttempt(input: {
 
   return id;
 }
+
+/** Rebuild all topic_mastery rows for a user from current attempts. */
+export async function rebuildTopicMasteryForUser(userId: string) {
+  const db = await getDb();
+  const allAttempts = await db
+    .select()
+    .from(attempts)
+    .where(eq(attempts.userId, userId));
+
+  await db.delete(topicMastery).where(eq(topicMastery.userId, userId));
+
+  const byTopic = new Map<string, typeof allAttempts>();
+  for (const row of allAttempts) {
+    const list = byTopic.get(row.topic) ?? [];
+    list.push(row);
+    byTopic.set(row.topic, list);
+  }
+
+  let topics = 0;
+  for (const [topic, rows] of byTopic) {
+    const stats = computeTopicMastery(rows);
+    if (stats.attemptsCount === 0) continue;
+    const track = rows[0]?.track ?? "unknown";
+    await db.insert(topicMastery).values({
+      id: nanoid(),
+      userId,
+      track,
+      topic,
+      mastery: stats.mastery,
+      attemptsCount: stats.attemptsCount,
+      correctCount: stats.correctCount,
+      avgDurationMs: stats.avgDurationMs,
+    });
+    topics += 1;
+  }
+
+  return { topics, attempts: allAttempts.length };
+}
