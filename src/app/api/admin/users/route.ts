@@ -152,6 +152,7 @@ export async function GET(req: NextRequest) {
   const submitted = submittedMockScores(userMocks);
   const sessionScores = submitted.map((m, index) => ({
     index: index + 1,
+    id: m.id,
     label: `Sesi ${index + 1}`,
     mockId: m.mockId,
     score: m.score!,
