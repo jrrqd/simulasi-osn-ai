@@ -238,8 +238,24 @@ export function AdminUserReport({ userId }: { userId: string }) {
   const loadReport = () => {
     fetch(`/api/admin/users?userId=${encodeURIComponent(userId)}`)
       .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "Gagal memuat laporan");
+        const raw = await response.text();
+        let body: { error?: string } = {};
+        if (raw.trim()) {
+          try {
+            body = JSON.parse(raw) as { error?: string };
+          } catch {
+            throw new Error(
+              response.ok
+                ? "Respons laporan tidak valid"
+                : `Gagal memuat laporan (HTTP ${response.status})`,
+            );
+          }
+        } else if (!response.ok) {
+          throw new Error(`Gagal memuat laporan (HTTP ${response.status})`);
+        }
+        if (!response.ok) {
+          throw new Error(body.error || "Gagal memuat laporan");
+        }
         setData(body);
         setError("");
       })

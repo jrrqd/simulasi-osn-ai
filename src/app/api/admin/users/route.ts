@@ -202,21 +202,31 @@ export async function GET(req: NextRequest) {
     completedMocks: submitted.length,
   });
 
-  const checkRows = await db
-    .select()
-    .from(checkAttempts)
-    .where(eq(checkAttempts.userId, userId));
-  const checkCorrect = checkRows.reduce((s, r) => s + r.correctCount, 0);
-  const checkReviews = checkRows.length;
-  const checkConcept = {
-    questionsTouched: checkReviews,
-    correctCount: checkCorrect,
-    avgEase:
-      checkReviews === 0
-        ? 0
-        : checkRows.reduce((s, r) => s + r.ease, 0) / checkReviews,
-    dueNow: checkRows.filter((r) => r.dueAt.getTime() <= Date.now()).length,
+  let checkConcept = {
+    questionsTouched: 0,
+    correctCount: 0,
+    avgEase: 0,
+    dueNow: 0,
   };
+  try {
+    const checkRows = await db
+      .select()
+      .from(checkAttempts)
+      .where(eq(checkAttempts.userId, userId));
+    const checkCorrect = checkRows.reduce((s, r) => s + r.correctCount, 0);
+    const checkReviews = checkRows.length;
+    checkConcept = {
+      questionsTouched: checkReviews,
+      correctCount: checkCorrect,
+      avgEase:
+        checkReviews === 0
+          ? 0
+          : checkRows.reduce((s, r) => s + r.ease, 0) / checkReviews,
+      dueNow: checkRows.filter((r) => r.dueAt.getTime() <= Date.now()).length,
+    };
+  } catch (err) {
+    console.error("[admin/users] check_attempts query failed", err);
+  }
 
   return Response.json({
     user: {

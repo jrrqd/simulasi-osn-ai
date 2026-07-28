@@ -307,7 +307,7 @@ async function createDb(): Promise<AppDb> {
 
   const url = process.env.DATABASE_URL!;
   const client = postgres(url, { max: 10 });
-  // Soft-migrate additive columns/tables used by OSN AI 2026 penalty features.
+  // Soft-migrate additive columns/tables (Postgres prod does not run PGlite migrate).
   await client.unsafe(`
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS score_summary jsonb;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS total_attempts integer NOT NULL DEFAULT 0;
@@ -327,6 +327,34 @@ async function createDb(): Promise<AppDb> {
     CREATE INDEX IF NOT EXISTS submission_events_user_idx ON submission_events(user_id);
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_enabled boolean NOT NULL DEFAULT true;
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 20;
+    CREATE TABLE IF NOT EXISTS check_attempts (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      lesson_id text NOT NULL,
+      question_id text NOT NULL,
+      last_seen_at timestamptz NOT NULL DEFAULT now(),
+      correct_count integer NOT NULL DEFAULT 0,
+      wrong_streak integer NOT NULL DEFAULT 0,
+      ease double precision NOT NULL DEFAULT 2.5,
+      interval_days double precision NOT NULL DEFAULT 0,
+      due_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS check_attempts_user_lesson_q_uidx
+      ON check_attempts(user_id, lesson_id, question_id);
+    CREATE INDEX IF NOT EXISTS check_attempts_user_due_idx
+      ON check_attempts(user_id, due_at);
+    CREATE TABLE IF NOT EXISTS generated_lesson_checks (
+      id text PRIMARY KEY,
+      lesson_id text NOT NULL,
+      payload jsonb NOT NULL,
+      hidden boolean NOT NULL DEFAULT false,
+      created_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS generated_lesson_checks_lesson_idx
+      ON generated_lesson_checks(lesson_id);
   `);
   return drizzlePg(client, { schema });
 }
