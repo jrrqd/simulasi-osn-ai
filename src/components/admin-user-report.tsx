@@ -239,19 +239,22 @@ export function AdminUserReport({ userId }: { userId: string }) {
     fetch(`/api/admin/users?userId=${encodeURIComponent(userId)}`)
       .then(async (response) => {
         const raw = await response.text();
-        let body: { error?: string } = {};
-        if (raw.trim()) {
-          try {
-            body = JSON.parse(raw) as { error?: string };
-          } catch {
-            throw new Error(
-              response.ok
-                ? "Respons laporan tidak valid"
-                : `Gagal memuat laporan (HTTP ${response.status})`,
-            );
-          }
-        } else if (!response.ok) {
-          throw new Error(`Gagal memuat laporan (HTTP ${response.status})`);
+        let body: Report & { error?: string };
+        if (!raw.trim()) {
+          throw new Error(
+            response.ok
+              ? "Respons laporan kosong"
+              : `Gagal memuat laporan (HTTP ${response.status})`,
+          );
+        }
+        try {
+          body = JSON.parse(raw) as Report & { error?: string };
+        } catch {
+          throw new Error(
+            response.ok
+              ? "Respons laporan tidak valid"
+              : `Gagal memuat laporan (HTTP ${response.status})`,
+          );
         }
         if (!response.ok) {
           throw new Error(body.error || "Gagal memuat laporan");
