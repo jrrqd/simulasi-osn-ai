@@ -159,6 +159,7 @@ type Report = {
   };
   sessionScores: {
     index: number;
+    id: string;
     label: string;
     mockId: string;
     score: number;
@@ -339,6 +340,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
     mastery: Math.round(item.mastery * 100),
   }));
   const sessionChart = data.sessionScores.map((item) => ({
+    id: item.id,
     name: item.label,
     skor: item.percent,
     detail: `${item.score}/${item.maxScore}`,
@@ -557,8 +559,57 @@ export function AdminUserReport({ userId }: { userId: string }) {
       <div className="panel rounded-3xl p-5">
         <h2 className="display mb-1 text-2xl">Skor per sesi mock</h2>
         <p className="mb-4 text-sm text-[var(--muted)]">
-          Tren skor submit (persen) dari sesi tertua ke terbaru.
+          Tren skor submit (persen) dari sesi tertua ke terbaru. Klik titik sesi
+          untuk menghapus atau menandai abandoned.
         </p>
+        {sessionPending && (
+          <div className="mb-4 rounded-2xl border border-[var(--bad)]/40 bg-[var(--bad)]/5 p-4">
+            <p className="text-sm font-semibold">{sessionPending.label}?</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {sessionPending.description}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  performSessionDelete(
+                    sessionDeleteAction(
+                      sessionPending.mockSessionId,
+                      "hard_delete",
+                    ),
+                  )
+                }
+                disabled={resetBusy}
+                className="rounded-full bg-[var(--bad)] px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {resetBusy ? "Memproses…" : "Konfirmasi hapus"}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  performSessionDelete(
+                    sessionDeleteAction(
+                      sessionPending.mockSessionId,
+                      "soft_abandon",
+                    ),
+                  )
+                }
+                disabled={resetBusy}
+                className="rounded-full border border-[var(--warn)] px-4 py-1.5 text-sm font-semibold text-[var(--warn)] transition hover:bg-[var(--warn)]/10 disabled:opacity-50"
+              >
+                Tandai abandoned
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionPending(null)}
+                disabled={resetBusy}
+                className="rounded-full border border-[var(--line)] px-4 py-1.5 text-sm transition hover:border-[var(--bad)] disabled:opacity-50"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
         {sessionChart.length ? (
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -577,7 +628,32 @@ export function AdminUserReport({ userId }: { userId: string }) {
                   stroke="#0f6e56"
                   strokeWidth={2.5}
                   type="monotone"
-                  dot={{ r: 4 }}
+                  activeDot={{ r: 7 }}
+                  dot={(props) => {
+                    const { cx, cy, payload, index } = props;
+                    if (cx == null || cy == null || !payload?.id) {
+                      return <g key={`dot-empty-${index}`} />;
+                    }
+                    return (
+                      <circle
+                        key={`dot-${payload.id}`}
+                        cx={cx}
+                        cy={cy}
+                        r={5}
+                        fill="#0f6e56"
+                        stroke="#fff"
+                        strokeWidth={1.5}
+                        className="cursor-pointer"
+                        style={{ cursor: "pointer" }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSessionPending(
+                            sessionDeleteAction(payload.id, "hard_delete"),
+                          );
+                        }}
+                      />
+                    );
+                  }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -698,14 +774,36 @@ export function AdminUserReport({ userId }: { userId: string }) {
             <p className="mt-1 text-xs text-[var(--muted)]">
               {sessionPending.description}
             </p>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => performSessionDelete(sessionPending)}
+                onClick={() =>
+                  performSessionDelete(
+                    sessionDeleteAction(
+                      sessionPending.mockSessionId,
+                      "hard_delete",
+                    ),
+                  )
+                }
                 disabled={resetBusy}
                 className="rounded-full bg-[var(--bad)] px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
-                {resetBusy ? "Memproses…" : "Konfirmasi"}
+                {resetBusy ? "Memproses…" : "Konfirmasi hapus"}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  performSessionDelete(
+                    sessionDeleteAction(
+                      sessionPending.mockSessionId,
+                      "soft_abandon",
+                    ),
+                  )
+                }
+                disabled={resetBusy}
+                className="rounded-full border border-[var(--warn)] px-4 py-1.5 text-sm font-semibold text-[var(--warn)] transition hover:bg-[var(--warn)]/10 disabled:opacity-50"
+              >
+                Tandai abandoned
               </button>
               <button
                 type="button"
