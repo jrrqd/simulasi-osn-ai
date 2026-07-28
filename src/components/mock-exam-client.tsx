@@ -272,11 +272,15 @@ export function MockExamClient({
             AI.
           </li>
           <li>
-            Pemantauan integritas: meninggalkan tab (≥1,5 detik halaman
-            tersembunyi) dihitung sebagai peringatan. {INTEGRITY_FLAG_AT}{" "}
+            Pemantauan integritas: hanya meninggalkan tab (≥1,5 detik halaman
+            tersembunyi) yang dihitung sebagai peringatan. {INTEGRITY_FLAG_AT}{" "}
             peringatan → sesi ditandai; {INTEGRITY_FORCE_SUBMIT_AT} peringatan →
-            ujian dikumpulkan otomatis. Kehilangan fokus di dalam tab tidak
-            dihitung.
+            ujian dikumpulkan otomatis.
+          </li>
+          <li>
+            Diam di tab ujian diperbolehkan — termasuk menghitung manual di
+            kertas atau tidak mengklik apa pun. Tidak ada deteksi
+            &quot;inaktivitas&quot; selama tab tetap terbuka.
           </li>
           <li>
             Platform web tidak bisa sepenuhnya memblokir ekstensi AI atau
