@@ -144,8 +144,8 @@ export function useExamIntegrity({
       }
     };
 
-    // Soft policy: in-tab focus loss (address bar, overlays, runner UI) is
-    // permitted. Only Page Visibility API counts as leaving the exam tab.
+    // Soft policy: in-tab focus loss and idle time (paper calculation) are
+    // permitted. Only Page Visibility "hidden" counts as leaving the exam tab.
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
