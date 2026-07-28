@@ -1,4 +1,4 @@
-import { Check, Clock3 } from "lucide-react";
+import { Check, Clock3, XCircle } from "lucide-react";
 import type { MockProgress } from "@/lib/mock-progress";
 
 function pct(ratio: number) {
@@ -6,10 +6,28 @@ function pct(ratio: number) {
 }
 
 export function MockProgressBadge({ progress }: { progress?: MockProgress }) {
-  if (!progress || (progress.attemptCount === 0 && !progress.hasInProgress)) {
+  if (
+    !progress ||
+    (progress.attemptCount === 0 &&
+      !progress.hasInProgress &&
+      !progress.hasAbandoned)
+  ) {
     return (
       <span className="inline-flex items-center rounded-full bg-black/[0.04] px-2 py-0.5 text-xs text-[var(--muted)]">
         Belum dikerjakan
+      </span>
+    );
+  }
+
+  if (
+    progress.attemptCount === 0 &&
+    !progress.hasInProgress &&
+    progress.hasAbandoned
+  ) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-medium text-[var(--muted)]">
+        <XCircle size={12} strokeWidth={2.5} aria-hidden />
+        Dibatalkan admin
       </span>
     );
   }

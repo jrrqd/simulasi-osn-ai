@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import { masteryFill } from "@/lib/charts/mastery-color";
 import {
   formatBirthDateWib,
@@ -21,6 +22,69 @@ import {
 } from "@/lib/datetime";
 import { CampaignEvolution } from "@/components/campaign-evolution";
 import type { CampaignStages } from "@/lib/campaign-stages";
+
+type ResetScope = "in_progress_only" | "all_mocks" | "full_reset";
+type ResetBehavior = "hard_delete" | "soft_abandon";
+
+type ResetAction = {
+  scope: ResetScope;
+  behavior: ResetBehavior;
+  label: string;
+  description: string;
+};
+
+const RESET_ACTIONS: Record<string, ResetAction> = {
+  delete_in_progress: {
+    scope: "in_progress_only",
+    behavior: "hard_delete",
+    label: "Hapus sesi berjalan",
+    description: "Hapus sesi simulasi yang masih in_progress.",
+  },
+  mark_abandoned_in_progress: {
+    scope: "in_progress_only",
+    behavior: "soft_abandon",
+    label: "Tandai abandoned (in_progress)",
+    description: "Set status sesi yang masih in_progress menjadi abandoned.",
+  },
+  mark_abandoned_submitted: {
+    scope: "all_mocks",
+    behavior: "soft_abandon",
+    label: "Tandai abandoned (semua mock)",
+    description: "Set status semua mock siswa ini menjadi abandoned.",
+  },
+  delete_all_mocks: {
+    scope: "all_mocks",
+    behavior: "hard_delete",
+    label: "Hapus semua sesi mock",
+    description:
+      "Hapus semua mockSessions siswa ini beserta attempts yang terkait.",
+  },
+  full_reset: {
+    scope: "full_reset",
+    behavior: "hard_delete",
+    label: "Reset total data siswa",
+    description:
+      "Hapus mockSessions, attempts, topicMastery, dan lessonProgress.",
+  },
+};
+
+function MockStatusBadge({ status }: { status: string }) {
+  if (status === "abandoned") {
+    return (
+      <span className="ml-2 inline-flex items-center rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-semibold text-[var(--muted)]">
+        Dibatalkan admin
+      </span>
+    );
+  }
+  if (status === "in_progress") {
+    return (
+      <span className="ml-2 inline-flex items-center rounded-full bg-[rgba(161,92,7,0.12)] px-2 py-0.5 text-[11px] font-semibold text-[var(--warn)]">
+        In progress
+      </span>
+    );
+  }
+  return null;
+}
 
 type Report = {
   user: {
@@ -101,7 +165,7 @@ type Report = {
   mocks: {
     id: string;
     mockId: string;
-    status: string;
+    status: "in_progress" | "submitted" | "abandoned" | string;
     score: number | null;
     maxScore: number | null;
     startedAt: string;
@@ -127,16 +191,77 @@ function formatAvgScore(totals: Report["totals"]) {
 export function AdminUserReport({ userId }: { userId: string }) {
   const [data, setData] = useState<Report | null>(null);
   const [error, setError] = useState("");
+  const [resetPending, setResetPending] = useState<ResetAction | null>(null);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
 
-  useEffect(() => {
+  const loadReport = () => {
     fetch(`/api/admin/users?userId=${encodeURIComponent(userId)}`)
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || "Gagal memuat laporan");
         setData(body);
+        setError("");
       })
       .catch((err) => setError(err.message));
-  }, [userId]);
+  };
+
+  useEffect(loadReport, [userId]);
+
+  const performReset = async (action: ResetAction) => {
+    setResetBusy(true);
+    setResetError("");
+    setResetMessage("");
+    try {
+      const response = await fetch("/api/admin/users/reset-mock-sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          scope: action.scope,
+          behavior: action.behavior,
+          confirm: true,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || "Gagal mereset sesi");
+      }
+      const counts = body.counts as
+        | {
+            mockSessions?: number;
+            attempts?: number;
+            topicMastery?: number;
+            lessonProgress?: number;
+            abandoned?: number;
+          }
+        | undefined;
+      const parts: string[] = [];
+      if (action.behavior === "soft_abandon") {
+        parts.push(
+          `${counts?.abandoned ?? counts?.mockSessions ?? 0} sesi ditandai abandoned`,
+        );
+      } else {
+        if ((counts?.mockSessions ?? 0) > 0)
+          parts.push(`${counts?.mockSessions} mockSessions`);
+        if ((counts?.attempts ?? 0) > 0)
+          parts.push(`${counts?.attempts} attempts`);
+        if ((counts?.topicMastery ?? 0) > 0)
+          parts.push(`${counts?.topicMastery} topic mastery`);
+        if ((counts?.lessonProgress ?? 0) > 0)
+          parts.push(`${counts?.lessonProgress} lesson progress`);
+        parts.push("dihapus");
+      }
+      setResetMessage(parts.join(", "));
+      setResetPending(null);
+      loadReport();
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : "Gagal mereset sesi");
+    } finally {
+      setResetBusy(false);
+    }
+  };
 
   if (error) return <p className="text-[var(--bad)]">{error}</p>;
   if (!data) return <p className="text-[var(--muted)]">Memuat laporan…</p>;
@@ -251,6 +376,97 @@ export function AdminUserReport({ userId }: { userId: string }) {
             <p className="display mt-2 text-3xl">{item.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="panel rounded-3xl border border-[var(--bad)]/30 p-5">
+        <div className="mb-4 flex items-start gap-3">
+          <AlertTriangle
+            size={20}
+            className="mt-0.5 shrink-0 text-[var(--bad)]"
+            aria-hidden
+          />
+          <div>
+            <h2 className="display text-2xl">Tindakan admin</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Bersihkan sesi simulasi siswa ini. Tindakan destructive tidak
+              dapat dibatalkan.
+            </p>
+          </div>
+        </div>
+
+        {resetMessage && (
+          <p className="mb-3 rounded-2xl bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent)]">
+            Berhasil: {resetMessage}.
+          </p>
+        )}
+        {resetError && (
+          <p className="mb-3 rounded-2xl bg-[var(--bad)]/10 px-3 py-2 text-sm text-[var(--bad)]">
+            {resetError}
+          </p>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            RESET_ACTIONS.delete_in_progress,
+            RESET_ACTIONS.mark_abandoned_in_progress,
+            RESET_ACTIONS.mark_abandoned_submitted,
+            RESET_ACTIONS.delete_all_mocks,
+          ].map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              onClick={() => setResetPending(action)}
+              disabled={resetBusy}
+              className="rounded-2xl border border-[var(--line)] bg-white/60 p-3 text-left text-sm transition hover:border-[var(--bad)] disabled:opacity-50"
+            >
+              <p className="font-semibold">{action.label}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {action.description}
+              </p>
+            </button>
+          ))}
+        </div>
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setResetPending(RESET_ACTIONS.full_reset)}
+            disabled={resetBusy}
+            className="inline-flex items-center gap-2 rounded-2xl border border-[var(--bad)] bg-[var(--bad)]/10 px-4 py-2 text-sm font-semibold text-[var(--bad)] transition hover:bg-[var(--bad)]/15 disabled:opacity-50"
+          >
+            <Trash2 size={16} aria-hidden />
+            {RESET_ACTIONS.full_reset.label}
+          </button>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            {RESET_ACTIONS.full_reset.description}
+          </p>
+        </div>
+
+        {resetPending && (
+          <div className="mt-4 rounded-2xl border border-[var(--bad)]/40 bg-[var(--bad)]/5 p-4">
+            <p className="text-sm font-semibold">{resetPending.label}?</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {resetPending.description}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => performReset(resetPending)}
+                disabled={resetBusy}
+                className="rounded-full bg-[var(--bad)] px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {resetBusy ? "Memproses…" : "Konfirmasi"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetPending(null)}
+                disabled={resetBusy}
+                className="rounded-full border border-[var(--line)] px-4 py-1.5 text-sm transition hover:border-[var(--bad)] disabled:opacity-50"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="panel rounded-3xl p-5">
@@ -408,10 +624,11 @@ export function AdminUserReport({ userId }: { userId: string }) {
           {data.mocks.map((mock) => (
             <div
               key={mock.id}
-              className="flex items-center justify-between gap-3 border-b border-[var(--line)] py-2"
+              className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] py-2"
             >
-              <span>
+              <span className="min-w-0 flex-1">
                 {mock.mockId} · {formatDateTimeWib(mock.startedAt)}
+                <MockStatusBadge status={mock.status} />
                 {mock.integrityFlagged ? (
                   <span className="ml-2 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-[var(--bad)]">
                     Integritas
@@ -429,6 +646,37 @@ export function AdminUserReport({ userId }: { userId: string }) {
                   ? `${mock.score}/${mock.maxScore} (${Math.round((mock.score / mock.maxScore) * 100)}%)`
                   : mock.status}
               </span>
+              {(mock.status === "in_progress" ||
+                mock.status === "submitted") && (
+                <span className="flex shrink-0 gap-2">
+                  {mock.status === "in_progress" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setResetPending(RESET_ACTIONS.delete_in_progress)
+                      }
+                      disabled={resetBusy}
+                      className="rounded-full border border-[var(--line)] px-3 py-1 text-xs transition hover:border-[var(--bad)] disabled:opacity-50"
+                    >
+                      Hapus sesi
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setResetPending(
+                        mock.status === "in_progress"
+                          ? RESET_ACTIONS.mark_abandoned_in_progress
+                          : RESET_ACTIONS.mark_abandoned_submitted,
+                      )
+                    }
+                    disabled={resetBusy}
+                    className="rounded-full border border-[var(--line)] px-3 py-1 text-xs transition hover:border-[var(--warn)] disabled:opacity-50"
+                  >
+                    Tandai abandoned
+                  </button>
+                </span>
+              )}
             </div>
           ))}
           {!data.mocks.length && (
