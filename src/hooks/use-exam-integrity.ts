@@ -94,11 +94,12 @@ export function useExamIntegrity({
     const settleReturn = () => {
       const started = awayStartedAtRef.current;
       if (started == null) return;
-      if (isDocumentHidden() || !document.hasFocus()) return;
+      // Only settle once the tab is visible again (in-tab blur is ignored).
+      if (isDocumentHidden()) return;
 
       const awayMs = Date.now() - started;
       awayStartedAtRef.current = null;
-      const reason = awayReasonRef.current ?? "blur";
+      const reason = awayReasonRef.current ?? "visibility_hidden";
       awayReasonRef.current = null;
 
       if (awayMs < INTEGRITY_AWAY_MS) return;
@@ -136,40 +137,19 @@ export function useExamIntegrity({
 
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
+        // Leaving the tab / minimizing / switching apps (page hidden).
         markAway("visibility_hidden");
       } else {
         settleReturn();
       }
     };
 
-    const onBlur = () => {
-      markAway("blur");
-    };
-
-    const onFocus = () => {
-      settleReturn();
-    };
-
-    const onFullscreenChange = () => {
-      // Only count fullscreen exit when the tab also loses focus/visibility.
-      if (
-        !document.fullscreenElement &&
-        (isDocumentHidden() || !document.hasFocus())
-      ) {
-        markAway("fullscreen_exit");
-      }
-    };
-
+    // Soft policy: in-tab focus loss (address bar, overlays, runner UI) is
+    // permitted. Only Page Visibility API counts as leaving the exam tab.
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("fullscreenchange", onFullscreenChange);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("fullscreenchange", onFullscreenChange);
     };
   }, [enabled, sessionId]);
 

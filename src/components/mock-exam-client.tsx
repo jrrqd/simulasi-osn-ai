@@ -266,15 +266,17 @@ export function MockExamClient({
           <li>Sesi aktif akan dilanjutkan jika halaman sempat tertutup.</li>
           <li>Ujian otomatis dikumpulkan saat waktu habis.</li>
           <li>
-            Mode layar penuh akan diminta saat mulai. Jangan pindah tab/jendela
-            atau memakai alat eksternal (termasuk ekstensi AI). Soal Python
-            memakai runner di dalam ujian — jangan buka IDE di luar halaman.
+            Mode layar penuh akan diminta saat mulai. Jangan pindah ke tab lain
+            atau jendela lain. Tetap di tab ujian diperbolehkan (termasuk
+            runner Python di halaman). Jangan memakai alat eksternal / ekstensi
+            AI.
           </li>
           <li>
-            Pemantauan integritas aktif: meninggalkan halaman ≥1,5 detik
-            dihitung sebagai peringatan. {INTEGRITY_FLAG_AT} peringatan → sesi
-            ditandai; {INTEGRITY_FORCE_SUBMIT_AT} peringatan → ujian dikumpulkan
-            otomatis.
+            Pemantauan integritas: meninggalkan tab (≥1,5 detik halaman
+            tersembunyi) dihitung sebagai peringatan. {INTEGRITY_FLAG_AT}{" "}
+            peringatan → sesi ditandai; {INTEGRITY_FORCE_SUBMIT_AT} peringatan →
+            ujian dikumpulkan otomatis. Kehilangan fokus di dalam tab tidak
+            dihitung.
           </li>
           <li>
             Platform web tidak bisa sepenuhnya memblokir ekstensi AI atau
@@ -300,7 +302,7 @@ export function MockExamClient({
           <div className="panel max-w-md space-y-4 rounded-3xl p-6 text-center shadow-lg">
             <h2 className="display text-2xl">Kembali ke ujian</h2>
             <p className="text-sm text-[var(--muted)]">
-              Kamu meninggalkan halaman simulasi. Ini tercatat sebagai peringatan
+              Kamu meninggalkan tab simulasi. Ini tercatat sebagai peringatan
               integritas ({integrity.violationCount}/
               {INTEGRITY_FORCE_SUBMIT_AT}).
             </p>
@@ -436,8 +438,8 @@ export function MockExamClient({
               {needsExamPythonRunner(problem) && (
                 <div className="space-y-2 rounded-2xl border border-[var(--line)] bg-white/50 p-4">
                   <p className="text-xs text-[var(--muted)]">
-                    Jalankan di sini — jangan pindah tab (integritas aktif).
-                    Output otomatis mengisi kolom jawaban di atas.
+                    Jalankan di sini — tetap di tab ujian. Output otomatis
+                    mengisi kolom jawaban di atas.
                   </p>
                   <PythonRunner
                     initialCode={
