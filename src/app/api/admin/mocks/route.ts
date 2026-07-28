@@ -167,18 +167,74 @@ export async function PATCH(req: NextRequest) {
     return Response.json({ error: "id wajib" }, { status: 400 });
   }
 
-  if (body.restore === true) {
-    if (!curatedMockIds().has(id)) {
+  if (body.restore === true || body.hidden === false) {
+    const override = await getMockOverride(id);
+    const isCurated = curatedMockIds().has(id);
+    if (!isCurated) {
+      const db = await getDb();
+      const existing = await db.query.generatedMocks.findFirst({
+        where: eq(generatedMocks.id, id),
+      });
+      if (!existing && !override) {
+        return Response.json(
+          { error: "Simulasi tidak ditemukan" },
+          { status: 404 },
+        );
+      }
+    } else if (!getMock(id) && !override) {
       return Response.json(
-        { error: "Restore hanya untuk simulasi curated" },
-        { status: 400 },
+        { error: "Simulasi tidak ditemukan" },
+        { status: 404 },
       );
     }
-    await deleteMockOverride(id);
-    const mock = getMock(id);
+
+    if (override?.payload) {
+      await upsertMockOverride({
+        id,
+        payload: override.payload,
+        hidden: false,
+        updatedBy: authResult.user.id,
+      });
+    } else {
+      await deleteMockOverride(id);
+    }
+    const mock = await resolvePracticeMock(id);
     return Response.json({
-      mock: mock ? { ...mock, source: "curated" } : null,
+      mock,
       restored: true,
+      hidden: false,
+      source: isCurated ? "curated" : "ai",
+    });
+  }
+
+  if (body.hidden === true) {
+    const isCurated = curatedMockIds().has(id);
+    if (!isCurated) {
+      const db = await getDb();
+      const existing = await db.query.generatedMocks.findFirst({
+        where: eq(generatedMocks.id, id),
+      });
+      if (!existing) {
+        return Response.json(
+          { error: "Simulasi tidak ditemukan" },
+          { status: 404 },
+        );
+      }
+    } else if (!getMock(id)) {
+      return Response.json(
+        { error: "Simulasi tidak ditemukan" },
+        { status: 404 },
+      );
+    }
+    await upsertMockOverride({
+      id,
+      hidden: true,
+      updatedBy: authResult.user.id,
+    });
+    return Response.json({
+      ok: true,
+      hidden: true,
+      source: isCurated ? "curated" : "ai",
     });
   }
 
@@ -265,13 +321,49 @@ export async function DELETE(req: NextRequest) {
     return Response.json({ error: "id wajib" }, { status: 400 });
   }
 
-  if (curatedMockIds().has(id)) {
+  const permanent = url.searchParams.get("permanent") === "1";
+  const isCurated = curatedMockIds().has(id);
+
+  if (!permanent) {
+    if (isCurated) {
+      if (!getMock(id)) {
+        return Response.json(
+          { error: "Simulasi tidak ditemukan" },
+          { status: 404 },
+        );
+      }
+    } else {
+      const db = await getDb();
+      const existing = await db.query.generatedMocks.findFirst({
+        where: eq(generatedMocks.id, id),
+      });
+      if (!existing) {
+        return Response.json(
+          { error: "Simulasi tidak ditemukan" },
+          { status: 404 },
+        );
+      }
+    }
     await upsertMockOverride({
       id,
       hidden: true,
       updatedBy: authResult.user.id,
     });
-    return Response.json({ ok: true, hidden: true, source: "curated" });
+    return Response.json({
+      ok: true,
+      hidden: true,
+      source: isCurated ? "curated" : "ai",
+    });
+  }
+
+  if (isCurated) {
+    return Response.json(
+      {
+        error:
+          "Simulasi curated tidak bisa dihapus permanen — gunakan sembunyikan",
+      },
+      { status: 400 },
+    );
   }
 
   const db = await getDb();

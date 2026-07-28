@@ -151,16 +151,63 @@ export async function PATCH(req: NextRequest) {
   }
 
   const restore = body.restore === true;
-  if (restore) {
-    if (!curatedProblemIds().has(id)) {
-      return Response.json(
-        { error: "Restore hanya untuk soal curated" },
-        { status: 400 },
-      );
+  if (restore || body.hidden === false) {
+    const override = await getProblemOverride(id);
+    const isCurated = curatedProblemIds().has(id);
+    if (!isCurated) {
+      const db = await getDb();
+      const existing = await db.query.generatedProblems.findFirst({
+        where: eq(generatedProblems.id, id),
+      });
+      if (!existing && !override) {
+        return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+      }
+    } else if (!getProblem(id) && !override) {
+      return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
     }
-    await deleteProblemOverride(id);
-    const problem = getProblem(id);
-    return Response.json({ problem, restored: true });
+
+    if (override?.payload) {
+      await upsertProblemOverride({
+        id,
+        payload: override.payload,
+        hidden: false,
+        updatedBy: authResult.user.id,
+      });
+    } else {
+      await deleteProblemOverride(id);
+    }
+    const problem = await resolvePracticeProblem(id);
+    return Response.json({
+      problem,
+      restored: true,
+      hidden: false,
+      source: isCurated ? "curated" : "ai",
+    });
+  }
+
+  if (body.hidden === true) {
+    const isCurated = curatedProblemIds().has(id);
+    if (!isCurated) {
+      const db = await getDb();
+      const existing = await db.query.generatedProblems.findFirst({
+        where: eq(generatedProblems.id, id),
+      });
+      if (!existing) {
+        return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+      }
+    } else if (!getProblem(id)) {
+      return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+    }
+    await upsertProblemOverride({
+      id,
+      hidden: true,
+      updatedBy: authResult.user.id,
+    });
+    return Response.json({
+      ok: true,
+      hidden: true,
+      source: isCurated ? "curated" : "ai",
+    });
   }
 
   let parsed: ReturnType<typeof normalizeGeneratedProblem>;
@@ -244,13 +291,40 @@ export async function DELETE(req: NextRequest) {
     return Response.json({ error: "id wajib" }, { status: 400 });
   }
 
-  if (curatedProblemIds().has(id)) {
+  const permanent = url.searchParams.get("permanent") === "1";
+  const isCurated = curatedProblemIds().has(id);
+
+  if (!permanent) {
+    if (isCurated) {
+      if (!getProblem(id)) {
+        return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+      }
+    } else {
+      const db = await getDb();
+      const existing = await db.query.generatedProblems.findFirst({
+        where: eq(generatedProblems.id, id),
+      });
+      if (!existing) {
+        return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+      }
+    }
     await upsertProblemOverride({
       id,
       hidden: true,
       updatedBy: authResult.user.id,
     });
-    return Response.json({ ok: true, hidden: true, source: "curated" });
+    return Response.json({
+      ok: true,
+      hidden: true,
+      source: isCurated ? "curated" : "ai",
+    });
+  }
+
+  if (isCurated) {
+    return Response.json(
+      { error: "Soal curated tidak bisa dihapus permanen — gunakan sembunyikan" },
+      { status: 400 },
+    );
   }
 
   const db = await getDb();

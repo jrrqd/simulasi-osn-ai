@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { EyeOff, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import { DIFFICULTY_MODES, type DifficultyMode } from "@/lib/ai/difficulty";
 import { TRACKS, type TrackId } from "@/lib/content/types";
 
@@ -175,12 +175,14 @@ export function AdminMockManager() {
     }
   }
 
-  async function removeItem(item: ListItem) {
-    const label =
-      item.source === "curated"
-        ? `Sembunyikan simulasi curated "${item.title}" dari bank?`
-        : `Hapus permanen simulasi AI "${item.title}"?`;
-    if (!window.confirm(label)) return;
+  async function hideItem(item: ListItem) {
+    if (
+      !window.confirm(
+        `Sembunyikan "${item.title}" dari bank Simulasi siswa?`,
+      )
+    ) {
+      return;
+    }
     const res = await fetch(
       `/api/admin/mocks?id=${encodeURIComponent(item.id)}`,
       { method: "DELETE" },
@@ -188,23 +190,44 @@ export function AdminMockManager() {
     const data = await res.json();
     setMessage(
       res.ok
-        ? item.source === "curated"
-          ? "Simulasi curated disembunyikan."
-          : "Simulasi AI dihapus."
-        : data.error || "Gagal menghapus",
+        ? "Simulasi disembunyikan dari daftar siswa."
+        : data.error || "Gagal menyembunyikan",
     );
     if (res.ok) await load();
   }
 
-  async function restoreItem(item: ListItem) {
-    if (item.source !== "curated") return;
+  async function unhideItem(item: ListItem) {
     const res = await fetch("/api/admin/mocks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: item.id, restore: true }),
     });
     const data = await res.json();
-    setMessage(res.ok ? "Simulasi curated dipulihkan." : data.error || "Gagal");
+    setMessage(
+      res.ok
+        ? "Simulasi ditampilkan lagi."
+        : data.error || "Gagal memulihkan",
+    );
+    if (res.ok) await load();
+  }
+
+  async function deletePermanent(item: ListItem) {
+    if (item.source !== "ai") return;
+    if (
+      !window.confirm(
+        `Hapus PERMANEN simulasi AI "${item.title}"? Tidak bisa dibatalkan.`,
+      )
+    ) {
+      return;
+    }
+    const res = await fetch(
+      `/api/admin/mocks?id=${encodeURIComponent(item.id)}&permanent=1`,
+      { method: "DELETE" },
+    );
+    const data = await res.json();
+    setMessage(
+      res.ok ? "Simulasi AI dihapus permanen." : data.error || "Gagal",
+    );
     if (res.ok) await load();
   }
 
@@ -248,9 +271,9 @@ export function AdminMockManager() {
       </div>
 
       <p className="text-sm text-[var(--muted)]">
-        {loading ? "Memuat…" : `${total} paket`} · curated diedit via overlay DB;
-        AI/assembled diubah atau dihapus di bank bersama. Isi problemIds dari
-        bank soal (satu id per baris).
+        {loading ? "Memuat…" : `${total} paket`} · sembunyikan = hilang dari
+        Simulasi siswa; AI bisa dihapus permanen terpisah. Centang &quot;Tampilkan
+        tersembunyi&quot; untuk pulihkan.
       </p>
 
       {message ? (
@@ -320,31 +343,35 @@ export function AdminMockManager() {
                     >
                       <Pencil size={14} />
                     </button>
-                    {item.hidden && item.source === "curated" ? (
+                    {item.hidden ? (
                       <button
                         type="button"
                         className="btn btn-secondary !px-2.5 !py-1"
-                        onClick={() => void restoreItem(item)}
-                        title="Pulihkan"
+                        onClick={() => void unhideItem(item)}
+                        title="Tampilkan lagi di Simulasi"
                       >
-                        <RotateCcw size={14} />
+                        <Eye size={14} />
                       </button>
                     ) : (
                       <button
                         type="button"
-                        className="btn btn-secondary !px-2.5 !py-1 text-[var(--bad)]"
-                        onClick={() => void removeItem(item)}
-                        title={
-                          item.source === "curated" ? "Sembunyikan" : "Hapus"
-                        }
+                        className="btn btn-secondary !px-2.5 !py-1"
+                        onClick={() => void hideItem(item)}
+                        title="Sembunyikan dari Simulasi"
                       >
-                        {item.source === "curated" ? (
-                          <EyeOff size={14} />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
+                        <EyeOff size={14} />
                       </button>
                     )}
+                    {item.source === "ai" ? (
+                      <button
+                        type="button"
+                        className="btn btn-secondary !px-2.5 !py-1 text-[var(--bad)]"
+                        onClick={() => void deletePermanent(item)}
+                        title="Hapus permanen"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    ) : null}
                   </div>
                 </td>
               </tr>

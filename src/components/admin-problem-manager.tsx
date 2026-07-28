@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Eye, EyeOff, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { TRACKS, TOPIC_LABELS, type TrackId } from "@/lib/content/types";
 
@@ -210,12 +210,14 @@ export function AdminProblemManager() {
     }
   }
 
-  async function removeItem(item: ListItem) {
-    const label =
-      item.source === "curated"
-        ? `Sembunyikan soal curated "${item.title}" dari bank latihan?`
-        : `Hapus permanen soal AI "${item.title}"?`;
-    if (!window.confirm(label)) return;
+  async function hideItem(item: ListItem) {
+    if (
+      !window.confirm(
+        `Sembunyikan "${item.title}" dari bank Latihan siswa?`,
+      )
+    ) {
+      return;
+    }
     const res = await fetch(
       `/api/admin/problems?id=${encodeURIComponent(item.id)}`,
       { method: "DELETE" },
@@ -223,23 +225,42 @@ export function AdminProblemManager() {
     const data = await res.json();
     setMessage(
       res.ok
-        ? item.source === "curated"
-          ? "Soal curated disembunyikan."
-          : "Soal AI dihapus."
-        : data.error || "Gagal menghapus",
+        ? "Soal disembunyikan dari Latihan."
+        : data.error || "Gagal menyembunyikan",
     );
     if (res.ok) await load();
   }
 
-  async function restoreItem(item: ListItem) {
-    if (item.source !== "curated") return;
+  async function unhideItem(item: ListItem) {
     const res = await fetch("/api/admin/problems", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: item.id, restore: true }),
     });
     const data = await res.json();
-    setMessage(res.ok ? "Soal curated dipulihkan." : data.error || "Gagal");
+    setMessage(
+      res.ok
+        ? "Soal ditampilkan lagi di Latihan."
+        : data.error || "Gagal memulihkan",
+    );
+    if (res.ok) await load();
+  }
+
+  async function deletePermanent(item: ListItem) {
+    if (item.source !== "ai") return;
+    if (
+      !window.confirm(
+        `Hapus PERMANEN soal AI "${item.title}"? Tidak bisa dibatalkan.`,
+      )
+    ) {
+      return;
+    }
+    const res = await fetch(
+      `/api/admin/problems?id=${encodeURIComponent(item.id)}&permanent=1`,
+      { method: "DELETE" },
+    );
+    const data = await res.json();
+    setMessage(res.ok ? "Soal AI dihapus permanen." : data.error || "Gagal");
     if (res.ok) await load();
   }
 
@@ -291,8 +312,9 @@ export function AdminProblemManager() {
       </div>
 
       <p className="text-sm text-[var(--muted)]">
-        {loading ? "Memuat…" : `${total} soal`} · curated diedit via overlay DB
-        (tanpa ubah file JSON); AI diubah/dihapus di bank bersama.
+        {loading ? "Memuat…" : `${total} soal`} · sembunyikan = hilang dari
+        Latihan siswa; AI bisa dihapus permanen terpisah. Centang &quot;Tampilkan
+        tersembunyi&quot; untuk pulihkan.
       </p>
 
       {message ? (
@@ -355,31 +377,35 @@ export function AdminProblemManager() {
                     >
                       <Pencil size={14} />
                     </button>
-                    {item.hidden && item.source === "curated" ? (
+                    {item.hidden ? (
                       <button
                         type="button"
                         className="btn btn-secondary !px-2.5 !py-1"
-                        onClick={() => void restoreItem(item)}
-                        title="Pulihkan"
+                        onClick={() => void unhideItem(item)}
+                        title="Tampilkan lagi di Latihan"
                       >
-                        <RotateCcw size={14} />
+                        <Eye size={14} />
                       </button>
                     ) : (
                       <button
                         type="button"
-                        className="btn btn-secondary !px-2.5 !py-1 text-[var(--bad)]"
-                        onClick={() => void removeItem(item)}
-                        title={
-                          item.source === "curated" ? "Sembunyikan" : "Hapus"
-                        }
+                        className="btn btn-secondary !px-2.5 !py-1"
+                        onClick={() => void hideItem(item)}
+                        title="Sembunyikan dari Latihan"
                       >
-                        {item.source === "curated" ? (
-                          <EyeOff size={14} />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
+                        <EyeOff size={14} />
                       </button>
                     )}
+                    {item.source === "ai" ? (
+                      <button
+                        type="button"
+                        className="btn btn-secondary !px-2.5 !py-1 text-[var(--bad)]"
+                        onClick={() => void deletePermanent(item)}
+                        title="Hapus permanen"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    ) : null}
                   </div>
                 </td>
               </tr>
