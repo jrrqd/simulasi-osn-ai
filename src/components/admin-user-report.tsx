@@ -8,13 +8,13 @@ import {
   Cell,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { masteryFill } from "@/lib/charts/mastery-color";
+import { ChartBox } from "@/components/chart-box";
 import {
   formatBirthDateWib,
   formatDateTimeWib,
@@ -673,9 +673,8 @@ export function AdminUserReport({ userId }: { userId: string }) {
           </div>
         )}
         {sessionChart.length ? (
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
+          <ChartBox height={288}>
+            <LineChart
                 data={sessionChart}
                 style={{ cursor: "pointer" }}
                 onClick={(nextState) => {
@@ -788,8 +787,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
                   }}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
+          </ChartBox>
         ) : (
           <p className="text-sm text-[var(--muted)]">
             Belum ada mock yang disubmit.
@@ -805,8 +803,8 @@ export function AdminUserReport({ userId }: { userId: string }) {
               Merah = lemah · hijau = kuat
             </p>
           </div>
-          <div className="h-72 min-h-0 flex-1">
-            <ResponsiveContainer width="100%" height="100%">
+          {topicChart.length ? (
+            <ChartBox height={288}>
               <BarChart data={topicChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,.08)" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
@@ -821,8 +819,12 @@ export function AdminUserReport({ userId }: { userId: string }) {
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            </ChartBox>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">
+              Belum ada data mastery topik.
+            </p>
+          )}
         </div>
 
         <div className="panel flex flex-col rounded-3xl p-5">
@@ -832,8 +834,8 @@ export function AdminUserReport({ userId }: { userId: string }) {
               Hijau = attempts · oranye = menit
             </p>
           </div>
-          <div className="h-72 min-h-0 flex-1">
-            <ResponsiveContainer width="100%" height="100%">
+          {activityChart.length ? (
+            <ChartBox height={288}>
               <LineChart data={activityChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,.08)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
@@ -852,8 +854,12 @@ export function AdminUserReport({ userId }: { userId: string }) {
                   type="monotone"
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
+            </ChartBox>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">
+              Belum ada aktivitas harian.
+            </p>
+          )}
         </div>
       </div>
 

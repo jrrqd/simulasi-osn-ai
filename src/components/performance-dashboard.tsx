@@ -6,7 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -15,6 +14,7 @@ import {
 } from "recharts";
 import Link from "next/link";
 import { masteryFill } from "@/lib/charts/mastery-color";
+import { ChartBox } from "@/components/chart-box";
 import { formatDateTimeWib } from "@/lib/datetime";
 import { CampaignEvolution } from "@/components/campaign-evolution";
 import type { CampaignStages } from "@/lib/campaign-stages";
@@ -235,9 +235,8 @@ export function PerformanceDashboard() {
           Tren skor submit (persen) dari sesi tertua ke terbaru.
         </p>
         {sessionChart.length ? (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sessionChart}>
+          <ChartBox height={256}>
+            <LineChart data={sessionChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis domain={[0, 100]} unit="%" />
@@ -255,8 +254,7 @@ export function PerformanceDashboard() {
                   dot={{ r: 4 }}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
+          </ChartBox>
         ) : (
           <p className="text-sm text-[var(--muted)]">
             Belum ada simulasi yang disubmit. Kerjakan mock berwaktu untuk melihat tren.
@@ -272,8 +270,8 @@ export function PerformanceDashboard() {
               Merah = lemah · hijau = kuat
             </p>
           </div>
-          <div className="h-64 min-h-0 flex-1">
-            <ResponsiveContainer width="100%" height="100%">
+          {chartTopics.length ? (
+            <ChartBox height={256}>
               <BarChart data={chartTopics}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
@@ -288,8 +286,12 @@ export function PerformanceDashboard() {
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            </ChartBox>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">
+              Belum ada data mastery topik.
+            </p>
+          )}
         </div>
         <div className="panel flex flex-col rounded-3xl p-5">
           <div className="mb-4 min-h-[3.25rem]">
@@ -298,8 +300,8 @@ export function PerformanceDashboard() {
               Skala 0–1 dari attempt harian
             </p>
           </div>
-          <div className="h-64 min-h-0 flex-1">
-            <ResponsiveContainer width="100%" height="100%">
+          {data.trend.length ? (
+            <ChartBox height={256}>
               <LineChart data={data.trend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} />
@@ -312,8 +314,12 @@ export function PerformanceDashboard() {
                   strokeWidth={2}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
+            </ChartBox>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">
+              Belum ada tren attempt harian.
+            </p>
+          )}
         </div>
       </div>
 
