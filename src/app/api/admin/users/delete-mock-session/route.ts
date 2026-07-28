@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { attempts, mockSessions, topicMastery, user } from "@/db/schema";
+import { attempts, mockSessions, user } from "@/db/schema";
+import { rebuildTopicMasteryForUser } from "@/lib/attempts";
 import { rateLimit, requireApiAdmin } from "@/lib/api";
 
 const deleteBodySchema = z.object({
@@ -83,6 +84,8 @@ export async function POST(req: NextRequest) {
     abandoned: 0,
   };
 
+  let shouldRebuildMastery = false;
+
   await db.transaction(async (tx) => {
     if (parsed.behavior === "soft_abandon") {
       const abandoned = await tx
@@ -106,13 +109,8 @@ export async function POST(req: NextRequest) {
         .where(eq(attempts.mockSessionId, parsed.mockSessionId))
         .returning();
       counts.attempts = deletedAttempts.length;
+      shouldRebuildMastery = true;
     }
-
-    const deletedMastery = await tx
-      .delete(topicMastery)
-      .where(eq(topicMastery.userId, parsed.userId))
-      .returning();
-    counts.topicMastery = deletedMastery.length;
 
     const deleted = await tx
       .delete(mockSessions)
@@ -128,6 +126,11 @@ export async function POST(req: NextRequest) {
     }
     counts.mockSessions = deleted.length;
   });
+
+  if (shouldRebuildMastery) {
+    const rebuilt = await rebuildTopicMasteryForUser(parsed.userId);
+    counts.topicMastery = rebuilt.topics;
+  }
 
   console.info(
     `[admin] delete-mock-session admin=${authResult.user.id} target=${parsed.userId} session=${parsed.mockSessionId} behavior=${parsed.behavior} counts=${JSON.stringify(counts)}`,

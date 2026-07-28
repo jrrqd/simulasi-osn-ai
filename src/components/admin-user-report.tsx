@@ -85,7 +85,7 @@ function sessionDeleteAction(
       behavior,
       label: "Hapus sesi ini",
       description:
-        "Hapus satu sesi mock ini. Jika sudah disubmit, attempts terkait dan topic mastery siswa ikut dihapus.",
+        "Hapus satu sesi mock ini. Jika sudah disubmit, attempts sesi itu dihapus lalu topic mastery dihitung ulang dari sisa attempts (latihan + mock lain tetap). Skor readiness bisa berubah karena rata-rata skor mock ikut tanpa sesi ini.",
     };
   }
   return {
@@ -329,7 +329,22 @@ export function AdminUserReport({ userId }: { userId: string }) {
       if (!response.ok) {
         throw new Error(body.error || "Gagal menghapus sesi");
       }
-      setResetMessage(formatCountsMessage(action.behavior, body.counts));
+      const parts: string[] = [];
+      if (action.behavior === "soft_abandon") {
+        parts.push(
+          `${body.counts?.abandoned ?? body.counts?.mockSessions ?? 0} sesi ditandai abandoned`,
+        );
+      } else {
+        if ((body.counts?.mockSessions ?? 0) > 0)
+          parts.push(`${body.counts.mockSessions} sesi dihapus`);
+        if ((body.counts?.attempts ?? 0) > 0)
+          parts.push(`${body.counts.attempts} attempts sesi`);
+        if ((body.counts?.topicMastery ?? 0) > 0)
+          parts.push(
+            `topic mastery dihitung ulang (${body.counts.topicMastery} topik)`,
+          );
+      }
+      setResetMessage(parts.join(", ") || "Selesai");
       setSessionPending(null);
       loadReport();
     } catch (err) {
