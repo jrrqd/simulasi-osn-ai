@@ -3,6 +3,8 @@
  * (anonymized from curated p-osn26 bank — not for copying numbers).
  */
 
+import { EXAM_PYTHON_POLICY } from "@/lib/ai/exam-python-policy";
+
 export const PREDIKSI_FIGURE_RULES = `Gambar / diagram (opsional, jika includeFigures aktif):
 - Boleh menyertakan "figures": array objek { "id", "alt?", "diagram" }.
 - Di stem/preamble, sisipkan placeholder {{fig:ID}} persis di tempat gambar harus muncul.
@@ -28,7 +30,9 @@ export const PREDIKSI_STYLE_RULES = `Gaya soal PREDIKSI / studi kasus EKKA (WAJI
 - Soal text-only tetap OK jika tidak butuh visual.
 - JANGAN menyalin contoh few-shot; ganti angka, nama, dan skenario.
 
-${PREDIKSI_FIGURE_RULES}`;
+${PREDIKSI_FIGURE_RULES}
+
+${EXAM_PYTHON_POLICY}`;
 
 /** Compact few-shots for single-problem generation (structure + tone only). */
 export const PREDIKSI_FEW_SHOT_SINGLE = `Contoh gaya (JANGAN disalin angka/skenario; buat soal BARU):
@@ -64,6 +68,7 @@ Struktur keluaran: SATU objek JSON studi kasus (bukan JSON Schema):
       "answer": "nilai atau string",
       "tolerance": 0.001,
       "choices": ["opsional untuk mcq"],
+      "starterCode": "wajib jika python_output — program lengkap untuk runner in-exam",
       "solution": "3-8 kalimat"
     }
   ]

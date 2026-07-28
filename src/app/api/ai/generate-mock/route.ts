@@ -72,6 +72,7 @@ async function generateSlotProblem(params: {
     "numeric",
     "mcq",
     "short_string",
+    "python_output",
   ];
   let lastSlotError: unknown;
   let problem: Awaited<ReturnType<typeof generateAndStoreProblem>> | null =

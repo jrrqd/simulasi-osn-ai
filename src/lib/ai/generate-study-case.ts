@@ -7,7 +7,6 @@ import {
   createUserProvider,
   generatedProblemSchema,
   normalizeGeneratedProblem,
-  type GeneratedProblemPayload,
 } from "@/lib/ai/provider";
 import {
   type DifficultyMode,
@@ -58,6 +57,7 @@ const studyCaseItemSchema = z.object({
   tolerance: z.coerce.number().optional(),
   choices: z.array(z.union([z.string(), z.number()])).optional(),
   solution: z.coerce.string().min(5),
+  starterCode: z.coerce.string().optional(),
 }).transform((item, ctx) => {
   const prompt = (item.prompt || item.stem || item.question || "").trim();
   if (prompt.length < 5) {
@@ -75,6 +75,7 @@ const studyCaseItemSchema = z.object({
     tolerance: item.tolerance,
     choices: item.choices,
     solution: item.solution,
+    starterCode: item.starterCode?.trim() || undefined,
   };
 });
 
@@ -230,7 +231,7 @@ ${
       ? `Perbaiki menjadi SATU objek JSON STUDI KASUS valid (bukan schema).
 Wajib: caseTitle, preamble, track, topic, difficulty, problems[${problemCount}].
 Track="${params.track}", topic="${params.topic}", difficulty=${difficulty}.
-Setiap item problems: title, answerType, prompt, answer, solution (+ choices jika mcq).
+Setiap item problems: title, answerType, prompt, answer, solution (+ choices jika mcq; + starterCode jika python_output).
 
 JSON rusak:
 ${previousRaw.slice(0, 7000)}`
@@ -391,6 +392,7 @@ PERINGATAN: respons sebelumnya kosong/invalid. Tulis JSON studi kasus langsung d
         tolerance: item.tolerance,
         choices: item.choices,
         solution: item.solution,
+        starterCode: item.starterCode,
         tags: ["prediksi-style", "study-case", caseId],
       }),
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 declare global {
   interface Window {
@@ -35,6 +35,14 @@ async function getPyodide() {
   return pyodidePromise;
 }
 
+/** Fire-and-forget warm-up so the first "Jalankan" in an exam is faster. */
+export function preloadPyodide(): void {
+  if (typeof window === "undefined") return;
+  void getPyodide().catch(() => {
+    // Non-blocking: exam continues without a preloaded runtime.
+  });
+}
+
 export function PythonRunner({
   initialCode = "print('hello')",
   onOutput,
@@ -43,13 +51,14 @@ export function PythonRunner({
   onOutput?: (output: string) => void;
 }) {
   const [code, setCode] = useState(initialCode);
+  const [codeEpoch, setCodeEpoch] = useState(initialCode);
+  if (initialCode !== codeEpoch) {
+    setCodeEpoch(initialCode);
+    setCode(initialCode);
+  }
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [readyHint, setReadyHint] = useState("Pyodide siap dimuat");
-
-  useEffect(() => {
-    setCode(initialCode);
-  }, [initialCode]);
 
   async function run() {
     setLoading(true);

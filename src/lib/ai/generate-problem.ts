@@ -192,7 +192,15 @@ AnswerType: ${answerType}
 ${syllabus}
 ${focusBlock}
 ${figureBlock}
-Instruksi akhir:
+${
+  answerType === "python_output"
+    ? `Instruksi Python (simulasi berwaktu):
+- WAJIB isi "starterCode" dengan program lengkap untuk runner in-exam.
+- Jangan minta siswa pindah tab / buka IDE eksternal.
+- Jawaban = stdout deterministik dari starterCode.
+`
+    : ""
+}Instruksi akhir:
 - Soal harus dapat diselesaikan hanya dengan materi di atas + prasyarat sangat dasar.
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
