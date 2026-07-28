@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -227,6 +227,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const sessionConfirmRef = useRef<HTMLDivElement | null>(null);
 
   const loadReport = () => {
     fetch(`/api/admin/users?userId=${encodeURIComponent(userId)}`)
@@ -240,6 +241,14 @@ export function AdminUserReport({ userId }: { userId: string }) {
   };
 
   useEffect(loadReport, [userId]);
+
+  useEffect(() => {
+    if (!sessionPending) return;
+    sessionConfirmRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [sessionPending]);
 
   const formatCountsMessage = (
     behavior: ResetBehavior,
@@ -563,7 +572,10 @@ export function AdminUserReport({ userId }: { userId: string }) {
           untuk menghapus atau menandai abandoned.
         </p>
         {sessionPending && (
-          <div className="mb-4 rounded-2xl border border-[var(--bad)]/40 bg-[var(--bad)]/5 p-4">
+          <div
+            ref={sessionConfirmRef}
+            className="mb-4 rounded-2xl border border-[var(--bad)]/40 bg-[var(--bad)]/5 p-4"
+          >
             <p className="text-sm font-semibold">{sessionPending.label}?</p>
             <p className="mt-1 text-xs text-[var(--muted)]">
               {sessionPending.description}
@@ -613,7 +625,26 @@ export function AdminUserReport({ userId }: { userId: string }) {
         {sessionChart.length ? (
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sessionChart}>
+              <LineChart
+                data={sessionChart}
+                style={{ cursor: "pointer" }}
+                onClick={(nextState) => {
+                  const rawIndex =
+                    nextState.activeTooltipIndex ?? nextState.activeIndex;
+                  const index =
+                    typeof rawIndex === "number"
+                      ? rawIndex
+                      : typeof rawIndex === "string"
+                        ? Number(rawIndex)
+                        : NaN;
+                  if (!Number.isFinite(index) || index < 0) return;
+                  const point = sessionChart[index];
+                  if (!point?.id) return;
+                  setSessionPending(
+                    sessionDeleteAction(point.id, "hard_delete"),
+                  );
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,.08)" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis domain={[0, 100]} unit="%" />
@@ -622,36 +653,87 @@ export function AdminUserReport({ userId }: { userId: string }) {
                     `${value}% (${props.payload.detail})`,
                     "Skor",
                   ]}
+                  labelFormatter={(label) =>
+                    `${label} · klik untuk hapus / abandoned`
+                  }
                 />
                 <Line
                   dataKey="skor"
                   stroke="#0f6e56"
                   strokeWidth={2.5}
                   type="monotone"
-                  activeDot={{ r: 7 }}
+                  isAnimationActive={false}
                   dot={(props) => {
                     const { cx, cy, payload, index } = props;
-                    if (cx == null || cy == null || !payload?.id) {
+                    if (
+                      typeof cx !== "number" ||
+                      typeof cy !== "number" ||
+                      !payload?.id
+                    ) {
                       return <g key={`dot-empty-${index}`} />;
                     }
                     return (
-                      <circle
-                        key={`dot-${payload.id}`}
-                        cx={cx}
-                        cy={cy}
-                        r={5}
-                        fill="#0f6e56"
-                        stroke="#fff"
-                        strokeWidth={1.5}
-                        className="cursor-pointer"
-                        style={{ cursor: "pointer" }}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSessionPending(
-                            sessionDeleteAction(payload.id, "hard_delete"),
-                          );
-                        }}
-                      />
+                      <g key={`dot-${payload.id}`}>
+                        {/* Larger invisible hit target */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={14}
+                          fill="transparent"
+                          style={{ cursor: "pointer" }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSessionPending(
+                              sessionDeleteAction(payload.id, "hard_delete"),
+                            );
+                          }}
+                        />
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={6}
+                          fill="#0f6e56"
+                          stroke="#fff"
+                          strokeWidth={1.5}
+                          style={{ pointerEvents: "none" }}
+                        />
+                      </g>
+                    );
+                  }}
+                  activeDot={(props) => {
+                    const { cx, cy, payload } = props;
+                    if (
+                      typeof cx !== "number" ||
+                      typeof cy !== "number" ||
+                      !payload?.id
+                    ) {
+                      return <g />;
+                    }
+                    return (
+                      <g>
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={16}
+                          fill="transparent"
+                          style={{ cursor: "pointer" }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSessionPending(
+                              sessionDeleteAction(payload.id, "hard_delete"),
+                            );
+                          }}
+                        />
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={9}
+                          fill="#0f6e56"
+                          stroke="#fff"
+                          strokeWidth={2}
+                          style={{ pointerEvents: "none" }}
+                        />
+                      </g>
                     );
                   }}
                 />
