@@ -4,7 +4,7 @@
  * (lower is better among equal primary scores).
  */
 
-export const DEFAULT_PENALTY_MINUTES_PER_WRONG = 20;
+export const DEFAULT_PENALTY_MINUTES_PER_WRONG = 1;
 
 export type ProblemPenaltyState = {
   attempts: number;

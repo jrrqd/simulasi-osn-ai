@@ -328,7 +328,7 @@ export const generatedMocks = pgTable(
     penaltyEnabled: boolean("penalty_enabled").notNull().default(true),
     penaltyMinutesPerWrong: integer("penalty_minutes_per_wrong")
       .notNull()
-      .default(20),
+      .default(1),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [

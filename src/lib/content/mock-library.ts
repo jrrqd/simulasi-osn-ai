@@ -160,14 +160,14 @@ function applyCuratedOverride(
       penaltyMinutesPerWrong:
         ov.payload.penaltyMinutesPerWrong ??
         base.penaltyMinutesPerWrong ??
-        20,
+        1,
     };
   }
   return {
     ...base,
     source: "curated",
     penaltyEnabled: base.penaltyEnabled ?? true,
-    penaltyMinutesPerWrong: base.penaltyMinutesPerWrong ?? 20,
+    penaltyMinutesPerWrong: base.penaltyMinutesPerWrong ?? 1,
   };
 }
 
@@ -212,7 +212,7 @@ export async function resolvePracticeMock(
       penaltyMinutesPerWrong:
         override.payload.penaltyMinutesPerWrong ??
         row.penaltyMinutesPerWrong ??
-        20,
+        1,
     };
   }
 
@@ -229,7 +229,7 @@ export async function resolvePracticeMock(
     creatorName: creator?.name ?? null,
     createdAt: row.createdAt,
     penaltyEnabled: row.penaltyEnabled ?? true,
-    penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 20,
+    penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 1,
   };
 }
 
@@ -296,7 +296,7 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
         penaltyMinutesPerWrong:
           ov.payload.penaltyMinutesPerWrong ??
           row.penaltyMinutesPerWrong ??
-          20,
+          1,
       };
     }
     return {
@@ -312,7 +312,7 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
       creatorName: row.creatorName,
       createdAt: row.createdAt,
       penaltyEnabled: row.penaltyEnabled ?? true,
-      penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 20,
+      penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 1,
     };
   });
 

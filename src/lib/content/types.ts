@@ -162,7 +162,7 @@ export type MockExam = {
   problemIds: string[];
   /** ICPC-style wrong-submit penalty as tie-breaker (default true for AI mocks). */
   penaltyEnabled?: boolean;
-  /** Minutes added per wrong submit on a eventually-solved problem (default 20). */
+  /** Minutes added per wrong submit on a eventually-solved problem (default 1). */
   penaltyMinutesPerWrong?: number;
 };
 

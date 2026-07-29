@@ -31,7 +31,7 @@ const mockBodySchema = z.object({
     .catch("medium"),
   kind: z.enum(["ai", "curated_assembled"]).catch("ai"),
   penaltyEnabled: z.boolean().optional().default(true),
-  penaltyMinutesPerWrong: z.coerce.number().int().min(0).max(120).optional().default(20),
+  penaltyMinutesPerWrong: z.coerce.number().int().min(0).max(120).optional().default(1),
 });
 
 async function validateProblemIds(ids: string[]) {
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     track: parsed.track,
     kind: parsed.kind,
     penaltyEnabled: parsed.penaltyEnabled ?? true,
-    penaltyMinutesPerWrong: parsed.penaltyMinutesPerWrong ?? 20,
+    penaltyMinutesPerWrong: parsed.penaltyMinutesPerWrong ?? 1,
   });
 
   const mock = await resolvePracticeMock(id);

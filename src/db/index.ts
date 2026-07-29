@@ -200,7 +200,7 @@ async function migratePglite(client: PGlite) {
     );
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'ai';
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_enabled boolean NOT NULL DEFAULT true;
-    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 20;
+    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 1;
     CREATE INDEX IF NOT EXISTS generated_mocks_created_by_idx ON generated_mocks(created_by);
     CREATE INDEX IF NOT EXISTS generated_mocks_created_at_idx ON generated_mocks(created_at);
     CREATE TABLE IF NOT EXISTS review_threads (
@@ -326,7 +326,11 @@ async function createDb(): Promise<AppDb> {
     CREATE INDEX IF NOT EXISTS submission_events_session_idx ON submission_events(mock_session_id);
     CREATE INDEX IF NOT EXISTS submission_events_user_idx ON submission_events(user_id);
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_enabled boolean NOT NULL DEFAULT true;
-    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 20;
+    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 1;
+    ALTER TABLE generated_mocks ALTER COLUMN penalty_minutes_per_wrong SET DEFAULT 1;
+    UPDATE generated_mocks
+      SET penalty_minutes_per_wrong = 1
+      WHERE penalty_minutes_per_wrong = 20;
     CREATE TABLE IF NOT EXISTS check_attempts (
       id text PRIMARY KEY,
       user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,

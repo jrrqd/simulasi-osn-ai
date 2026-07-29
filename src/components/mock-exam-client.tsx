@@ -868,22 +868,35 @@ function ScoringReport({
       </div>
 
       {showPenalty ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ExamFact
-            label="Tie-breaker (penalti)"
-            value={`${result.penaltyMinutes ?? 0} menit`}
-          />
-          <ExamFact
-            label="Total submit"
-            value={String(result.totalAttempts ?? 0)}
-          />
-          <ExamFact
-            label="Soal Accepted (lock)"
-            value={String(
-              (result.scoreboard ?? []).filter((r) => r.solved).length,
-            )}
-          />
-        </div>
+        <section className="panel space-y-4 rounded-3xl p-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Tie-breaker (review)
+            </p>
+            <h2 className="display text-2xl">Penalti submission</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Tidak mengubah skor akhir. Dipakai hanya untuk memecah peringkat
+              jika skor berbobot sama (lebih kecil = lebih baik). Formula: menit
+              hingga Accepted + (jumlah WA × menit penalti per WA).
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ExamFact
+              label="Total penalti"
+              value={`${result.penaltyMinutes ?? 0} menit`}
+            />
+            <ExamFact
+              label="Total submit"
+              value={String(result.totalAttempts ?? 0)}
+            />
+            <ExamFact
+              label="Soal Accepted (lock)"
+              value={String(
+                (result.scoreboard ?? []).filter((r) => r.solved).length,
+              )}
+            />
+          </div>
+        </section>
       ) : null}
 
       {summary ? (
@@ -917,7 +930,11 @@ function ScoringReport({
 
       {showPenalty && (result.scoreboard?.length ?? 0) > 0 ? (
         <section className="panel rounded-3xl p-5">
-          <h2 className="display mb-3 text-2xl">Rincian penalti per soal</h2>
+          <h2 className="display mb-1 text-2xl">Rincian penalti per soal</h2>
+          <p className="mb-3 text-sm text-[var(--muted)]">
+            Hanya untuk review / tie-breaker — tidak menambah atau mengurangi
+            skor berbobot di atas.
+          </p>
           <div className="space-y-2 text-sm">
             {problems.map((problem, index) => {
               const row = result.scoreboard?.find(

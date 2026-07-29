@@ -41,7 +41,7 @@ const EMPTY_FORM: MockForm = {
   difficultyMode: "medium",
   kind: "ai",
   penaltyEnabled: true,
-  penaltyMinutesPerWrong: 20,
+  penaltyMinutesPerWrong: 1,
 };
 
 function toForm(mock: Record<string, unknown>): MockForm {
@@ -68,7 +68,7 @@ function toForm(mock: Record<string, unknown>): MockForm {
     difficultyMode,
     kind,
     penaltyEnabled: mock.penaltyEnabled !== false,
-    penaltyMinutesPerWrong: Number(mock.penaltyMinutesPerWrong) || 20,
+    penaltyMinutesPerWrong: Number(mock.penaltyMinutesPerWrong) || 1,
   };
 }
 
@@ -522,7 +522,7 @@ export function AdminMockManager() {
               </label>
               <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
                 <label className="text-sm text-[var(--muted)]">
-                  Menit penalti per wrong answer
+                  Menit penalti per wrong answer (tie-breaker)
                 </label>
                 <input
                   className="input w-28"
