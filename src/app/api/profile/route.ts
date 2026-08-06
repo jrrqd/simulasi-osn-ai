@@ -10,6 +10,7 @@ import {
   type ProfileField,
 } from "@/lib/profile";
 import { parseAssistantPet } from "@/lib/assistant-pet";
+import { isPhase, parsePhase, PHASE_LABELS } from "@/lib/user/phase";
 
 const SNOOZE_MS = 24 * 60 * 60_000;
 
@@ -24,12 +25,15 @@ function profilePayload(row: typeof user.$inferSelect) {
   const snoozedUntil = row.profilePromptSnoozedUntil;
   const snoozed =
     snoozedUntil != null && snoozedUntil.getTime() > Date.now();
+  const phase = parsePhase(row.phase);
 
   return {
     birthDate: row.birthDate,
     schoolName: row.schoolName,
     grade: row.grade,
     city: row.city,
+    phase,
+    phaseLabel: PHASE_LABELS[phase],
     assistantPet: parseAssistantPet(row.assistantPet),
     onboardingCompleted: Boolean(row.onboardingCompletedAt),
     onboardingCompletedAt: row.onboardingCompletedAt,
@@ -130,12 +134,25 @@ export async function PATCH(req: Request) {
     assistantPetUpdated = true;
   }
 
+  let phaseUpdated = false;
+  if ("phase" in body) {
+    if (!isPhase(body.phase)) {
+      return Response.json(
+        { error: "Tahap OSN AI tidak valid" },
+        { status: 400 },
+      );
+    }
+    updates.phase = body.phase;
+    phaseUpdated = true;
+  }
+
   const profileKeys = PROFILE_FIELDS.filter((field) => field in body);
   const actionKeys = [
     body.completeOnboarding === true,
     body.snoozeProfilePrompt === true,
     profileKeys.length > 0,
     assistantPetUpdated,
+    phaseUpdated,
   ].some(Boolean);
 
   if (!actionKeys) {

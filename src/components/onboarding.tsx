@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, ClipboardList, Timer } from "lucide-react";
+import {
+  PHASE_HINTS,
+  PHASE_LABELS,
+  PHASE_VALUES,
+  type Phase,
+} from "@/lib/user/phase";
 
 const panels = [
   {
@@ -24,6 +30,8 @@ const panels = [
 
 export function OnboardingClient() {
   const router = useRouter();
+  const [step, setStep] = useState<"intro" | "phase">("intro");
+  const [phase, setPhase] = useState<Phase>("semifinal");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -34,7 +42,7 @@ export function OnboardingClient() {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completeOnboarding: true }),
+        body: JSON.stringify({ completeOnboarding: true, phase }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Gagal menyimpan");
@@ -44,6 +52,67 @@ export function OnboardingClient() {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan");
       setLoading(false);
     }
+  }
+
+  if (step === "phase") {
+    return (
+      <div className="mx-auto max-w-3xl space-y-8">
+        <div>
+          <p className="text-sm font-medium text-[var(--accent)]">
+            Tahap kompetisi
+          </p>
+          <h1 className="display mt-2 text-4xl md:text-5xl">
+            Tahap OSN AI yang kamu ikuti?
+          </h1>
+          <p className="mt-3 text-[var(--muted)]">
+            Kami menyesuaikan campuran topik mock AI dengan tahapmu. Kamu bisa
+            mengubahnya lagi di Pengaturan.
+          </p>
+        </div>
+
+        <div className="grid gap-3">
+          {PHASE_VALUES.map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={`rounded-3xl border px-5 py-4 text-left transition ${
+                phase === value
+                  ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                  : "border-[var(--border)] bg-[var(--panel)]"
+              }`}
+              onClick={() => setPhase(value)}
+              disabled={loading}
+            >
+              <p className="font-semibold">{PHASE_LABELS[value]}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                {PHASE_HINTS[value]}
+              </p>
+            </button>
+          ))}
+        </div>
+
+        {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={loading}
+            onClick={() => setStep("intro")}
+          >
+            Kembali
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={loading}
+            onClick={complete}
+          >
+            {loading ? "Menyiapkan…" : "Mulai belajar"}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -74,9 +143,9 @@ export function OnboardingClient() {
         type="button"
         className="btn btn-primary"
         disabled={loading}
-        onClick={complete}
+        onClick={() => setStep("phase")}
       >
-        {loading ? "Menyiapkan…" : "Mulai belajar"}
+        Lanjut
       </button>
     </div>
   );

@@ -21,7 +21,25 @@ const TOPIC_ALIASES: Record<string, string[]> = {
   statistika: ["statistik", "statistics", "mean median"],
   probabilitas: ["probability", "peluang", "bayes"],
   "aljabar-linier": ["aljabar linear", "linear algebra", "matriks", "matrix"],
-  optimasi: ["optimization", "gradient descent", "sgd"],
+  optimasi: ["optimization", "gradient descent"],
+  "aljabar-linier-lanjut": [
+    "svd",
+    "eigen",
+    "eigenvalue",
+    "eigenvector",
+    "low rank",
+    "matrix norm",
+    "dekomposisi",
+  ],
+  "optimasi-lanjut": [
+    "adam",
+    "adamw",
+    "momentum",
+    "learning rate schedule",
+    "convex",
+    "convexity",
+    "sgd vs adam",
+  ],
   "supervised-learning": [
     "supervised",
     "regresi",
@@ -47,6 +65,30 @@ const TOPIC_ALIASES: Record<string, string[]> = {
     "cross validation",
   ],
   "feature-engineering": ["feature engineering", "fitur", "encoding", "scaling"],
+  "pohon-keputusan": [
+    "decision tree",
+    "pohon keputusan",
+    "cart",
+    "id3",
+    "gini",
+    "entropy impurity",
+    "pruning",
+  ],
+  ensemble: [
+    "bagging",
+    "random forest",
+    "boosting",
+    "xgboost",
+    "gradient boosting",
+    "gbdt",
+  ],
+  svm: [
+    "support vector",
+    "kernel trick",
+    "soft margin",
+    "rbf kernel",
+    "margin classifier",
+  ],
   perceptron: ["linear classifier"],
   backpropagation: ["backprop", "backward pass", "gradien mundur"],
   "aktivasi-loss": [
@@ -61,10 +103,48 @@ const TOPIC_ALIASES: Record<string, string[]> = {
   ],
   mlp: ["multi layer", "multilayer", "feedforward", "jaringan berlapis"],
   regularisasi: ["regularization", "dropout", "weight decay"],
+  "cnn-arsitektur": [
+    "resnet",
+    "vgg",
+    "alexnet",
+    "lenet",
+    "skip connection",
+    "receptive field",
+    "arsitektur cnn",
+  ],
+  "rnn-lstm": [
+    "rnn",
+    "lstm",
+    "gru",
+    "bptt",
+    "vanishing gradient",
+    "seq2seq",
+    "sequential model",
+  ],
   konvolusi: ["convolution", "cnn", "filter citra"],
   "klasifikasi-citra": ["image classification", "citra", "gambar"],
   "tfidf-embedding": ["tfidf", "tf idf", "embedding", "word2vec"],
   "transformer-dasar": ["transformer", "self attention", "attention mechanism"],
+  "deteksi-segmentasi": [
+    "yolo",
+    "faster r-cnn",
+    "object detection",
+    "iou",
+    "map",
+    "segmentation",
+    "u-net",
+    "unet",
+  ],
+  "transformer-lanjut": [
+    "bert",
+    "gpt",
+    "multi head",
+    "positional encoding",
+    "bpe",
+    "wordpiece",
+    "fine tuning",
+    "pretraining",
+  ],
 };
 
 /** Map free-text topic preference to known topic ids (best-effort). */
@@ -118,28 +198,28 @@ export function findTrackForTopic(topic: string): TrackId | undefined {
 export function inferFallbackTrack(topicPrompt: string): TrackId {
   const n = normalizeForMatch(topicPrompt);
   if (
-    /(backprop|aktivasi|perceptron|mlp|neural|jaringan|regularisasi|dropout)/.test(
+    /(backprop|aktivasi|perceptron|mlp|neural|jaringan|regularisasi|dropout|resnet|lstm|rnn|cnn arsitektur)/.test(
       n,
     )
   ) {
     return "C";
   }
   if (
-    /(konvolusi|cnn|citra|image|tfidf|embedding|transformer|attention|nlp)/.test(
+    /(konvolusi|cnn|citra|image|tfidf|embedding|transformer|attention|nlp|yolo|bert|gpt|segmentasi|deteksi)/.test(
       n,
     )
   ) {
     return "D";
   }
   if (
-    /(python|statistika|statistik|probabilitas|peluang|aljabar|matriks|optimasi)/.test(
+    /(python|statistika|statistik|probabilitas|peluang|aljabar|matriks|optimasi|svd|eigen|adam)/.test(
       n,
     )
   ) {
     return "A";
   }
   if (
-    /(supervised|unsupervised|regresi|klasifikasi|clustering|evaluasi|feature|metrik)/.test(
+    /(supervised|unsupervised|regresi|klasifikasi|clustering|evaluasi|feature|metrik|svm|ensemble|random forest|boosting|pohon|decision tree)/.test(
       n,
     )
   ) {

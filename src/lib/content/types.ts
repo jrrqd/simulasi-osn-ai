@@ -172,44 +172,57 @@ export const TRACKS: Record<
 > = {
   A: {
     name: "Fondasi",
-    description: "Python, statistika, peluang, aljabar linier, optimasi",
+    description:
+      "Python, statistika, peluang, aljabar linier, optimasi (dasar + lanjut)",
     topics: [
       "python-dasar",
       "statistika",
       "probabilitas",
       "aljabar-linier",
       "optimasi",
+      "aljabar-linier-lanjut",
+      "optimasi-lanjut",
     ],
   },
   B: {
     name: "Machine Learning Klasik",
-    description: "Supervised/unsupervised learning, metrik, validasi",
+    description:
+      "Supervised/unsupervised, metrik, pohon, ensemble, SVM",
     topics: [
       "supervised-learning",
       "unsupervised-learning",
       "evaluasi-model",
       "feature-engineering",
+      "pohon-keputusan",
+      "ensemble",
+      "svm",
     ],
   },
   C: {
     name: "Jaringan Syaraf Tiruan",
-    description: "Perceptron, backprop, aktivasi, MLP, regularisasi",
+    description:
+      "Perceptron, backprop, MLP, regularisasi, arsitektur CNN, RNN/LSTM",
     topics: [
       "perceptron",
       "backpropagation",
       "aktivasi-loss",
       "mlp",
       "regularisasi",
+      "cnn-arsitektur",
+      "rnn-lstm",
     ],
   },
   D: {
     name: "CV & NLP",
-    description: "Konvolusi, pooling, TF-IDF, embedding, attention",
+    description:
+      "Konvolusi, klasifikasi citra, TF-IDF, attention, deteksi, transformer lanjut",
     topics: [
       "konvolusi",
       "klasifikasi-citra",
       "tfidf-embedding",
       "transformer-dasar",
+      "deteksi-segmentasi",
+      "transformer-lanjut",
     ],
   },
 };
@@ -220,19 +233,28 @@ export const TOPIC_LABELS: Record<string, string> = {
   probabilitas: "Probabilitas",
   "aljabar-linier": "Aljabar Linier",
   optimasi: "Optimasi",
+  "aljabar-linier-lanjut": "Aljabar Linier Lanjut",
+  "optimasi-lanjut": "Optimasi Lanjut",
   "supervised-learning": "Supervised Learning",
   "unsupervised-learning": "Unsupervised Learning",
   "evaluasi-model": "Evaluasi Model",
   "feature-engineering": "Feature Engineering",
+  "pohon-keputusan": "Pohon Keputusan",
+  ensemble: "Ensemble",
+  svm: "SVM",
   perceptron: "Perceptron",
   backpropagation: "Backpropagation",
   "aktivasi-loss": "Aktivasi & Loss",
   mlp: "MLP",
   regularisasi: "Regularisasi",
+  "cnn-arsitektur": "Arsitektur CNN",
+  "rnn-lstm": "RNN & LSTM",
   konvolusi: "Konvolusi",
   "klasifikasi-citra": "Klasifikasi Citra",
   "tfidf-embedding": "TF-IDF & Embedding",
   "transformer-dasar": "Transformer Dasar",
+  "deteksi-segmentasi": "Deteksi & Segmentasi",
+  "transformer-lanjut": "Transformer Lanjut",
 };
 
 /** Default weight: coding 2×, everything else 1× (OSN AI 2026). */

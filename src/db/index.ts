@@ -43,6 +43,7 @@ async function migratePglite(client: PGlite) {
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS onboarding_completed_at timestamptz;
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS profile_prompt_snoozed_until timestamptz;
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS assistant_pet text NOT NULL DEFAULT 'cat';
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'pre-seleksi';
     CREATE TABLE IF NOT EXISTS session (
       id text PRIMARY KEY,
       expires_at timestamptz NOT NULL,
@@ -309,6 +310,7 @@ async function createDb(): Promise<AppDb> {
   const client = postgres(url, { max: 10 });
   // Soft-migrate additive columns/tables (Postgres prod does not run PGlite migrate).
   await client.unsafe(`
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'pre-seleksi';
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS score_summary jsonb;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS total_attempts integer NOT NULL DEFAULT 0;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_minutes integer NOT NULL DEFAULT 0;

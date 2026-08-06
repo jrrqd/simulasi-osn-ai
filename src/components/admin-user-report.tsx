@@ -126,6 +126,7 @@ type Report = {
     schoolName: string | null;
     grade: string | null;
     city: string | null;
+    phase?: string | null;
   };
   totals: {
     attemptsCount: number;
@@ -233,6 +234,8 @@ export function AdminUserReport({ userId }: { userId: string }) {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [phaseSaving, setPhaseSaving] = useState(false);
+  const [phaseMessage, setPhaseMessage] = useState("");
   const sessionConfirmRef = useRef<HTMLDivElement | null>(null);
 
   const loadReport = () => {
@@ -266,6 +269,36 @@ export function AdminUserReport({ userId }: { userId: string }) {
   };
 
   useEffect(loadReport, [userId]);
+
+  async function savePhase(next: string) {
+    setPhaseSaving(true);
+    setPhaseMessage("");
+    setResetError("");
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, phase: next }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "Gagal memperbarui tahap");
+      }
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              user: { ...prev.user, phase: next },
+            }
+          : prev,
+      );
+      setPhaseMessage("Tahap diperbarui.");
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : "Gagal menyimpan tahap");
+    } finally {
+      setPhaseSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!sessionPending) return;
@@ -474,6 +507,24 @@ export function AdminUserReport({ userId }: { userId: string }) {
               <dd className="mt-1 font-medium">{item.value || "—"}</dd>
             </div>
           ))}
+          <div className="sm:col-span-2">
+            <dt className="text-xs text-[var(--muted)]">Tahap OSN AI</dt>
+            <dd className="mt-2 flex flex-wrap items-center gap-3">
+              <select
+                className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-sm"
+                value={data.user.phase ?? "pre-seleksi"}
+                disabled={phaseSaving}
+                onChange={(e) => savePhase(e.target.value)}
+              >
+                <option value="pre-seleksi">Pre-seleksi</option>
+                <option value="semifinal">Semifinal</option>
+                <option value="final">Final</option>
+              </select>
+              {phaseMessage && (
+                <span className="text-sm text-[var(--accent)]">{phaseMessage}</span>
+              )}
+            </dd>
+          </div>
         </dl>
       </div>
 

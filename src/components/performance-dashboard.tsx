@@ -21,6 +21,8 @@ import type { CampaignStages } from "@/lib/campaign-stages";
 
 type Perf = {
   overall: number;
+  phase?: string;
+  phaseLabel?: string;
   topics: {
     topic: string;
     label: string;
@@ -149,6 +151,11 @@ export function PerformanceDashboard() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="display text-2xl">Kesiapan OSN AI</h2>
+            {data.phase && data.phase !== "pre-seleksi" && (
+              <p className="mt-2 inline-flex rounded-full bg-[var(--accent)]/12 px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+                Mode: {data.phaseLabel ?? data.phase} OSN AI 2026
+              </p>
+            )}
             <p className="mt-1 text-sm text-[var(--muted)]">
               Ringkasan kesiapanmu berdasarkan mastery, skor mock, dan cakupan
               topik.

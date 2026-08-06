@@ -19,6 +19,7 @@ import {
   type GenerationProgressState,
 } from "@/components/generation-progress";
 import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
+import { PhaseHintBanner } from "@/components/phase-hint-banner";
 
 type GenerationMode = "standard" | "custom" | "study-case";
 type SourceMode = "curated" | "ai";
@@ -130,6 +131,7 @@ export function GenerateCuratedMockChallenge() {
       summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk mode studi kasus PREDIKSI.`}
       accent="primary"
     >
+      <PhaseHintBanner />
       <div className="flex flex-wrap gap-2">
         <button
           type="button"

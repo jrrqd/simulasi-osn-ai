@@ -33,10 +33,13 @@ import {
   TOPIC_PROMPT_MIN_LEN,
 } from "@/lib/ai/topic-prompt";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
+import { eq } from "drizzle-orm";
+import { user } from "@/db/schema";
+import { getPhase } from "@/lib/user/phase";
 
-type Phase = "plan" | "slot" | "case" | "commit" | "legacy";
+type GenerationPhase = "plan" | "slot" | "case" | "commit" | "legacy";
 
-function parsePhase(raw: unknown): Phase {
+function parseGenerationPhase(raw: unknown): GenerationPhase {
   if (
     raw === "plan" ||
     raw === "slot" ||
@@ -46,6 +49,15 @@ function parsePhase(raw: unknown): Phase {
     return raw;
   }
   return "legacy";
+}
+
+async function loadUserPhase(userId: string) {
+  const db = await getDb();
+  const row = await db.query.user.findFirst({
+    where: eq(user.id, userId),
+    columns: { phase: true },
+  });
+  return getPhase(row);
 }
 
 function parseGenerationMode(
@@ -142,7 +154,7 @@ export async function POST(req: NextRequest) {
   if ("error" in authResult) return authResult.error;
 
   const body = await req.json();
-  const phase = parsePhase(body.phase);
+  const phase = parseGenerationPhase(body.phase);
 
   if (phase === "plan") {
     if (!rateLimit(`gen-mock:${authResult.user.id}`, 2, 60 * 60_000)) {
@@ -158,6 +170,7 @@ export async function POST(req: NextRequest) {
     const preferredTopic =
       body.topic != null ? String(body.topic) : undefined;
     const size = parseAiMockSize(body.size);
+    const userPhase = await loadUserPhase(authResult.user.id);
 
     const rawTrack = String(body.track ?? "B");
     const track: TrackId | "ALL" =
@@ -198,6 +211,7 @@ export async function POST(req: NextRequest) {
       topicPrompt,
       preferredTopic,
       size,
+      phase: userPhase,
     });
 
     if (generationMode === "study-case" && cases.length === 0) {
@@ -584,7 +598,7 @@ export async function POST(req: NextRequest) {
   const preferredTopic =
     body.topic != null ? String(body.topic) : undefined;
 
-  let track = String(body.track ?? "B") as TrackId;
+  const track = String(body.track ?? "B") as TrackId;
   if (generationMode === "custom") {
     if (!topicPrompt || topicPrompt.length < TOPIC_PROMPT_MIN_LEN) {
       return Response.json(
@@ -611,6 +625,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const size = parseAiMockSize(body.size);
+    const userPhase = await loadUserPhase(authResult.user.id);
     const { slots, meta } = buildAiMockPlan({
       generationMode,
       track: TRACKS[track] ? track : "B",
@@ -618,6 +633,7 @@ export async function POST(req: NextRequest) {
       topicPrompt,
       preferredTopic,
       size,
+      phase: userPhase,
     });
 
     const problemIds: string[] = [];

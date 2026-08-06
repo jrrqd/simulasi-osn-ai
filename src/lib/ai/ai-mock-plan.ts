@@ -16,11 +16,82 @@ import {
 } from "@/lib/ai/topic-prompt";
 import { buildNaturalMockTitle } from "@/lib/ai/mock-title";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
+import {
+  SEMIFINAL_TOPICS,
+  type Phase,
+} from "@/lib/user/phase";
 
-function pickTopicForTrack(track: TrackId, preferred?: string) {
-  const topics = TRACKS[track].topics;
+const PRESELEKSI_TOPICS = new Set(
+  (Object.keys(TRACKS) as TrackId[]).flatMap((track) =>
+    TRACKS[track].topics.filter(
+      (t) => !(SEMIFINAL_TOPICS as readonly string[]).includes(t),
+    ),
+  ),
+);
+
+const SEMIFINAL_TOPIC_SET = new Set<string>(SEMIFINAL_TOPICS);
+
+/** Soft topic weights for default (non-custom-brief) mock planning. */
+export function topicWeightForPhase(phase: Phase, topic: string): number {
+  const isSemifinalTopic = SEMIFINAL_TOPIC_SET.has(topic);
+  const isPreseleksiTopic = PRESELEKSI_TOPICS.has(topic);
+
+  if (phase === "pre-seleksi") {
+    if (isSemifinalTopic) return 0;
+    return 1;
+  }
+  if (phase === "semifinal") {
+    if (isSemifinalTopic) return 2.0;
+    if (isPreseleksiTopic) return 0.5;
+    return 0.5;
+  }
+  // final — IOAI-adjacent bias
+  if (
+    topic === "transformer-lanjut" ||
+    topic === "cnn-arsitektur" ||
+    topic === "aljabar-linier-lanjut"
+  ) {
+    return 1.4;
+  }
+  if (isSemifinalTopic) return 1.0;
+  if (isPreseleksiTopic) return 0.5;
+  return 0.5;
+}
+
+function pickWeightedTopic(
+  topics: string[],
+  phase: Phase,
+  preferred?: string,
+): string {
   if (preferred && topics.includes(preferred)) return preferred;
-  return topics[Math.floor(Math.random() * topics.length)]!;
+
+  const weighted = topics
+    .map((topic) => ({ topic, weight: topicWeightForPhase(phase, topic) }))
+    .filter((entry) => entry.weight > 0);
+
+  const pool =
+    weighted.length > 0
+      ? weighted
+      : topics.map((topic) => ({
+          topic,
+          weight: 1,
+        }));
+
+  const total = pool.reduce((sum, entry) => sum + entry.weight, 0);
+  let cursor = Math.random() * total;
+  for (const entry of pool) {
+    cursor -= entry.weight;
+    if (cursor <= 0) return entry.topic;
+  }
+  return pool[pool.length - 1]!.topic;
+}
+
+function pickTopicForTrack(
+  track: TrackId,
+  phase: Phase,
+  preferred?: string,
+) {
+  return pickWeightedTopic(TRACKS[track].topics, phase, preferred);
 }
 
 export const MOCK_QUESTION_COUNT = 10;
@@ -96,6 +167,7 @@ export type AiMockPlanMeta = {
   size: AiMockSize;
   codingCount: number;
   numericCount: number;
+  phase: Phase;
 };
 
 /** Split total questions into study-case sizes of 3–5 that sum exactly. */
@@ -199,7 +271,9 @@ export function buildAiMockPlan(params: {
   topicPrompt?: string;
   preferredTopic?: string;
   size?: AiMockSize;
+  phase?: Phase;
 }): { slots: AiMockSlot[]; cases: AiMockCaseSlot[]; meta: AiMockPlanMeta } {
+  const phase = params.phase ?? "pre-seleksi";
   const size = params.size ?? "quick";
   const sizeMeta = aiMockSizeMeta(size);
   const count = sizeMeta.count;
@@ -248,9 +322,9 @@ export function buildAiMockPlan(params: {
       (params.generationMode === "standard" || isStudyCase)
     ) {
       questionTrack = TRACK_CYCLE[i % TRACK_CYCLE.length]!;
-      topic = pickTopicForTrack(questionTrack, params.preferredTopic);
+      topic = pickTopicForTrack(questionTrack, phase, params.preferredTopic);
     } else {
-      topic = pickTopicForTrack(track, params.preferredTopic);
+      topic = pickTopicForTrack(track, phase, params.preferredTopic);
     }
 
     const slotMix = mix[i]!;
@@ -329,6 +403,7 @@ export function buildAiMockPlan(params: {
       size,
       codingCount: isStudyCase ? 0 : codingCount,
       numericCount: isStudyCase ? count : numericCount,
+      phase,
     },
   };
 }

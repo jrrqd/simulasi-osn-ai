@@ -15,6 +15,7 @@ import {
   type GenerationProgressState,
 } from "@/components/generation-progress";
 import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
+import { PhaseHintBanner } from "@/components/phase-hint-banner";
 
 type GenerationMode = "standard" | "custom" | "study-case";
 
@@ -80,6 +81,7 @@ export function GenerateMockChallenge() {
       summary="Buat 10 soal baru / 30 menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Untuk 20/40 soal, pakai Generate AI penuh di panel atas."
       accent="accent"
     >
+      <PhaseHintBanner />
       <div className="flex flex-wrap gap-2">
         <button
           type="button"

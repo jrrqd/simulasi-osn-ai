@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
-import { attempts, mockSessions, topicMastery } from "@/db/schema";
+import { attempts, mockSessions, topicMastery, user } from "@/db/schema";
 import { requireApiUser } from "@/lib/api";
 import { overallMastery, rankGaps, suggestedLessonsFromGaps } from "@/lib/analytics/mastery";
 import {
@@ -15,6 +15,7 @@ import { countVisiblePracticeProblems } from "@/lib/content/problem-library";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { dayKeyWib } from "@/lib/datetime";
 import { buildCampaignPayload } from "@/lib/campaign-stages";
+import { getPhase, PHASE_LABELS } from "@/lib/user/phase";
 
 export async function GET(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -29,6 +30,7 @@ export async function GET(req: NextRequest) {
     userMocks,
     lessonProgressMap,
     practiceBankTotal,
+    profileRow,
   ] = await Promise.all([
     db.select().from(topicMastery).where(eq(topicMastery.userId, userId)),
     db
@@ -49,6 +51,10 @@ export async function GET(req: NextRequest) {
       .orderBy(asc(mockSessions.startedAt)),
     getUserLessonProgress(userId),
     countVisiblePracticeProblems(),
+    db.query.user.findFirst({
+      where: eq(user.id, userId),
+      columns: { phase: true },
+    }),
   ]);
 
   const allTopics = Object.entries(TRACKS).flatMap(([track, meta]) =>
@@ -228,6 +234,8 @@ export async function GET(req: NextRequest) {
     readiness,
     sessionScores,
     campaign,
+    phase: getPhase(profileRow),
+    phaseLabel: PHASE_LABELS[getPhase(profileRow)],
     recentMocks: recentMocks.map((m) => ({
       id: m.id,
       mockId: m.mockId,

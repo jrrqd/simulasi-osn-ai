@@ -28,6 +28,8 @@ export const user = pgTable("user", {
   profilePromptSnoozedUntil: timestamp("profile_prompt_snoozed_until"),
   /** Floating AI assistant mascot: none | cat (Jacky) | dog (Ichi) */
   assistantPet: text("assistant_pet").notNull().default("cat"),
+  /** Competition cycle: pre-seleksi | semifinal | final */
+  phase: text("phase").notNull().default("pre-seleksi"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

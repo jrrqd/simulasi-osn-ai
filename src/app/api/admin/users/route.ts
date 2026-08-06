@@ -235,6 +235,7 @@ export async function GET(req: NextRequest) {
       schoolName: selected.schoolName,
       grade: selected.grade,
       city: selected.city,
+      phase: selected.phase ?? "pre-seleksi",
     },
     totals: {
       ...summary,
@@ -347,6 +348,13 @@ export async function PATCH(req: NextRequest) {
   }
   if (body.role === "admin" || body.role === "student") {
     data.role = body.role;
+  }
+  if (
+    body.phase === "pre-seleksi" ||
+    body.phase === "semifinal" ||
+    body.phase === "final"
+  ) {
+    data.phase = body.phase;
   }
 
   try {

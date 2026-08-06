@@ -316,5 +316,161 @@
         "explanation": "Bobot dari dataset besar"
       }
     ]
+  },
+  {
+    "id": "a-aljabar-linier-lanjut",
+    "track": "A",
+    "topic": "aljabar-linier-lanjut",
+    "title": "Eigen, SVD & Norma Matriks",
+    "summary": "Dekomposisi spektral, low-rank, dan norma untuk ML lanjut.",
+    "body": "## Eigen\n$Av=\\lambda v$. Matriks simetris punya basis ortonormal eigenvektor.\n\n## SVD\n$A=U\\Sigma V^\\top$ — berguna untuk PCA dan kompresi.\n\n## Norma\nFrobenius $\\|A\\|_F=\\sqrt{\\sum_{ij}a_{ij}^2}$; spektral adalah singular value terbesar.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "PCA berhubungan erat dengan dekomposisi apa?",
+        "answer": "SVD",
+        "explanation": "Singular vectors ≈ komponen utama"
+      },
+      {
+        "id": "q2",
+        "prompt": "Persamaan Av=λv mendefinisikan?",
+        "answer": "eigenvektor",
+        "explanation": "v adalah eigenvektor, λ eigenvalue"
+      }
+    ]
+  },
+  {
+    "id": "a-optimasi-lanjut",
+    "track": "A",
+    "topic": "optimasi-lanjut",
+    "title": "Adam, Momentum & Jadwal Learning Rate",
+    "summary": "Optimizer modern dan convexity dasar untuk deep learning.",
+    "body": "## Momentum\nMengakumulasi gradien agar melaju di lembah sempit.\n\n## Adam / AdamW\nAdaptif per-parameter + bias correction; AdamW memisahkan weight decay.\n\n## Schedule\nStep/cosine decay menurunkan learning rate seiring epoch.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Optimizer yang menggabungkan momentum + adaptive rates?",
+        "answer": "Adam",
+        "explanation": "Adaptive Moment Estimation"
+      },
+      {
+        "id": "q2",
+        "prompt": "AdamW memisahkan apa dari update gradien?",
+        "answer": "weight decay",
+        "explanation": "Decoupled weight decay"
+      }
+    ]
+  },
+  {
+    "id": "b-pohon-keputusan",
+    "track": "B",
+    "topic": "pohon-keputusan",
+    "title": "Pohon Keputusan & Impurity",
+    "summary": "CART/ID3: split, Gini/entropy, pruning.",
+    "body": "Pohon memilih fitur yang menurunkan impurity (Gini atau entropy).\nPruning / kedalaman terbatas mengurangi overfitting.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Dua ukuran impurity umum pada pohon klasifikasi?",
+        "answer": "Gini dan entropy",
+        "explanation": "Keduanya mengukur ketidakmurnian node"
+      }
+    ]
+  },
+  {
+    "id": "b-ensemble",
+    "track": "B",
+    "topic": "ensemble",
+    "title": "Bagging, Random Forest & Boosting",
+    "summary": "Menggabungkan banyak model lemah menjadi kuat.",
+    "body": "## Bagging\nLatih pohon pada bootstrap sample; rata-rata/voting.\n\n## Random Forest\nBagging + subset fitur acak per split.\n\n## Boosting\nModel berikutnya fokus pada residual/error sebelumnya (GBDT/XGBoost).",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Random Forest adalah bagging ditambah?",
+        "answer": "subset fitur acak",
+        "explanation": "Feature randomness per split"
+      }
+    ]
+  },
+  {
+    "id": "b-svm",
+    "track": "B",
+    "topic": "svm",
+    "title": "SVM & Kernel Trick",
+    "summary": "Margin maksimal, soft-margin, dan kernel (linear/RBF).",
+    "body": "SVM mencari hyperplane dengan margin terbesar.\nSoft-margin mengizinkan pelanggaran dengan penalty C.\nKernel memetakan ke ruang fitur tanpa menghitung eksplisit (RBF, polynomial).",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "SVM linier memaksimalkan apa antara kelas?",
+        "answer": "margin",
+        "explanation": "Maximum-margin classifier"
+      }
+    ]
+  },
+  {
+    "id": "c-cnn-arsitektur",
+    "track": "C",
+    "topic": "cnn-arsitektur",
+    "title": "Arsitektur CNN Modern",
+    "summary": "LeNet → AlexNet → VGG → ResNet, skip connection, receptive field.",
+    "body": "ResNet memakai skip/residual connection agar gradien mengalir di jaringan dalam.\nReceptive field tumbuh seiring depth/stride.\nTransfer learning: backbone pretrained + head baru.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Trik ResNet untuk jaringan sangat dalam?",
+        "answer": "skip connection",
+        "explanation": "Residual / shortcut paths"
+      }
+    ]
+  },
+  {
+    "id": "c-rnn-lstm",
+    "track": "C",
+    "topic": "rnn-lstm",
+    "title": "RNN, LSTM & Seq2Seq",
+    "summary": "Model sekuensial, BPTT, gating, vanishing gradient.",
+    "body": "RNN memproses urutan dengan state tersembunyi; BPTT mengalirkan gradien mundur waktu.\nLSTM/GRU memakai gate untuk mengatasi vanishing gradient.\nSeq2seq: encoder–decoder untuk terjemahan/ringkasan.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Masalah klasik RNN dalam pada urutan panjang?",
+        "answer": "vanishing gradient",
+        "explanation": "Gradien mengecil saat BPTT jauh"
+      }
+    ]
+  },
+  {
+    "id": "d-deteksi-segmentasi",
+    "track": "D",
+    "topic": "deteksi-segmentasi",
+    "title": "Deteksi Objek & Segmentasi",
+    "summary": "YOLO/Faster R-CNN, IoU/mAP, U-Net dasar.",
+    "body": "Deteksi menghasilkan kotak + kelas; IoU mengukur overlap prediksi–GT; mAP merata-ratakan precision–recall.\nSegmentasi semantik memberi label per piksel (U-Net encoder–decoder).",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Metrik overlap kotak prediksi vs ground truth?",
+        "answer": "IoU",
+        "explanation": "Intersection over Union"
+      }
+    ]
+  },
+  {
+    "id": "d-transformer-lanjut",
+    "track": "D",
+    "topic": "transformer-lanjut",
+    "title": "Transformer Lanjut & Pretraining",
+    "summary": "Multi-head, positional encoding, BERT/GPT, BPE.",
+    "body": "Multi-head attention menjalankan beberapa subspace perhatian paralel.\nPositional encoding memberi informasi urutan.\nPretraining (masked LM / next-token) lalu fine-tuning.\nTokenisasi modern: BPE / WordPiece.",
+    "checkQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Teknik tokenisasi subword yang umum di GPT?",
+        "answer": "BPE",
+        "explanation": "Byte-Pair Encoding"
+      }
+    ]
   }
 ]
