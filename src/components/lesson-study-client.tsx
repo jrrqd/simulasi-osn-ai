@@ -6,9 +6,8 @@ import {
   LessonSideQuestLink,
 } from "@/components/lesson-checks";
 import type { CheckQuestion } from "@/lib/content/types";
+import type { LessonTocItem } from "@/lib/lesson-toc";
 import Link from "next/link";
-
-type TocItem = { id: string; text: string; level: 2 | 3 };
 
 export function LessonStudyClient({
   lessonId,
@@ -26,7 +25,7 @@ export function LessonStudyClient({
   lessonId: string;
   track: string;
   topic: string;
-  bodyHtmlIds: TocItem[];
+  bodyHtmlIds: LessonTocItem[];
   initialQuestions: CheckQuestion[];
   initialChecksPassed: Record<string, boolean>;
   initiallyCompleted: boolean;
@@ -131,21 +130,4 @@ export function LessonStudyClient({
       </div>
     </div>
   );
-}
-
-/** Extract h2/h3 headings from markdown body for TOC. */
-export function extractMarkdownToc(body: string): TocItem[] {
-  const items: TocItem[] = [];
-  for (const line of body.split("\n")) {
-    const m = /^(#{2,3})\s+(.+)$/.exec(line.trim());
-    if (!m) continue;
-    const level = m[1]!.length === 2 ? 2 : 3;
-    const text = m[2]!.replace(/[#*`]/g, "").trim();
-    const id = text
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    if (text && id) items.push({ id, text, level });
-  }
-  return items;
 }

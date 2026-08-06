@@ -5,10 +5,8 @@ import { getLesson, getLessons } from "@/lib/content/load";
 import { TOPIC_LABELS } from "@/lib/content/types";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { Markdown } from "@/components/markdown";
-import {
-  extractMarkdownToc,
-  LessonStudyClient,
-} from "@/components/lesson-study-client";
+import { extractMarkdownToc } from "@/lib/lesson-toc";
+import { LessonStudyClient } from "@/components/lesson-study-client";
 import {
   dueQuestionIds,
   getLessonCheckQuestions,
