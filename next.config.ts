@@ -35,8 +35,8 @@ const nextConfig: NextConfig = {
   ],
   async headers() {
     return [
-      // HTML pages: never cache at the browser. force-dynamic + session-aware
-      // responses would otherwise stay stale until hard reload.
+      // HTML responses: never cache at the browser. force-dynamic +
+      // session-aware pages would otherwise stay stale after a deploy.
       {
         source: "/:path*",
         has: [
@@ -54,8 +54,8 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Static assets served from /_next/* and /public/* (matched in nginx,
-      // not from Next.js, but listed for completeness when running standalone).
+      // Static assets served from /_next/* (matched in nginx, but listed
+      // here so the headers also apply when running without nginx).
       {
         source: "/_next/static/:path*",
         headers: [
@@ -63,17 +63,6 @@ const nextConfig: NextConfig = {
           {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      // Fallback for any other path: never cache by default.
-      {
-        source: "/:path*",
-        headers: [
-          ...BASE_HEADERS,
-          {
-            key: "Cache-Control",
-            value: "private, no-store, max-age=0, must-revalidate",
           },
         ],
       },
