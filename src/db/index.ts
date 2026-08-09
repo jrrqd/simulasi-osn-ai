@@ -368,8 +368,16 @@ async function createDb(): Promise<AppDb> {
 export async function getDb() {
   if (globalForDb.__osnaiDb) return globalForDb.__osnaiDb;
   if (!globalForDb.__osnaiDbInit) {
-    globalForDb.__osnaiDbInit = createDb().then((db) => {
+    globalForDb.__osnaiDbInit = createDb().then(async (db) => {
       globalForDb.__osnaiDb = db;
+      try {
+        const { ensureOsn26MockInDb } = await import(
+          "@/lib/content/seed-osn26-mock"
+        );
+        await ensureOsn26MockInDb(db);
+      } catch (err) {
+        console.warn("[db] ensureOsn26MockInDb skipped:", err);
+      }
       return db;
     });
   }

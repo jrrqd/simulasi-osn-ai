@@ -114,6 +114,14 @@ export async function getAuth() {
             .set({ role: "admin", updatedAt: new Date() })
             .where(eq(schema.user.id, existing.id));
         }
+        try {
+          const { ensureOsn26MockInDb } = await import(
+            "@/lib/content/seed-osn26-mock"
+          );
+          await ensureOsn26MockInDb(db);
+        } catch (err) {
+          console.warn("[auth] ensureOsn26MockInDb skipped:", err);
+        }
       }
     }
 
