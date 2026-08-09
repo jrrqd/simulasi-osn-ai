@@ -7,6 +7,7 @@ import {
   createUserProvider,
   generatedProblemSchema,
   normalizeGeneratedProblem,
+  remapKaggleShape,
   type GeneratedProblemPayload,
 } from "@/lib/ai/provider";
 import {
@@ -35,6 +36,9 @@ import {
 // so leave more output budget than a plain chat completion would need.
 const MAX_GENERATION_ATTEMPTS = 3;
 const MAX_OUTPUT_TOKENS = 4500;
+// Kaggle long-form coding payloads (rich stem + skeleton + ≥5 test cases)
+// easily exceed 4500 tokens of JSON. Bump the budget for those.
+const MAX_OUTPUT_TOKENS_LONGFORM = 12000;
 const GENERATION_ATTEMPT_TIMEOUT_MS = 75_000;
 const THINKING_EMIT_MS = 160;
 
@@ -158,11 +162,15 @@ export async function generateAndStoreProblem(params: {
 
   // Plain chat JSON (no response_format). MiniMax-M3 often breaks with
   // Output.object / json_schema; we parse + repair locally instead.
+  // disableThinking: skip M3's chain-of-thought for structured-output tasks —
+  // the model otherwise dumps the entire answer into reasoning_content and
+  // emits nothing to the text channel (kaggle codeSpec problems were 0/14k).
   const model = createUserProvider({
     baseUrl: params.baseUrl,
     apiKey: params.apiKey,
     modelId: params.modelId,
     jsonOutput: false,
+    disableThinking: true,
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
@@ -212,16 +220,25 @@ ${figureBlock}
 ${
   answerType === "codeSpec"
     ? params.longFormCoding
-      ? `Instruksi coding Python Kaggle-style (codeSpec, marathon):
-- Stem harus kaya: latar masalah, spesifikasi I/O yang jelas, constraints, dan contoh kecil.
-- WAJIB isi "codeSpec" dengan skeleton berisi marker "# >>> WRITE HERE <<<" … "# <<< END <<<".
-  (opsional: lockedRanges [[startLine,endLine],…] 1-based bila marker belum ada)
-- WAJIB ≥ 5 testCases {input, expectedOutput}; sertakan edge case dan kasus batas.
-- WAJIB timeLimitMs (500–10000) dan memoryLimitMb (64–1024).
-- weight = 5.
-- answer boleh string ringkas (mis. "lihat testCases") — penilaian dari test case.
-- Jangan minta siswa pindah tab / buka IDE eksternal / unduh dataset eksternal.
-- Fokus implementasi algoritma/ML kecil yang realistis dikerjakan in-exam dalam ~1–2 jam per soal.
+      ? `WAJIB: JSON berisi field persis ini (string kecuali ditentukan lain):
+- "title": string pendek ≤ 120 char
+- "track": "${params.track}"
+- "topic": "${params.topic}"
+- "difficulty": ${difficulty}
+- "answerType": "codeSpec"
+- "stem": string markdown kaya — gabungkan di sini: konteks/latar, spesifikasi I/O lengkap, constraints, contoh input/output, edge case. Gunakan heading ## / daftar untuk keterbacaan. JANGAN pecah jadi field lain (story/inputFormat/...); semuanya masuk "stem".
+- "answer": boleh string ringkas (mis. "lihat testCases") — penilaian dari test case.
+- "solution": string 3–8 kalimat menjelaskan ide algoritma + kompleksitas.
+- "codeSpec": object { skeleton, testCases, timeLimitMs, memoryLimitMb }
+  - skeleton: string Python WAJIB berisi marker "# >>> WRITE HERE <<<" … "# <<< END <<<".
+  - testCases: array ≥ 5 {input, expectedOutput}; termasuk edge case.
+  - timeLimitMs: integer 500–10000.
+  - memoryLimitMb: integer 64–1024.
+- "weight": 5
+- "tags": [], tambahkan "prediksi-style" dan "kaggle-style".
+
+Jangan minta siswa pindah tab / buka IDE eksternal / unduh dataset eksternal.
+Fokus implementasi algoritma/ML kecil yang realistis in-exam dalam ~1–2 jam.
 `
       : `Instruksi coding Python (OSN AI 2026 / codeSpec):
 - WAJIB isi "codeSpec" dengan skeleton berisi marker "# >>> WRITE HERE <<<" … "# <<< END <<<".
@@ -252,6 +269,7 @@ ${
 - Jika memakai konsep matematika non-SMA, jelaskan 1–3 kalimat di awal stem.
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
+- JANGAN bikin field terpisah (story/inputFormat/constraints/examples/...); semua penjelasan I/O, constraints, contoh, dan edge case harus masuk "stem" sebagai markdown.
 - Solusi 3–8 kalimat; rumus boleh KaTeX $...$ atau plain text.
 - Tambahkan "prediksi-style" di tags${params.longFormCoding ? '; tambahkan juga "kaggle-style"' : ""}.
 - Balas HANYA satu objek JSON SOAL (bukan JSON Schema).`;
@@ -259,13 +277,21 @@ ${
   let payload: GeneratedProblemPayload | null = null;
   let lastError: unknown;
   let previousRaw = "";
+  let previousText = "";
+  let previousReasoning = "";
   let problemId = "";
   let problemFigures: Problem["figures"];
   let problemImages: Problem["images"];
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
+    // Distinguish "broken JSON" (text present, parse failed) from "thinking
+    // only" (text empty, reasoning filled). The latter is a stronger signal
+    // that the model is over-thinking and we should re-prompt with terser
+    // instructions, not send the reasoning blob back as a "repair" target.
     const hadUsableRaw = Boolean(previousRaw.trim());
-    const isRepair = attempt > 0 && hadUsableRaw;
+    const reasoningOnly =
+      !previousText.trim() && Boolean(previousReasoning.trim());
+    const isRepair = attempt > 0 && hadUsableRaw && !reasoningOnly;
     const prompt = isRepair
       ? `Perbaiki menjadi SATU objek JSON SOAL valid (bukan JSON Schema, tanpa markdown fence, tanpa komentar).
 Wajib punya field: title, track, topic, difficulty, answerType, stem, answer, solution.
@@ -274,8 +300,16 @@ KaTeX $...$ boleh; escape backslash ganda di JSON. Pertahankan isi soal sebisa m
 
 JSON rusak / salah:
 ${previousRaw.slice(0, 5000)}`
-      : attempt > 0
+      : attempt > 0 && reasoningOnly
         ? `${basePrompt}
+|
+|PERINGATAN PERCOBAAN ULANG:
+|- Respons sebelumnya HANYA berisi chain-of-thought di reasoning_content — tidak ada JSON di output utama (content).
+|- JANGAN tulis kode program, contoh, atau langkah hitung di reasoning. Langsung tulis SATU objek JSON SOAL valid di output utama (content).
+|- JANGAN berpikir berlebihan. Pendek dan langsung: title, stem, answer, solution, codeSpec, testCases.
+|- Jangan kembalikan JSON Schema.`
+        : attempt > 0
+          ? `${basePrompt}
 
 PERINGATAN PERCOBAAN ULANG:
 - Respons sebelumnya kosong atau hanya thinking tanpa JSON soal.
@@ -299,7 +333,9 @@ PERINGATAN PERCOBAAN ULANG:
         model,
         system: GENERATION_SYSTEM_PROMPT,
         prompt,
-        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        maxOutputTokens: params.longFormCoding
+          ? MAX_OUTPUT_TOKENS_LONGFORM
+          : MAX_OUTPUT_TOKENS,
         temperature: attempt === 0 ? 0.4 : 0.15,
         abortSignal: AbortSignal.timeout(GENERATION_ATTEMPT_TIMEOUT_MS),
       });
@@ -347,6 +383,10 @@ PERINGATAN PERCOBAAN ULANG:
 
       const finalText = text.trim() || (await result.text).trim();
       const finalReasoning = reasoning.trim();
+      // Track text vs reasoning separately so the next iteration can detect
+      // "thinking-only" output and trigger a stricter retry prompt.
+      previousText = finalText;
+      previousReasoning = finalReasoning;
       // Prefer content; fall back to reasoning (thinking models sometimes put
       // the JSON only there) and a combined blob for interleaved answers.
       previousRaw =
@@ -368,7 +408,9 @@ PERINGATAN PERCOBAAN ULANG:
 
       payload = normalizeGeneratedProblem(
         generatedProblemSchema.parse(
-          parseGeneratedProblemJson(finalText, finalReasoning, previousRaw),
+          remapKaggleShape(
+            parseGeneratedProblemJson(finalText, finalReasoning, previousRaw),
+          ),
         ),
       );
     } catch (err) {
@@ -378,6 +420,9 @@ PERINGATAN PERCOBAAN ULANG:
       if (!previousRaw.trim()) {
         previousRaw = [text, reasoning].map((s) => s.trim()).find(Boolean) ?? "";
       }
+      // Track text vs reasoning separately (needed for the reasoning-only case).
+      if (!previousText) previousText = text.trim();
+      if (!previousReasoning) previousReasoning = reasoning.trim();
     }
 
     if (!payload) continue;
