@@ -146,6 +146,250 @@ function normalizeCodeSpec(
   };
 }
 
+/**
+ * Models (especially MiniMax-M3 for kaggle long-form) frequently emit a
+ * "kaggle-style" problem with a different shape than the rest of the app:
+ * - "description" instead of "stem"
+ * - "codeSpec" as a string (containing Python skeleton) instead of an object
+ * - "testCases", "timeLimitMs", "memoryLimitMb" hoisted to the top level
+ * - missing "solution" (often fused into the description)
+ *
+ * Remap these to the canonical shape before Zod validation. This is a
+ * pure shape-only fix — content is preserved verbatim.
+ */
+export function remapKaggleShape(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const obj = { ...(value as Record<string, unknown>) };
+
+  // 1. description / prompt / problem / problemStatement / problemDescription / statement → stem
+  //    (when stem is missing). Some kaggle-style outputs use description
+  //    (string or object), others use prompt/problem/problemStatement/problemDescription/statement.
+  //    Flatten object descriptions into a markdown stem.
+  const stemSource = !obj.stem
+    ? (obj.description ??
+        obj.prompt ??
+        obj.problem ??
+        obj.problemStatement ??
+        obj.problemDescription ??
+        obj.statement)
+    : undefined;
+  if (stemSource != null && !obj.stem) {
+    if (typeof stemSource === "string") {
+      obj.stem = stemSource;
+    } else if (typeof stemSource === "object") {
+      const desc = stemSource as Record<string, unknown>;
+      const parts: string[] = [];
+      for (const [k, v] of Object.entries(desc)) {
+        if (v == null) continue;
+        if (typeof v === "string") {
+          parts.push(`## ${k}\n${v}`);
+        } else if (Array.isArray(v)) {
+          parts.push(`## ${k}\n${JSON.stringify(v, null, 2)}`);
+        } else {
+          parts.push(`## ${k}\n${JSON.stringify(v, null, 2)}`);
+        }
+      }
+      obj.stem = parts.join("\n\n");
+    }
+    for (const k of ["description", "prompt", "problem", "problemStatement", "problemDescription", "statement"]) {
+      if (k in obj) delete obj[k];
+    }
+  }
+
+  // 1b. If still no stem, synthesize one from the title + codeSpec context
+  //     (some kaggle variants only emit codeSpec + testCases without a stem).
+  if (typeof obj.stem !== "string" || obj.stem.length < 10) {
+    const title = typeof obj.title === "string" ? obj.title : "Coding Problem";
+    const cs = obj.codeSpec as Record<string, unknown> | undefined;
+    const skeleton = cs && typeof cs.skeleton === "string" ? cs.skeleton : "";
+    // Extract the docstring/comment block right after the function def — that's where
+    // the model typically writes the problem statement.
+    let annotation = "";
+    if (skeleton) {
+      const docMatch = skeleton.match(/"""([\s\S]*?)"""/);
+      if (docMatch) {
+        annotation = docMatch[1]!.trim();
+      } else {
+        // Fallback: take the first contiguous run of comment lines
+        const lines = skeleton.split("\n");
+        const buf: string[] = [];
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("#") || trimmed.startsWith("//")) {
+            buf.push(trimmed.replace(/^[#\/\s]+/, ""));
+          } else if (buf.length > 0 && trimmed === "") {
+            buf.push("");
+          } else if (buf.length > 0) {
+            break;
+          }
+        }
+        annotation = buf.join("\n").trim();
+      }
+    }
+    const tc = cs && Array.isArray(cs.testCases) ? (cs.testCases as unknown[]) : null;
+    const firstTest = tc && tc[0] && typeof tc[0] === "object" ? (tc[0] as Record<string, unknown>) : null;
+    const sampleInput = firstTest && typeof firstTest.input === "string" ? firstTest.input.slice(0, 240) : "";
+    const sampleOutput = firstTest && typeof firstTest.expectedOutput === "string" ? firstTest.expectedOutput.slice(0, 240) : "";
+    const parts = [
+      `## ${title}`,
+      annotation,
+      `Selesaikan fungsi sesuai spesifikasi pada codeSpec. Lihat test cases di bawah untuk contoh I/O.`,
+      sampleInput || sampleOutput
+        ? `### Contoh I/O\n${sampleInput ? `Input:\n\`\`\`\n${sampleInput}\n\`\`\`\n` : ""}${sampleOutput ? `Output:\n\`\`\`\n${sampleOutput}\n\`\`\`\n` : ""}`
+        : "",
+    ].filter(Boolean);
+    obj.stem = parts.join("\n\n");
+  }
+
+  // 2. flat top-level testCases / examples / timeLimitMs / memoryLimitMb
+  //    → fold into codeSpec
+  const hoistTestCases = Array.isArray(obj.testCases) ? obj.testCases : null;
+  const hoistExamples = Array.isArray(obj.examples) ? obj.examples : null;
+  const hoistTime = typeof obj.timeLimitMs === "number" ? obj.timeLimitMs : null;
+  const hoistMem = typeof obj.memoryLimitMb === "number" ? obj.memoryLimitMb : null;
+
+  // 3. codeSpec as a string → wrap into { skeleton: <string>, ...hoisted }
+  //    Also normalize codeSpec.starterCode / template → codeSpec.skeleton (model variants).
+  if (obj.codeSpec && typeof obj.codeSpec === "object" && !Array.isArray(obj.codeSpec)) {
+    const cs = obj.codeSpec as Record<string, unknown>;
+    if (typeof cs.skeleton !== "string") {
+      if (typeof cs.starterCode === "string") cs.skeleton = cs.starterCode;
+      else if (typeof cs.template === "string") cs.skeleton = cs.template;
+    }
+    delete cs.starterCode;
+    delete cs.template;
+  }
+  if (typeof obj.codeSpec === "string" && obj.codeSpec.trim()) {
+    const cs: Record<string, unknown> = { skeleton: obj.codeSpec };
+    if (hoistTestCases) cs.testCases = hoistTestCases;
+    else if (hoistExamples) cs.testCases = hoistExamples;
+    if (hoistTime != null) cs.timeLimitMs = hoistTime;
+    if (hoistMem != null) cs.memoryLimitMb = hoistMem;
+    // Fallback: parser runs before we know answerType, so don't require time/mem here.
+    obj.codeSpec = cs;
+    if (hoistTestCases) delete obj.testCases;
+    if (hoistExamples) delete obj.examples;
+    if (hoistTime != null) delete obj.timeLimitMs;
+    if (hoistMem != null) delete obj.memoryLimitMb;
+  } else if (
+    obj.codeSpec &&
+    typeof obj.codeSpec === "object"
+  ) {
+    const cs = obj.codeSpec as Record<string, unknown>;
+    // Pull testCases from top-level testCases or examples if codeSpec lacks them
+    if (!Array.isArray(cs.testCases)) {
+      if (hoistTestCases) {
+        cs.testCases = hoistTestCases;
+        delete obj.testCases;
+      } else if (hoistExamples) {
+        cs.testCases = hoistExamples;
+        delete obj.examples;
+      }
+    }
+    if (hoistTime != null) {
+      cs.timeLimitMs = hoistTime;
+      delete obj.timeLimitMs;
+    }
+    if (hoistMem != null) {
+      cs.memoryLimitMb = hoistMem;
+      delete obj.memoryLimitMb;
+    }
+  } else if (hoistTestCases || hoistExamples) {
+    // codeSpec is missing entirely; create a stub from hoisted fields
+    const cs: Record<string, unknown> = {};
+    if (hoistTestCases) cs.testCases = hoistTestCases;
+    else if (hoistExamples) cs.testCases = hoistExamples;
+    if (hoistTime != null) cs.timeLimitMs = hoistTime;
+    if (hoistMem != null) cs.memoryLimitMb = hoistMem;
+    obj.codeSpec = cs;
+    if (hoistTestCases) delete obj.testCases;
+    if (hoistExamples) delete obj.examples;
+    if (hoistTime != null) delete obj.timeLimitMs;
+    if (hoistMem != null) delete obj.memoryLimitMb;
+  }
+
+  // 3b. Normalize testCases fields: model sometimes uses "output" instead of
+  //     "expectedOutput", and "input" may be missing on certain variants.
+  const cs = obj.codeSpec as Record<string, unknown> | undefined;
+  if (cs && Array.isArray(cs.testCases)) {
+    cs.testCases = (cs.testCases as unknown[]).map((tc) => {
+      if (!tc || typeof tc !== "object") return tc;
+      const t = { ...(tc as Record<string, unknown>) };
+      if (typeof t.expectedOutput !== "string" && typeof t.output === "string") {
+        t.expectedOutput = t.output;
+      }
+      if ("output" in t) delete t.output;
+      if (typeof t.input !== "string" && typeof t.stdin === "string") {
+        t.input = t.stdin;
+      }
+      if ("stdin" in t) delete t.stdin;
+      return t;
+    });
+  }
+
+  // 4. solutionSkeleton / hints → solution (when solution is missing/short)
+  if (typeof obj.solution !== "string" || obj.solution.length < 10) {
+    const skel = obj.solutionSkeleton;
+    const hints = obj.hints;
+    const parts: string[] = [];
+    if (typeof skel === "string" && skel.trim()) {
+      parts.push(`## Solution Skeleton\n${skel.trim()}`);
+    }
+    if (Array.isArray(hints) && hints.length > 0) {
+      parts.push(
+        `## Hints\n${hints
+          .map((h) => `- ${typeof h === "string" ? h : JSON.stringify(h)}`)
+          .join("\n")}`,
+      );
+    }
+    if (parts.length > 0) {
+      obj.solution = parts.join("\n\n");
+    }
+    if ("solutionSkeleton" in obj) delete obj.solutionSkeleton;
+    if ("hints" in obj) delete obj.hints;
+  } else {
+    if ("solutionSkeleton" in obj) delete obj.solutionSkeleton;
+    if ("hints" in obj) delete obj.hints;
+  }
+
+  // 5. Fuse answer (when missing) into a short placeholder; reuse codeSpec.testCases[0]
+  if (obj.answer === undefined || obj.answer === null) {
+    const cs = obj.codeSpec as Record<string, unknown> | undefined;
+    const tc = Array.isArray(cs?.testCases) ? (cs.testCases as unknown[]) : null;
+    if (tc && tc[0] && typeof (tc[0] as Record<string, unknown>).expectedOutput === "string") {
+      obj.answer = "lihat testCases";
+    } else {
+      obj.answer = "ok";
+    }
+  }
+
+  // 6. solution: synthesize a stub from stem if missing (the model's "solution"
+  //    is often fused into the description/stem).
+  if (typeof obj.solution !== "string" || obj.solution.length < 10) {
+    if (typeof obj.stem === "string" && obj.stem.length >= 10) {
+      obj.solution = `Lihat stem untuk ide algoritma. Implementasikan dengan cermat sesuai spec pada codeSpec.testCases.`;
+    } else {
+      obj.solution = "Lihat stem.";
+    }
+  }
+
+  // 7. Drop known-noise fields we don't store
+  for (const k of [
+    "id",
+    "problemId",
+    "problemCode",
+    "slug",
+    "longFormCoding",
+    "lockRanges",
+    "language",
+    "starterCode",
+  ]) {
+    if (k in obj) delete obj[k];
+  }
+
+  return obj;
+}
+
 export function normalizeGeneratedProblem(
   raw: z.infer<typeof generatedProblemSchema>,
 ): GeneratedProblemPayload {
@@ -197,6 +441,14 @@ export function createUserProvider(params: {
   modelId: string;
   /** Strip markdown fences for structured (JSON) output parsing. */
   jsonOutput?: boolean;
+  /**
+   * Disable thinking entirely (MiniMax-M3 only). Use for structured-output
+   * tasks where the model would otherwise burn the entire token budget on
+   * chain-of-thought inside reasoning_content and emit nothing to the text
+   * channel (we observed 0 text out + 14k reasoning chars for kaggle
+   * codeSpec problems). M2.x models ignore this and keep thinking on.
+   */
+  disableThinking?: boolean;
 }) {
   // MiniMax interleaves reasoning into `content` with <think> tags unless
   // reasoning_split is set, which cleanly separates it into reasoning_content.
@@ -224,6 +476,11 @@ export function createUserProvider(params: {
           reasoning_split: true,
         };
         delete next.response_format;
+        if (params.disableThinking) {
+          // M3: skip thinking, answer directly in the content channel.
+          // M2.x: the API accepts this but keeps thinking on.
+          next.thinking = { type: "disabled" };
+        }
         return next;
       },
     }),
