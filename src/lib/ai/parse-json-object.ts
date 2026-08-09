@@ -191,12 +191,31 @@ export function looksLikeJsonSchema(value: unknown): boolean {
 export function isGeneratedProblemShape(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const obj = value as Record<string, unknown>;
-  return (
-    typeof obj.title === "string" &&
-    typeof obj.stem === "string" &&
-    typeof obj.solution === "string" &&
-    ("answer" in obj || "choices" in obj)
-  );
+  // Accept either canonical "stem" or one of the model variants
+  // "description" / "prompt" / "problem" / "problemStatement" / "statement"
+  // (string OR object with sub-fields). The remapKaggleShape normalizer in
+  // provider.ts will fold them into "stem".
+  const hasStemish =
+    typeof obj.stem === "string" ||
+    typeof obj.description === "string" ||
+    (typeof obj.description === "object" && obj.description !== null) ||
+    typeof obj.prompt === "string" ||
+    (typeof obj.prompt === "object" && obj.prompt !== null) ||
+    typeof obj.problem === "string" ||
+    typeof obj.problemStatement === "string" ||
+    typeof obj.problemDescription === "string" ||
+    typeof obj.statement === "string";
+  const hasAnswerish =
+    "answer" in obj ||
+    "choices" in obj ||
+    "solution" in obj ||
+    "solutionSkeleton" in obj ||
+    "hints" in obj ||
+    Array.isArray(obj.testCases) ||
+    Array.isArray(obj.examples) ||
+    (typeof obj.codeSpec === "object" && obj.codeSpec !== null) ||
+    (typeof obj.codeSpec === "string" && obj.codeSpec.trim().length > 0);
+  return typeof obj.title === "string" && hasStemish && hasAnswerish;
 }
 
 /** Study-case pack: shared preamble + linked problems[]. */
