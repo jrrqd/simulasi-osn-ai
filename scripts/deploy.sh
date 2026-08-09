@@ -25,9 +25,10 @@ ssh "$REMOTE" "cd $BUILD && npm ci && npm run build"
 
 echo "==> Promoting ${BUILD} -> ${APP}"
 ssh "$REMOTE" "\
-  sudo rsync -az --delete $BUILD/.next/standalone/ $APP/ && \
+  sudo rsync -az --delete --exclude figures $BUILD/.next/standalone/ $APP/ && \
   sudo rsync -az --delete $BUILD/.next/static/ $APP/.next/static/ && \
   sudo rsync -az --delete $BUILD/public/ $APP/public/ && \
+  sudo mkdir -p $APP/figures && \
   sudo chown -R osnai:osnai $APP"
 
 echo "==> Restarting osnai.service"
