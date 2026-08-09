@@ -189,7 +189,7 @@ Gambar:
 
   const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS${
     params.longFormCoding && answerType === "codeSpec"
-      ? ", bergaya Kaggle / coding marathon (satu tantangan implementasi yang dalam)"
+      ? ", bergaya Kaggle style / coding marathon (satu tantangan implementasi yang dalam)"
       : ", bergaya studi kasus PREDIKSI (cerita konkret, hitung-lalu-pilih)"
   }.
 

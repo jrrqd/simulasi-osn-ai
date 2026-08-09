@@ -89,7 +89,7 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Pilih Kaggle untuk 3 coding marathon · 5 jam.`}
+      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Pilih Kaggle style untuk 3 coding marathon · 5 jam.`}
       accent="accent"
     >
       <PhaseHintBanner />
@@ -136,13 +136,13 @@ export function GenerateMockChallenge() {
           }}
           disabled={loading}
         >
-          Kaggle · 5 jam
+          Kaggle style · 5 jam
         </button>
       </div>
 
       {isKaggle ? (
         <p className="text-xs text-[var(--muted)]">
-          Format Kaggle: 3 soal coding panjang · 300 menit. Studi kasus PREDIKSI
+          Format Kaggle style: 3 soal coding panjang · 300 menit. Studi kasus PREDIKSI
           tidak tersedia untuk ukuran ini.
         </p>
       ) : effectiveMode === "study-case" ? (
@@ -269,7 +269,7 @@ export function GenerateMockChallenge() {
         {loading
           ? "Menghasilkan…"
           : isKaggle
-            ? "Buat simulasi Kaggle"
+            ? "Buat simulasi Kaggle style"
             : effectiveMode === "study-case"
               ? "Buat simulasi studi kasus"
               : effectiveMode === "custom"

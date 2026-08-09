@@ -128,7 +128,7 @@ export const AI_MOCK_SIZES: {
   ...CURATED_MOCK_SIZES,
   {
     value: "kaggle",
-    label: "Kaggle · 3 coding · 300 menit",
+    label: "Kaggle style · 3 coding · 300 menit",
     count: 3,
     durationMinutes: 300,
     codingRatio: 1,
@@ -437,7 +437,7 @@ export function buildAiMockPlan(params: {
       : params.topicPrompt,
   });
   const description = isKaggle
-    ? `${count} soal coding marathon gaya Kaggle (${durationMinutes} menit). Dibuat otomatis; fokus implementasi Python in-exam.`
+    ? `${count} soal coding marathon gaya Kaggle style (${durationMinutes} menit). Dibuat otomatis; fokus implementasi Python in-exam.`
     : isStudyCase
       ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
       : generationMode === "custom" && params.topicPrompt

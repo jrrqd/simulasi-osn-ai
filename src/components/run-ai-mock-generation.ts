@@ -49,7 +49,7 @@ export async function runAiMockGeneration(params: {
     message: isStudyCase
       ? `Menyusun rencana studi kasus PREDIKSI (${sizeLabel} soal)…`
       : request.size === "kaggle"
-        ? `Menyusun rencana Kaggle (${sizeLabel} coding · 300 menit)…`
+        ? `Menyusun rencana Kaggle style (${sizeLabel} coding · 300 menit)…`
         : request.generationMode === "custom"
           ? `Menyusun rencana ${sizeLabel} soal dari brief topik…`
           : `Menyusun rencana ${sizeLabel} soal AI…`,

@@ -77,8 +77,8 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
 
   if (isKaggle) {
     title = trackLabel
-      ? `Tryout Kaggle ${trackLabel}`
-      : "Tryout Kaggle · coding marathon";
+      ? `Tryout Kaggle style ${trackLabel}`
+      : "Tryout Kaggle style · coding marathon";
   } else if (isCustom && focus) {
     title = curated ? `Paket curated: ${focus}` : `Fokus ${focus}`;
   } else if (isCustom) {

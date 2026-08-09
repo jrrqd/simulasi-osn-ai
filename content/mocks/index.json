@@ -97,8 +97,8 @@
   },
   {
     "id": "mock-osn26-prediksi",
-    "title": "Simulasi OSN AI (EKKA) 2026 — Paket PREDIKSI",
-    "description": "34 soal resmi bergaya PREDIKSI (studi kasus lintas silabus), dibersihkan untuk simulasi timed 150 menit.",
+    "title": "Simulasi OSN AI (EKKA) 2026",
+    "description": "34 soal resmi bergaya studi kasus lintas silabus, dibersihkan untuk simulasi timed 150 menit.",
     "durationMinutes": 150,
     "problemIds": [
       "p-osn26-q01",

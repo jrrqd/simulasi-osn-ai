@@ -152,7 +152,7 @@ export function GenerateCuratedMockChallenge() {
   return (
     <CollapsiblePanel
       title="Susun simulasi curated / AI penuh"
-      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk Kaggle (3 coding · 300 menit) dan studi kasus PREDIKSI.`}
+      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk Kaggle style (3 coding · 300 menit) dan studi kasus PREDIKSI.`}
       accent="primary"
     >
       <PhaseHintBanner />
@@ -179,7 +179,7 @@ export function GenerateCuratedMockChallenge() {
         {sourceMode === "curated"
           ? "Memilih & mengurutkan soal dari bank curated (bukan menulis soal baru)."
           : isKaggle
-            ? "Format Kaggle: LLM menulis 3 soal coding marathon · 300 menit."
+            ? "Format Kaggle style: LLM menulis 3 soal coding marathon · 300 menit."
             : effectiveMode === "study-case"
               ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus PREDIKSI terkait — progress ditampilkan di bawah.`
               : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
@@ -231,7 +231,7 @@ export function GenerateCuratedMockChallenge() {
             }}
             disabled={loading}
           >
-            Kaggle · 5 jam
+            Kaggle style · 5 jam
           </button>
         ) : null}
       </div>
@@ -359,7 +359,7 @@ export function GenerateCuratedMockChallenge() {
             : "Menyusun…"
           : sourceMode === "ai"
             ? isKaggle
-              ? "Generate simulasi Kaggle"
+              ? "Generate simulasi Kaggle style"
               : effectiveMode === "study-case"
                 ? `Generate ${sizeMeta.count} soal studi kasus`
                 : `Generate ${sizeMeta.count} soal AI`
