@@ -513,6 +513,11 @@ export function AdminProblemManager() {
                 {[1, 2, 3, 4, 5].map((d) => (
                   <option key={d} value={d}>
                     Difficulty {d}
+                    {d <= 1
+                      ? " (Mudah)"
+                      : d <= 3
+                        ? " (Normal)"
+                        : " (Semifinal)"}
                   </option>
                 ))}
               </select>

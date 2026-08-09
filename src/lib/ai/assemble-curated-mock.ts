@@ -38,6 +38,11 @@ function scoreForMode(p: Problem, mode: DifficultyMode) {
   if (mode === "easy") return p.difficulty === 1 ? 3 : p.difficulty === 2 ? 1 : 0;
   if (mode === "hard") return p.difficulty >= 3 ? 3 : p.difficulty === 2 ? 1 : 0;
   if (mode === "medium") return p.difficulty === 2 ? 3 : p.difficulty === 1 || p.difficulty === 3 ? 1 : 0;
+  if (mode === "semifinal") {
+    if (p.difficulty >= 4) return 3;
+    if (p.difficulty === 3) return 1;
+    return 0;
+  }
   // normal: prefer middle, still allow mix
   return p.difficulty === 2 ? 2 : 1;
 }

@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
-import { DIFFICULTY_MODES, type DifficultyMode } from "@/lib/ai/difficulty";
+import { DIFFICULTY_MODES, parseDifficultyMode, type DifficultyMode } from "@/lib/ai/difficulty";
 import { TRACKS, type TrackId } from "@/lib/content/types";
 
 type ListItem = {
@@ -52,10 +52,7 @@ function toForm(mock: Record<string, unknown>): MockForm {
   const problemIds = Array.isArray(mock.problemIds)
     ? mock.problemIds.map(String)
     : [];
-  const mode = String(mock.difficultyMode || "medium");
-  const difficultyMode = (
-    ["easy", "medium", "hard"].includes(mode) ? mode : "medium"
-  ) as DifficultyMode;
+  const difficultyMode = parseDifficultyMode(mock.difficultyMode || "medium");
   const kind =
     mock.kind === "curated_assembled" ? "curated_assembled" : "ai";
   return {

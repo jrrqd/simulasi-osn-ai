@@ -23,6 +23,7 @@ function difficultyPhrase(mode: DifficultyMode): string {
   if (mode === "easy") return "mudah";
   if (mode === "medium") return "sedang";
   if (mode === "hard") return "sulit";
+  if (mode === "semifinal") return "semifinal";
   return "campuran kesulitan";
 }
 

@@ -90,8 +90,18 @@ function pickTopicForTrack(
   track: TrackId,
   phase: Phase,
   preferred?: string,
+  options?: { restrictToSemifinalTopics?: boolean },
 ) {
-  return pickWeightedTopic(TRACKS[track].topics, phase, preferred);
+  const trackTopics = TRACKS[track].topics;
+  const topics = options?.restrictToSemifinalTopics
+    ? trackTopics.filter((t) => SEMIFINAL_TOPIC_SET.has(t))
+    : trackTopics;
+  // Fall back to full track topics if this track has no semifinal topics.
+  return pickWeightedTopic(
+    topics.length > 0 ? topics : trackTopics,
+    phase,
+    preferred,
+  );
 }
 
 export const MOCK_QUESTION_COUNT = 10;
@@ -307,6 +317,13 @@ export function buildAiMockPlan(params: {
     sizeMeta.codingRatio,
   );
 
+  const restrictToSemifinalTopics = params.difficultyMode === "semifinal";
+  // When generating a semifinal mock, also bias topic weights via phase.
+  const effectivePhase: Phase =
+    restrictToSemifinalTopics && phase === "pre-seleksi"
+      ? "semifinal"
+      : phase;
+
   const slots: AiMockSlot[] = [];
   for (let i = 0; i < count; i++) {
     const difficulty = resolveDifficulty(params.difficultyMode);
@@ -322,9 +339,16 @@ export function buildAiMockPlan(params: {
       (params.generationMode === "standard" || isStudyCase)
     ) {
       questionTrack = TRACK_CYCLE[i % TRACK_CYCLE.length]!;
-      topic = pickTopicForTrack(questionTrack, phase, params.preferredTopic);
+      topic = pickTopicForTrack(
+        questionTrack,
+        effectivePhase,
+        params.preferredTopic,
+        { restrictToSemifinalTopics },
+      );
     } else {
-      topic = pickTopicForTrack(track, phase, params.preferredTopic);
+      topic = pickTopicForTrack(track, effectivePhase, params.preferredTopic, {
+        restrictToSemifinalTopics,
+      });
     }
 
     const slotMix = mix[i]!;
