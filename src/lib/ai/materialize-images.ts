@@ -38,7 +38,8 @@ export function parseImagePrompts(raw: unknown): ImagePrompt[] {
 /**
  * Local figures directory.
  * Production VPS default: /var/www/osnai/figures
- * Local / PGlite: .data/figures (gitignored via .data/)
+ * Local / PGlite: .data/figures (relative; resolved at runtime — avoid
+ * path.join(process.cwd(), ...) so Turbopack NFT does not trace the whole repo).
  */
 export function getFiguresDir(): string {
   const fromEnv = process.env.FIGURES_DIR?.trim();
@@ -46,7 +47,7 @@ export function getFiguresDir(): string {
   if (process.env.NODE_ENV === "production") {
     return "/var/www/osnai/figures";
   }
-  return path.join(process.cwd(), ".data", "figures");
+  return ".data/figures";
 }
 
 const EXT_BY_MIME: Record<string, string> = {
