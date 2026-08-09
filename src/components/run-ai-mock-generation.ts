@@ -6,18 +6,23 @@ import {
   readGenerationNdjsonStream,
   type GenerationProgressState,
 } from "@/components/generation-progress";
+import {
+  aiMockSizeMeta,
+  isKaggleSize,
+  type AiMockSize,
+} from "@/lib/ai/ai-mock-plan";
 
 export type AiMockPlanRequest = {
   generationMode: "standard" | "custom" | "study-case";
   track?: string;
   difficultyMode: string;
   topicPrompt?: string;
-  size?: "quick" | "half" | "full" | "kaggle";
+  size?: AiMockSize;
 };
 
 /**
  * Client-side plan → per-slot/case stream → commit flow for AI mock generation.
- * Shared by the quick (10), full (20/40), and kaggle (3) generators.
+ * Shared by the quick (10), full (20/40), and kaggle (2/3) generators.
  */
 export async function runAiMockGeneration(params: {
   request: AiMockPlanRequest;
@@ -27,29 +32,17 @@ export async function runAiMockGeneration(params: {
 }): Promise<{ mockId: string }> {
   const { request, onProgress } = params;
   const isStudyCase = request.generationMode === "study-case";
-  const sizeLabel =
-    request.size === "full"
-      ? "40"
-      : request.size === "half"
-        ? "20"
-        : request.size === "kaggle"
-          ? "3"
-          : "10";
-  const sizeTotal =
-    request.size === "full"
-      ? 40
-      : request.size === "half"
-        ? 20
-        : request.size === "kaggle"
-          ? 3
-          : 10;
+  const sizeMeta = aiMockSizeMeta(request.size ?? "quick");
+  const sizeLabel = String(sizeMeta.count);
+  const sizeTotal = sizeMeta.count;
+  const isKaggle = isKaggleSize(request.size ?? "quick");
 
   onProgress(() => ({
     ...INITIAL_GENERATION_PROGRESS,
     message: isStudyCase
       ? `Menyusun rencana studi kasus PREDIKSI (${sizeLabel} soal)…`
-      : request.size === "kaggle"
-        ? `Menyusun rencana Kaggle style (${sizeLabel} coding · 300 menit)…`
+      : isKaggle
+        ? `Menyusun rencana Kaggle style (${sizeLabel} coding · ${sizeMeta.durationMinutes} menit)…`
         : request.generationMode === "custom"
           ? `Menyusun rencana ${sizeLabel} soal dari brief topik…`
           : `Menyusun rencana ${sizeLabel} soal AI…`,

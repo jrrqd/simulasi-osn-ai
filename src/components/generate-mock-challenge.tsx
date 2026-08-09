@@ -10,6 +10,7 @@ import {
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
 import {
   AI_MOCK_SIZES,
+  isKaggleSize,
   type AiMockSize,
 } from "@/lib/ai/ai-mock-plan";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
@@ -45,7 +46,8 @@ export function GenerateMockChallenge() {
 
   const sizeMeta =
     AI_MOCK_SIZES.find((s) => s.value === size) ?? AI_MOCK_SIZES[0]!;
-  const isKaggle = size === "kaggle";
+  const isKaggle = isKaggleSize(size);
+  const isKaggle150 = size === "kaggle-150";
   const effectiveMode: GenerationMode =
     isKaggle && generationMode === "study-case" ? "standard" : generationMode;
 
@@ -89,7 +91,7 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Pilih Kaggle style untuk 3 coding marathon · 5 jam.`}
+      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Pilih Kaggle style untuk 2 atau 3 coding marathon (150 / 300 menit).`}
       accent="accent"
     >
       <PhaseHintBanner />
@@ -99,7 +101,7 @@ export function GenerateMockChallenge() {
           className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "standard" ? "btn-accent" : "btn-secondary"}`}
           onClick={() => {
             setGenerationMode("standard");
-            if (size === "kaggle") setSize("quick");
+            if (isKaggle) setSize("quick");
           }}
           disabled={loading}
         >
@@ -110,7 +112,7 @@ export function GenerateMockChallenge() {
           className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "custom" ? "btn-accent" : "btn-secondary"}`}
           onClick={() => {
             setGenerationMode("custom");
-            if (size === "kaggle") setSize("quick");
+            if (isKaggle) setSize("quick");
           }}
           disabled={loading}
         >
@@ -121,7 +123,7 @@ export function GenerateMockChallenge() {
           className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
           onClick={() => {
             setGenerationMode("study-case");
-            if (size === "kaggle") setSize("quick");
+            if (isKaggle) setSize("quick");
           }}
           disabled={loading}
         >
@@ -129,7 +131,18 @@ export function GenerateMockChallenge() {
         </button>
         <button
           type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${isKaggle ? "btn-accent" : "btn-secondary"}`}
+          className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-150" ? "btn-accent" : "btn-secondary"}`}
+          onClick={() => {
+            setSize("kaggle-150");
+            if (generationMode === "study-case") setGenerationMode("standard");
+          }}
+          disabled={loading}
+        >
+          Kaggle style · 150 menit
+        </button>
+        <button
+          type="button"
+          className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle" ? "btn-accent" : "btn-secondary"}`}
           onClick={() => {
             setSize("kaggle");
             if (generationMode === "study-case") setGenerationMode("standard");
@@ -142,8 +155,9 @@ export function GenerateMockChallenge() {
 
       {isKaggle ? (
         <p className="text-xs text-[var(--muted)]">
-          Format Kaggle style: 3 soal coding panjang · 300 menit. Studi kasus PREDIKSI
-          tidak tersedia untuk ukuran ini.
+          {isKaggle150
+            ? "Format Kaggle style: 2 soal coding panjang · 150 menit. Studi kasus PREDIKSI tidak tersedia untuk ukuran ini."
+            : "Format Kaggle style: 3 soal coding panjang · 300 menit. Studi kasus PREDIKSI tidak tersedia untuk ukuran ini."}
         </p>
       ) : effectiveMode === "study-case" ? (
         <p className="text-xs text-[var(--muted)]">
@@ -198,7 +212,7 @@ export function GenerateMockChallenge() {
               onChange={(e) => {
                 const next = e.target.value as AiMockSize;
                 setSize(next);
-                if (next === "kaggle" && generationMode === "study-case") {
+                if (isKaggleSize(next) && generationMode === "study-case") {
                   setGenerationMode("standard");
                 }
               }}
@@ -246,7 +260,7 @@ export function GenerateMockChallenge() {
             onChange={(e) => {
               const next = e.target.value as AiMockSize;
               setSize(next);
-              if (next === "kaggle" && generationMode === "study-case") {
+              if (isKaggleSize(next) && generationMode === "study-case") {
                 setGenerationMode("standard");
               }
             }}
@@ -269,7 +283,9 @@ export function GenerateMockChallenge() {
         {loading
           ? "Menghasilkan…"
           : isKaggle
-            ? "Buat simulasi Kaggle style"
+            ? isKaggle150
+              ? "Buat simulasi Kaggle 150 menit"
+              : "Buat simulasi Kaggle 5 jam"
             : effectiveMode === "study-case"
               ? "Buat simulasi studi kasus"
               : effectiveMode === "custom"

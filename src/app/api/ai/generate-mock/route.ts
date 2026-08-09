@@ -16,6 +16,7 @@ import {
 import {
   buildAiMockPlan,
   isAiMockSlot,
+  isKaggleSize,
   MOCK_QUESTION_COUNT,
   parseAiMockSize,
   type AiMockAnswerType,
@@ -325,7 +326,7 @@ export async function POST(req: NextRequest) {
             ? session.meta.topicPrompt
             : undefined,
         difficultyMode: session.meta.difficultyMode,
-        longFormCoding: session.meta.size === "kaggle",
+        longFormCoding: isKaggleSize(session.meta.size),
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -655,7 +656,7 @@ export async function POST(req: NextRequest) {
         focusPrompt:
           generationMode === "custom" ? topicPrompt : undefined,
         difficultyMode,
-        longFormCoding: size === "kaggle",
+        longFormCoding: isKaggleSize(size),
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,

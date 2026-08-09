@@ -109,7 +109,15 @@ export const MOCK_DURATION_MINUTES = 30;
 
 export const KAGGLE_CODING_WEIGHT = 5;
 
-export type AiMockSize = "quick" | CuratedMockSize | "kaggle";
+/** Any size whose label/mix is Kaggle-style coding marathon. */
+export const KAGGLE_SIZES = ["kaggle", "kaggle-150"] as const;
+export type KaggleSize = (typeof KAGGLE_SIZES)[number];
+
+export function isKaggleSize(size: AiMockSize): size is KaggleSize {
+  return (KAGGLE_SIZES as readonly string[]).includes(size);
+}
+
+export type AiMockSize = "quick" | CuratedMockSize | KaggleSize;
 
 export const AI_MOCK_SIZES: {
   value: AiMockSize;
@@ -127,6 +135,13 @@ export const AI_MOCK_SIZES: {
   },
   ...CURATED_MOCK_SIZES,
   {
+    value: "kaggle-150",
+    label: "Kaggle style · 2 coding · 150 menit",
+    count: 2,
+    durationMinutes: 150,
+    codingRatio: 1,
+  },
+  {
     value: "kaggle",
     label: "Kaggle style · 3 coding · 300 menit",
     count: 3,
@@ -140,7 +155,8 @@ export function parseAiMockSize(raw: unknown): AiMockSize {
     raw === "half" ||
     raw === "full" ||
     raw === "quick" ||
-    raw === "kaggle"
+    raw === "kaggle" ||
+    raw === "kaggle-150"
   ) {
     return raw;
   }
@@ -304,7 +320,7 @@ export function buildAiMockPlan(params: {
   const sizeMeta = aiMockSizeMeta(size);
   const count = sizeMeta.count;
   const durationMinutes = sizeMeta.durationMinutes;
-  const isKaggle = size === "kaggle";
+  const isKaggle = isKaggleSize(size);
   // Kaggle is coding-only; study-case numeric packs do not apply.
   const generationMode: AiMockGenerationMode =
     isKaggle && params.generationMode === "study-case"

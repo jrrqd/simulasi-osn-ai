@@ -57,7 +57,7 @@ export type NaturalMockTitleInput = {
   track?: TrackId | "ALL" | string;
   difficultyMode?: DifficultyMode | string;
   count?: number;
-  size?: "quick" | "half" | "full" | "kaggle" | string;
+  size?: "quick" | "half" | "full" | "kaggle" | "kaggle-150" | string;
   topicLabels?: string[];
   topicPrompt?: string;
 };
@@ -69,7 +69,8 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
   const trackLabel = trackPhrase(input.track);
   const focus = topicFocusLabel(input.topicLabels, input.topicPrompt);
   const isFull = (input.count ?? 0) >= 40;
-  const isKaggle = input.size === "kaggle";
+  const isKaggle = input.size === "kaggle" || input.size === "kaggle-150";
+  const isKaggle150 = input.size === "kaggle-150";
   const isCustom = input.generationMode === "custom" || Boolean(focus);
   const curated = input.kind === "curated_assembled";
 
@@ -77,8 +78,10 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
 
   if (isKaggle) {
     title = trackLabel
-      ? `Tryout Kaggle style ${trackLabel}`
-      : "Tryout Kaggle style · coding marathon";
+      ? `Tryout Kaggle style ${trackLabel}${isKaggle150 ? " · 150 menit" : ""}`
+      : isKaggle150
+        ? "Tryout Kaggle style · 150 menit"
+        : "Tryout Kaggle style · coding marathon";
   } else if (isCustom && focus) {
     title = curated ? `Paket curated: ${focus}` : `Fokus ${focus}`;
   } else if (isCustom) {
