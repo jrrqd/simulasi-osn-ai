@@ -82,6 +82,14 @@ export type ProblemFigure = {
   svg: string;
 };
 
+/** Raster image generated via MiniMax image-01 (or similar). */
+export type ProblemImage = {
+  id: string;
+  alt: string;
+  /** Served from /api/problems/figures/{problemId}/{figureId}. */
+  url: string;
+};
+
 export type Problem = {
   id: string;
   title: string;
@@ -100,6 +108,8 @@ export type Problem = {
   starterCode?: string;
   /** AI-rendered SVG figures referenced from stem markdown. */
   figures?: ProblemFigure[];
+  /** AI-generated raster images referenced from stem markdown. */
+  images?: ProblemImage[];
   /** Strict format for numeric answers (OSN AI 2026). */
   numericFormat?: NumericFormat;
   /** Per-question weight (coding default 2, others default 1). */

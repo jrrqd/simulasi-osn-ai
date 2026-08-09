@@ -443,20 +443,29 @@ export function parseFigureInputs(raw: unknown): FigureInput[] {
 /**
  * Validate figures, render SVGs, replace {{fig:id}} placeholders in text.
  * Throws if placeholders remain unresolved when includeFigures is true,
- * or if figures were required by placeholders but invalid.
+ * or if figures were required by placeholders but invalid — except IDs listed
+ * in deferPlaceholderIds (handled later by raster image materialization).
  */
 export function materializeFigures(params: {
   problemId: string;
   text: string;
   figuresRaw: unknown;
   includeFigures: boolean;
+  /** Placeholder IDs that will be resolved by a later image pass. */
+  deferPlaceholderIds?: ReadonlySet<string>;
 }): { text: string; figures: ProblemFigure[] } {
   const { problemId, includeFigures } = params;
+  const defer = params.deferPlaceholderIds ?? new Set<string>();
   let text = params.text;
 
   if (!includeFigures) {
-    // Strip placeholders so text-only mode never leaves broken markers.
-    text = text.replace(FIG_PLACEHOLDER, "").replace(/\n{3,}/g, "\n\n");
+    // Strip SVG placeholders so text-only mode never leaves broken markers,
+    // but keep deferred image placeholders for the raster pass.
+    text = text
+      .replace(FIG_PLACEHOLDER, (match, id: string) =>
+        defer.has(id) ? match : "",
+      )
+      .replace(/\n{3,}/g, "\n\n");
     return { text, figures: [] };
   }
 
@@ -474,7 +483,9 @@ export function materializeFigures(params: {
     return `![${alt}](${figureUrl(problemId, fig.id)})`;
   });
 
-  const unresolved = [...text.matchAll(FIG_PLACEHOLDER)].map((m) => m[1]!);
+  const unresolved = [...text.matchAll(FIG_PLACEHOLDER)]
+    .map((m) => m[1]!)
+    .filter((id) => !defer.has(id));
   if (unresolved.length > 0) {
     throw new Error(
       `Figure placeholder tidak ditemukan: ${unresolved.join(", ")}`,

@@ -83,6 +83,19 @@ export const generatedProblemSchema = z.object({
   codeSpec: codeSpecSchema.optional(),
   /** Raw figure specs from the model; materialized after id assignment. */
   figures: z.array(z.unknown()).optional(),
+  /**
+   * Freeform image prompts (geometry / illustration). Materialized via
+   * MiniMax image-01 into on-disk rasters; stripped before payload persist.
+   */
+  imagePrompts: z
+    .array(
+      z.object({
+        id: z.coerce.string().min(1).max(32),
+        alt: z.coerce.string().min(1).max(120),
+        prompt: z.coerce.string().min(10).max(1500),
+      }),
+    )
+    .optional(),
 });
 
 export type GeneratedProblemPayload = {
@@ -108,6 +121,7 @@ export type GeneratedProblemPayload = {
   weight?: number;
   codeSpec?: CodeSpec;
   figures?: unknown[];
+  imagePrompts?: { id: string; alt: string; prompt: string }[];
   legacy?: boolean;
 };
 
@@ -168,6 +182,11 @@ export function normalizeGeneratedProblem(
       (answerType === "codeSpec" || codeSpec ? 2 : undefined),
     codeSpec,
     figures: raw.figures,
+    imagePrompts: raw.imagePrompts?.map((p) => ({
+      id: String(p.id).trim(),
+      alt: String(p.alt).trim(),
+      prompt: String(p.prompt).trim(),
+    })),
     legacy: false,
   };
 }
@@ -293,7 +312,7 @@ PENTING: Balas HANYA dengan satu objek JSON SOAL (bukan JSON Schema), tanpa teks
 - Escape newline sebagai \\n. Jangan trailing comma. Jangan komentar.
 - Solusi cukup 3–8 kalimat; jangan terlalu panjang.
 - Tambahkan tag "prediksi-style" jika memakai pola studi kasus.
-- Field opsional figures: lihat aturan gambar di atas; gunakan {{fig:id}} di stem.
+- Field opsional figures / imagePrompts: lihat aturan gambar di atas; gunakan {{fig:id}} di stem.
 
 ${PREDIKSI_FEW_SHOT_SINGLE}
 `;

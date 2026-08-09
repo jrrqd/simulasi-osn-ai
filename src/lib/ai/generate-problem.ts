@@ -17,6 +17,10 @@ import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
 import { parseGeneratedProblemJson } from "@/lib/ai/parse-json-object";
 import { verifyGeneratedProblem } from "@/lib/ai/verify-generated-answer";
 import { materializeFigures } from "@/lib/ai/diagrams";
+import {
+  materializeImages,
+  parseImagePrompts,
+} from "@/lib/ai/materialize-images";
 import { getLessonsForTopic } from "@/lib/content/load";
 import type { Lesson } from "@/lib/content/types";
 import {
@@ -177,14 +181,18 @@ ${params.focusPrompt.trim()}
   const figureBlock = includeFigures
     ? `
 Gambar (WAJIB dipertimbangkan):
-- Sertakan field "figures" bila soal butuh plot/citra/kernel/pohon/grafik/tabel visual.
-- Sisipkan {{fig:ID}} di stem di tempat gambar harus muncul.
-- Prefer minimal satu figure untuk topic visual (citra, konvolusi, decision tree, clustering).
-- Jika soal murni teks/hitungan tanpa visual, figures boleh [].
+- Sertakan field "figures" bila soal butuh plot/citra/kernel/pohon/grafik/tabel visual (diagram SVG).
+- Sertakan field "imagePrompts" bila soal butuh ilustrasi geometri (segitiga berlabel, lingkaran, bangun 3D, konstruksi koordinat) yang tidak bisa digambar sebagai scatter/grid/tree/dll.
+- imagePrompts: array { "id", "alt", "prompt" }; prompt bahasa Inggris, gaya "clean exam diagram, labeled, white background". Maks 4.
+- Sisipkan {{fig:ID}} di stem di tempat gambar harus muncul (berlaku untuk figures DAN imagePrompts).
+- Prefer minimal satu figure/image untuk topic visual ATAU soal geometri.
+- Jika soal murni teks/hitungan tanpa visual, figures dan imagePrompts boleh [].
 `
     : `
 Gambar:
-- JANGAN sertakan figures; buat soal text-only tanpa placeholder {{fig:...}}.
+- JANGAN sertakan figures (diagram SVG).
+- Boleh sertakan "imagePrompts" HANYA jika soal benar-benar butuh ilustrasi geometri (segitiga/lingkaran/bangun 3D berlabel). Format: { "id", "alt", "prompt" }; sisipkan {{fig:ID}} di stem. Maks 4.
+- Jika tidak butuh geometri, jangan sertakan imagePrompts dan jangan tulis placeholder {{fig:...}}.
 `;
 
   const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS${
@@ -253,6 +261,7 @@ ${
   let previousRaw = "";
   let problemId = "";
   let problemFigures: Problem["figures"];
+  let problemImages: Problem["images"];
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
     const hadUsableRaw = Boolean(previousRaw.trim());
@@ -391,21 +400,40 @@ PERINGATAN PERCOBAAN ULANG:
 
     const idCandidate = `ai-${nanoid(10)}`;
     try {
+      const imagePrompts = parseImagePrompts(verified.payload.imagePrompts);
+      const deferPlaceholderIds = new Set(imagePrompts.map((p) => p.id));
+
       const materialized = materializeFigures({
         problemId: idCandidate,
         text: verified.payload.stem,
         figuresRaw: verified.payload.figures,
         includeFigures,
+        deferPlaceholderIds,
       });
+
+      const raster = await materializeImages({
+        problemId: idCandidate,
+        text: materialized.text,
+        imagePromptsRaw: verified.payload.imagePrompts,
+        baseUrl: params.baseUrl,
+        apiKey: params.apiKey,
+      });
+
+      const {
+        figures: _figures,
+        imagePrompts: _imagePrompts,
+        ...restPayload
+      } = verified.payload;
+
       payload = {
-        ...verified.payload,
-        stem: materialized.text,
-        figures: undefined,
+        ...restPayload,
+        stem: raster.text,
       };
       problemId = idCandidate;
       problemFigures = materialized.figures.length
         ? materialized.figures
         : undefined;
+      problemImages = raster.images.length ? raster.images : undefined;
     } catch (err) {
       lastError = err;
       payload = null;
@@ -437,6 +465,7 @@ PERINGATAN PERCOBAAN ULANG:
     source: "ai",
     difficulty,
     figures: problemFigures,
+    images: problemImages,
     legacy: false,
     weight:
       params.weight ??

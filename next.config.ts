@@ -27,6 +27,18 @@ const nextConfig: NextConfig = {
   output: "standalone",
   compress: true,
   poweredByHeader: false,
+  // Hard ceiling for stale-while-revalidate on any ISR / Cache Components
+  // output so an edge proxy never serves stale content indefinitely.
+  expireTime: 3600,
+  images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
+  experimental: {
+    // lucide-react / recharts / react-markdown are barrel-export heavy;
+    // this turns named imports into per-module imports at build time.
+    optimizePackageImports: ["lucide-react", "recharts", "react-markdown"],
+  },
   serverExternalPackages: [
     "postgres",
     "better-auth",
@@ -64,6 +76,15 @@ const nextConfig: NextConfig = {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
           },
+        ],
+      },
+      // Disable nginx buffering for AI streaming routes (App Router SSE /
+      // chunked responses). Without this, chat tokens arrive in bursts.
+      {
+        source: "/api/ai/:path*",
+        headers: [
+          ...BASE_HEADERS,
+          { key: "X-Accel-Buffering", value: "no" },
         ],
       },
     ];

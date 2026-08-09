@@ -25,6 +25,7 @@ export function toExamFacingProblem(problem: Problem): ExamFacingProblem {
     source: problem.source,
     starterCode: problem.starterCode,
     figures: problem.figures,
+    images: problem.images,
     numericFormat,
     expectedFormat: problem.expectedFormat ?? numericFormat,
     numericPartCount: problem.numericPartCount,

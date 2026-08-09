@@ -1,5 +1,7 @@
+import { readFile } from "node:fs/promises";
 import { getGeneratedProblem } from "@/lib/content/shared";
 import { getFigureFromPayload } from "@/lib/ai/diagrams";
+import { findRasterFigureFile } from "@/lib/ai/materialize-images";
 
 export async function GET(
   _req: Request,
@@ -10,6 +12,20 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
+  // Prefer on-disk raster (MiniMax image-01 / persisted downloads).
+  const raster = await findRasterFigureFile(problemId, figureId);
+  if (raster) {
+    const bytes = await readFile(raster.absolutePath);
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": raster.contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  }
+
+  // Fall back to inline SVG diagram specs stored in the problem payload.
   const problem = await getGeneratedProblem(problemId);
   if (!problem) {
     return new Response("Not found", { status: 404 });

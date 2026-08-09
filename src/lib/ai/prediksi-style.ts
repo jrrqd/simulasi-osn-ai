@@ -5,9 +5,14 @@
 
 import { EXAM_PYTHON_POLICY } from "@/lib/ai/exam-python-policy";
 
-export const PREDIKSI_FIGURE_RULES = `Gambar / diagram (opsional, jika includeFigures aktif):
-- Boleh menyertakan "figures": array objek { "id", "alt?", "diagram" }.
+export const PREDIKSI_FIGURE_RULES = `Gambar / diagram (opsional):
+- Ada DUA jalur visual — pilih satu yang cocok, jangan keduanya untuk id yang sama:
+  1) "figures": diagram SVG terstruktur { "id", "alt?", "diagram" } untuk plot/data/pohon/grafik.
+  2) "imagePrompts": gambar raster AI { "id", "alt", "prompt" } untuk geometri / ilustrasi bebas.
 - Di stem/preamble, sisipkan placeholder {{fig:ID}} persis di tempat gambar harus muncul.
+- Maksimal 4 imagePrompts per soal. prompt ≤ 1500 karakter, bahasa Inggris, gaya "clean exam diagram, labeled, white background, no decorative fluff".
+- Pakai imagePrompts HANYA jika soal butuh ilustrasi geometri (segitiga berlabel, lingkaran, bangun 3D, konstruksi koordinat, vektor sebagai panah berlabel) yang TIDAK bisa digambar sebagai scatter/grid/tree/kernel/bars/table/graph.
+- Jangan pakai imagePrompts untuk scatter plot, heatmap, decision tree, kernel matrix, bar chart, tabel, atau graf — itu wajib lewat "figures".
 - diagram.kind HARUS salah satu: scatter | grid | tree | kernel | bars | table | graph.
 - scatter: { kind:"scatter", points:[{x,y,group?,label?}], lines?, xLabel?, yLabel?, title? }
 - grid: { kind:"grid", cells:[[0/1 atau angka]], palette:"bw"|"heatmap", showValues?, title? }
@@ -18,7 +23,8 @@ export const PREDIKSI_FIGURE_RULES = `Gambar / diagram (opsional, jika includeFi
 - graph: { kind:"graph", nodes:[{id,label?}], edges:[{from,to,label?}], directed?, title? }
 - JANGAN menulis ![markdown](...) sendiri; jangan mengarang URL gambar.
 - Jika soal butuh plot/citra/kernel/pohon, WAJIB isi figures + placeholder.
-- Jika soal murni hitungan teks, figures boleh kosong/dihilangkan.`;
+- Jika soal butuh gambar geometri, isi imagePrompts + placeholder (model memutuskan sendiri).
+- Jika soal murni hitungan teks, figures dan imagePrompts boleh kosong/dihilangkan.`;
 
 export const PREDIKSI_STYLE_RULES = `Gaya soal PREDIKSI / studi kasus EKKA (WAJIB diikuti):
 - Buat soal CERITA konkret (skenario dunia nyata: prediksi cuaca, kurir, kolam, metrik model, attention, embedding, dll).
