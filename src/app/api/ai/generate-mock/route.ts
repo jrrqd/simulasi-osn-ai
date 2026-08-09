@@ -72,6 +72,7 @@ async function generateSlotProblem(params: {
   slot: AiMockSlot;
   focusPrompt?: string;
   difficultyMode: ReturnType<typeof parseDifficultyMode>;
+  longFormCoding?: boolean;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -79,13 +80,15 @@ async function generateSlotProblem(params: {
   progressTotal?: number;
   onProgress?: GenerationProgressHandler;
 }) {
-  const answerRotation: AiMockAnswerType[] = [
-    params.slot.answerType,
-    "numeric",
-    "mcq",
-    "short_string",
-    "codeSpec",
-  ];
+  const answerRotation: AiMockAnswerType[] = params.longFormCoding
+    ? ["codeSpec", "codeSpec", "codeSpec"]
+    : [
+        params.slot.answerType,
+        "numeric",
+        "mcq",
+        "short_string",
+        "codeSpec",
+      ];
   let lastSlotError: unknown;
   let problem: Awaited<ReturnType<typeof generateAndStoreProblem>> | null =
     null;
@@ -130,6 +133,7 @@ async function generateSlotProblem(params: {
         focusPrompt,
         answerType: answerRotation[slotAttempt % answerRotation.length],
         weight: params.slot.weight,
+        longFormCoding: params.longFormCoding,
         baseUrl: params.baseUrl,
         apiKey: params.apiKey,
         modelId: params.modelId,
@@ -321,6 +325,7 @@ export async function POST(req: NextRequest) {
             ? session.meta.topicPrompt
             : undefined,
         difficultyMode: session.meta.difficultyMode,
+        longFormCoding: session.meta.size === "kaggle",
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -650,6 +655,7 @@ export async function POST(req: NextRequest) {
         focusPrompt:
           generationMode === "custom" ? topicPrompt : undefined,
         difficultyMode,
+        longFormCoding: size === "kaggle",
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,

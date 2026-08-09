@@ -12,12 +12,12 @@ export type AiMockPlanRequest = {
   track?: string;
   difficultyMode: string;
   topicPrompt?: string;
-  size?: "quick" | "half" | "full";
+  size?: "quick" | "half" | "full" | "kaggle";
 };
 
 /**
  * Client-side plan → per-slot/case stream → commit flow for AI mock generation.
- * Shared by the quick (10) and full (20/40) generators.
+ * Shared by the quick (10), full (20/40), and kaggle (3) generators.
  */
 export async function runAiMockGeneration(params: {
   request: AiMockPlanRequest;
@@ -32,18 +32,29 @@ export async function runAiMockGeneration(params: {
       ? "40"
       : request.size === "half"
         ? "20"
-        : "10";
+        : request.size === "kaggle"
+          ? "3"
+          : "10";
+  const sizeTotal =
+    request.size === "full"
+      ? 40
+      : request.size === "half"
+        ? 20
+        : request.size === "kaggle"
+          ? 3
+          : 10;
 
   onProgress(() => ({
     ...INITIAL_GENERATION_PROGRESS,
     message: isStudyCase
       ? `Menyusun rencana studi kasus PREDIKSI (${sizeLabel} soal)…`
-      : request.generationMode === "custom"
-        ? `Menyusun rencana ${sizeLabel} soal dari brief topik…`
-        : `Menyusun rencana ${sizeLabel} soal AI…`,
+      : request.size === "kaggle"
+        ? `Menyusun rencana Kaggle (${sizeLabel} coding · 300 menit)…`
+        : request.generationMode === "custom"
+          ? `Menyusun rencana ${sizeLabel} soal dari brief topik…`
+          : `Menyusun rencana ${sizeLabel} soal AI…`,
     phase: "planning",
-    total:
-      request.size === "full" ? 40 : request.size === "half" ? 20 : 10,
+    total: sizeTotal,
   }));
 
   const planRes = await fetch("/api/ai/generate-mock", {

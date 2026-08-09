@@ -8,6 +8,10 @@ import {
   type DifficultyMode,
 } from "@/lib/ai/difficulty";
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
+import {
+  AI_MOCK_SIZES,
+  type AiMockSize,
+} from "@/lib/ai/ai-mock-plan";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
 import {
   INITIAL_GENERATION_PROGRESS,
@@ -31,12 +35,19 @@ export function GenerateMockChallenge() {
   const [track, setTrack] = useState<"A" | "B" | "C" | "D">("B");
   const [difficultyMode, setDifficultyMode] =
     useState<DifficultyMode>("normal");
+  const [size, setSize] = useState<AiMockSize>("quick");
   const [topicPrompt, setTopicPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<GenerationProgressState>(
     INITIAL_GENERATION_PROGRESS,
   );
+
+  const sizeMeta =
+    AI_MOCK_SIZES.find((s) => s.value === size) ?? AI_MOCK_SIZES[0]!;
+  const isKaggle = size === "kaggle";
+  const effectiveMode: GenerationMode =
+    isKaggle && generationMode === "study-case" ? "standard" : generationMode;
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -54,15 +65,15 @@ export function GenerateMockChallenge() {
     try {
       const { mockId } = await runAiMockGeneration({
         request: {
-          generationMode,
+          generationMode: effectiveMode,
           track:
-            generationMode === "custom"
+            effectiveMode === "custom"
               ? undefined
               : track,
           difficultyMode,
-          size: "quick",
+          size,
           topicPrompt:
-            generationMode === "custom" ? topicPrompt.trim() : undefined,
+            effectiveMode === "custom" ? topicPrompt.trim() : undefined,
         },
         onProgress: setProgress,
       });
@@ -78,14 +89,14 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary="Buat 10 soal baru / 30 menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Untuk 20/40 soal, pakai Generate AI penuh di panel atas."
+      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Pilih Kaggle untuk 3 coding marathon · 5 jam.`}
       accent="accent"
     >
       <PhaseHintBanner />
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${generationMode === "standard" ? "btn-accent" : "btn-secondary"}`}
+          className={`btn !px-3 !py-1.5 text-sm ${effectiveMode === "standard" ? "btn-accent" : "btn-secondary"}`}
           onClick={() => setGenerationMode("standard")}
           disabled={loading}
         >
@@ -93,30 +104,37 @@ export function GenerateMockChallenge() {
         </button>
         <button
           type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${generationMode === "custom" ? "btn-accent" : "btn-secondary"}`}
+          className={`btn !px-3 !py-1.5 text-sm ${effectiveMode === "custom" ? "btn-accent" : "btn-secondary"}`}
           onClick={() => setGenerationMode("custom")}
           disabled={loading}
         >
           Custom topik
         </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
-          onClick={() => setGenerationMode("study-case")}
-          disabled={loading}
-        >
-          Studi kasus PREDIKSI
-        </button>
+        {!isKaggle ? (
+          <button
+            type="button"
+            className={`btn !px-3 !py-1.5 text-sm ${generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
+            onClick={() => setGenerationMode("study-case")}
+            disabled={loading}
+          >
+            Studi kasus PREDIKSI
+          </button>
+        ) : null}
       </div>
 
-      {generationMode === "study-case" ? (
+      {isKaggle ? (
         <p className="text-xs text-[var(--muted)]">
-          10 soal disusun dari beberapa studi kasus terkait (text-only, gaya
+          Format Kaggle: 3 soal coding panjang · 300 menit. Studi kasus PREDIKSI
+          tidak tersedia untuk ukuran ini.
+        </p>
+      ) : effectiveMode === "study-case" ? (
+        <p className="text-xs text-[var(--muted)]">
+          Soal disusun dari beberapa studi kasus terkait (text-only, gaya
           PREDIKSI).
         </p>
       ) : null}
 
-      {generationMode === "custom" ? (
+      {effectiveMode === "custom" ? (
         <div className="space-y-2.5">
           <textarea
             className="textarea !min-h-[88px]"
@@ -141,23 +159,43 @@ export function GenerateMockChallenge() {
               </button>
             ))}
           </div>
-          <select
-            className="select"
-            value={difficultyMode}
-            onChange={(e) =>
-              setDifficultyMode(e.target.value as DifficultyMode)
-            }
-            disabled={loading}
-          >
-            {DIFFICULTY_MODES.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <select
+              className="select"
+              value={difficultyMode}
+              onChange={(e) =>
+                setDifficultyMode(e.target.value as DifficultyMode)
+              }
+              disabled={loading}
+            >
+              {DIFFICULTY_MODES.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="select"
+              value={size}
+              onChange={(e) => {
+                const next = e.target.value as AiMockSize;
+                setSize(next);
+                if (next === "kaggle" && generationMode === "study-case") {
+                  setGenerationMode("standard");
+                }
+              }}
+              disabled={loading}
+            >
+              {AI_MOCK_SIZES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-3">
           <select
             className="select"
             value={track}
@@ -184,6 +222,24 @@ export function GenerateMockChallenge() {
               </option>
             ))}
           </select>
+          <select
+            className="select"
+            value={size}
+            onChange={(e) => {
+              const next = e.target.value as AiMockSize;
+              setSize(next);
+              if (next === "kaggle" && generationMode === "study-case") {
+                setGenerationMode("standard");
+              }
+            }}
+            disabled={loading}
+          >
+            {AI_MOCK_SIZES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -194,11 +250,13 @@ export function GenerateMockChallenge() {
       >
         {loading
           ? "Menghasilkan…"
-          : generationMode === "study-case"
-            ? "Buat simulasi studi kasus"
-            : generationMode === "custom"
-              ? "Generate dari brief topik"
-              : "Buat simulasi AI"}
+          : isKaggle
+            ? "Buat simulasi Kaggle"
+            : effectiveMode === "study-case"
+              ? "Buat simulasi studi kasus"
+              : effectiveMode === "custom"
+                ? "Generate dari brief topik"
+                : "Buat simulasi AI"}
       </button>
       {loading || (error && progress.message) ? (
         <GenerationProgressPanel state={progress} />

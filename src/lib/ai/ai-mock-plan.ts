@@ -107,7 +107,9 @@ function pickTopicForTrack(
 export const MOCK_QUESTION_COUNT = 10;
 export const MOCK_DURATION_MINUTES = 30;
 
-export type AiMockSize = "quick" | CuratedMockSize;
+export const KAGGLE_CODING_WEIGHT = 5;
+
+export type AiMockSize = "quick" | CuratedMockSize | "kaggle";
 
 export const AI_MOCK_SIZES: {
   value: AiMockSize;
@@ -124,10 +126,24 @@ export const AI_MOCK_SIZES: {
     codingRatio: DEFAULT_CODING_RATIO,
   },
   ...CURATED_MOCK_SIZES,
+  {
+    value: "kaggle",
+    label: "Kaggle · 3 coding · 300 menit",
+    count: 3,
+    durationMinutes: 300,
+    codingRatio: 1,
+  },
 ];
 
 export function parseAiMockSize(raw: unknown): AiMockSize {
-  if (raw === "half" || raw === "full" || raw === "quick") return raw;
+  if (
+    raw === "half" ||
+    raw === "full" ||
+    raw === "quick" ||
+    raw === "kaggle"
+  ) {
+    return raw;
+  }
   return "quick";
 }
 
@@ -288,12 +304,18 @@ export function buildAiMockPlan(params: {
   const sizeMeta = aiMockSizeMeta(size);
   const count = sizeMeta.count;
   const durationMinutes = sizeMeta.durationMinutes;
-  const isStudyCase = params.generationMode === "study-case";
+  const isKaggle = size === "kaggle";
+  // Kaggle is coding-only; study-case numeric packs do not apply.
+  const generationMode: AiMockGenerationMode =
+    isKaggle && params.generationMode === "study-case"
+      ? "standard"
+      : params.generationMode;
+  const isStudyCase = generationMode === "study-case";
 
   let track: TrackId =
     params.track !== "ALL" && TRACKS[params.track] ? params.track : "B";
   const topicPairs =
-    params.generationMode === "custom" && params.topicPrompt
+    generationMode === "custom" && params.topicPrompt
       ? topicPairsFromPrompt(
           params.topicPrompt,
           TRACKS[track] ? track : "B",
@@ -304,25 +326,33 @@ export function buildAiMockPlan(params: {
     track = topicPairs[0]!.track;
   }
 
-  // Study-case keeps related numeric-adjacent types; standard/custom use 70:30 mix
-  const mix = isStudyCase
-    ? Array.from({ length: count }, (_, i) => ({
-        answerType: NUMERIC_ADJACENT[i % NUMERIC_ADJACENT.length]!,
-        weight: DEFAULT_NUMERIC_WEIGHT,
+  // Kaggle: all codeSpec weight 5. Study-case: numeric-adjacent. Else ~70:30 mix.
+  const mix = isKaggle
+    ? Array.from({ length: count }, () => ({
+        answerType: "codeSpec" as const,
+        weight: KAGGLE_CODING_WEIGHT,
       }))
-    : planMockMix(count, { codingRatio: sizeMeta.codingRatio });
+    : isStudyCase
+      ? Array.from({ length: count }, (_, i) => ({
+          answerType: NUMERIC_ADJACENT[i % NUMERIC_ADJACENT.length]!,
+          weight: DEFAULT_NUMERIC_WEIGHT,
+        }))
+      : planMockMix(count, {
+          codingRatio: sizeMeta.codingRatio,
+        });
 
-  const { codingCount, numericCount } = codingCountForTotal(
-    count,
-    sizeMeta.codingRatio,
-  );
+  const { codingCount, numericCount } = isKaggle
+    ? { codingCount: count, numericCount: 0 }
+    : codingCountForTotal(count, sizeMeta.codingRatio);
 
   const restrictToSemifinalTopics = params.difficultyMode === "semifinal";
-  // When generating a semifinal mock, also bias topic weights via phase.
-  const effectivePhase: Phase =
-    restrictToSemifinalTopics && phase === "pre-seleksi"
-      ? "semifinal"
-      : phase;
+  // Semifinal difficulty keeps topic restrict; otherwise kaggle biases to final.
+  let effectivePhase: Phase = phase;
+  if (restrictToSemifinalTopics && phase === "pre-seleksi") {
+    effectivePhase = "semifinal";
+  } else if (isKaggle && phase === "pre-seleksi" && !restrictToSemifinalTopics) {
+    effectivePhase = "final";
+  }
 
   const slots: AiMockSlot[] = [];
   for (let i = 0; i < count; i++) {
@@ -336,7 +366,7 @@ export function buildAiMockPlan(params: {
       topic = pair.topic;
     } else if (
       params.track === "ALL" &&
-      (params.generationMode === "standard" || isStudyCase)
+      (generationMode === "standard" || isStudyCase)
     ) {
       questionTrack = TRACK_CYCLE[i % TRACK_CYCLE.length]!;
       topic = pickTopicForTrack(
@@ -386,17 +416,17 @@ export function buildAiMockPlan(params: {
     : [];
 
   const resolvedMockTrack: TrackId | "ALL" =
-    params.generationMode === "custom" || params.track === "ALL"
+    generationMode === "custom" || params.track === "ALL"
       ? "ALL"
       : track;
 
   const title = buildNaturalMockTitle({
     kind: "ai",
-    generationMode:
-      params.generationMode === "custom" ? "custom" : "standard",
+    generationMode: generationMode === "custom" ? "custom" : "standard",
     track: resolvedMockTrack,
     difficultyMode: params.difficultyMode,
     count,
+    size,
     topicLabels: isStudyCase
       ? ["Studi kasus PREDIKSI"]
       : preferred.length > 0
@@ -406,17 +436,19 @@ export function buildAiMockPlan(params: {
       ? "Studi kasus PREDIKSI"
       : params.topicPrompt,
   });
-  const description = isStudyCase
-    ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
-    : params.generationMode === "custom" && params.topicPrompt
-      ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
-      : `${count} soal AI baru (${durationMinutes} menit; ~${numericCount} isian + ~${codingCount} coding). Dibuat otomatis; dapat dikerjakan semua siswa.`;
+  const description = isKaggle
+    ? `${count} soal coding marathon gaya Kaggle (${durationMinutes} menit). Dibuat otomatis; fokus implementasi Python in-exam.`
+    : isStudyCase
+      ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
+      : generationMode === "custom" && params.topicPrompt
+        ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
+        : `${count} soal AI baru (${durationMinutes} menit; ~${numericCount} isian + ~${codingCount} coding). Dibuat otomatis; dapat dikerjakan semua siswa.`;
 
   return {
     slots,
     cases,
     meta: {
-      generationMode: params.generationMode,
+      generationMode,
       difficultyMode: params.difficultyMode,
       topicPrompt: params.topicPrompt,
       mockTrack: resolvedMockTrack,

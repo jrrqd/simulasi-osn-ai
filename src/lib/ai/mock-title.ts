@@ -57,6 +57,7 @@ export type NaturalMockTitleInput = {
   track?: TrackId | "ALL" | string;
   difficultyMode?: DifficultyMode | string;
   count?: number;
+  size?: "quick" | "half" | "full" | "kaggle" | string;
   topicLabels?: string[];
   topicPrompt?: string;
 };
@@ -68,12 +69,17 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
   const trackLabel = trackPhrase(input.track);
   const focus = topicFocusLabel(input.topicLabels, input.topicPrompt);
   const isFull = (input.count ?? 0) >= 40;
+  const isKaggle = input.size === "kaggle";
   const isCustom = input.generationMode === "custom" || Boolean(focus);
   const curated = input.kind === "curated_assembled";
 
   let title: string;
 
-  if (isCustom && focus) {
+  if (isKaggle) {
+    title = trackLabel
+      ? `Tryout Kaggle ${trackLabel}`
+      : "Tryout Kaggle · coding marathon";
+  } else if (isCustom && focus) {
     title = curated ? `Paket curated: ${focus}` : `Fokus ${focus}`;
   } else if (isCustom) {
     title = curated ? "Paket curated — fokus topik" : "Latihan fokus topik";

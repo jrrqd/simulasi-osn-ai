@@ -124,6 +124,8 @@ export async function generateAndStoreProblem(params: {
   focusPrompt?: string;
   /** When true, prompt model for diagram specs and materialize SVG figures. */
   includeFigures?: boolean;
+  /** Longer Kaggle-style codeSpec (richer stem, ≥5 tests, weight 5). */
+  longFormCoding?: boolean;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -185,7 +187,11 @@ Gambar:
 - JANGAN sertakan figures; buat soal text-only tanpa placeholder {{fig:...}}.
 `;
 
-  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS, bergaya studi kasus PREDIKSI (cerita konkret, hitung-lalu-pilih).
+  const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS${
+    params.longFormCoding && answerType === "codeSpec"
+      ? ", bergaya Kaggle / coding marathon (satu tantangan implementasi yang dalam)"
+      : ", bergaya studi kasus PREDIKSI (cerita konkret, hitung-lalu-pilih)"
+  }.
 
 Track: ${params.track} (${TRACKS[params.track].name})
 Topic: ${params.topic} (${TOPIC_LABELS[params.topic] ?? params.topic})
@@ -197,7 +203,19 @@ ${focusBlock}
 ${figureBlock}
 ${
   answerType === "codeSpec"
-    ? `Instruksi coding Python (OSN AI 2026 / codeSpec):
+    ? params.longFormCoding
+      ? `Instruksi coding Python Kaggle-style (codeSpec, marathon):
+- Stem harus kaya: latar masalah, spesifikasi I/O yang jelas, constraints, dan contoh kecil.
+- WAJIB isi "codeSpec" dengan skeleton berisi marker "# >>> WRITE HERE <<<" … "# <<< END <<<".
+  (opsional: lockedRanges [[startLine,endLine],…] 1-based bila marker belum ada)
+- WAJIB ≥ 5 testCases {input, expectedOutput}; sertakan edge case dan kasus batas.
+- WAJIB timeLimitMs (500–10000) dan memoryLimitMb (64–1024).
+- weight = 5.
+- answer boleh string ringkas (mis. "lihat testCases") — penilaian dari test case.
+- Jangan minta siswa pindah tab / buka IDE eksternal / unduh dataset eksternal.
+- Fokus implementasi algoritma/ML kecil yang realistis dikerjakan in-exam dalam ~1–2 jam per soal.
+`
+      : `Instruksi coding Python (OSN AI 2026 / codeSpec):
 - WAJIB isi "codeSpec" dengan skeleton berisi marker "# >>> WRITE HERE <<<" … "# <<< END <<<".
   (opsional: lockedRanges [[startLine,endLine],…] 1-based bila marker belum ada)
 - WAJIB ≥ 3 testCases {input, expectedOutput}; sertakan edge case.
@@ -227,7 +245,7 @@ ${
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
 - Solusi 3–8 kalimat; rumus boleh KaTeX $...$ atau plain text.
-- Tambahkan "prediksi-style" di tags.
+- Tambahkan "prediksi-style" di tags${params.longFormCoding ? '; tambahkan juga "kaggle-style"' : ""}.
 - Balas HANYA satu objek JSON SOAL (bukan JSON Schema).`;
 
   let payload: GeneratedProblemPayload | null = null;
@@ -423,7 +441,11 @@ PERINGATAN PERCOBAAN ULANG:
     weight:
       params.weight ??
       payload.weight ??
-      (payload.answerType === "codeSpec" || payload.codeSpec ? 2 : 1),
+      (payload.answerType === "codeSpec" || payload.codeSpec
+        ? params.longFormCoding
+          ? 5
+          : 2
+        : 1),
   };
 
   const db = await getDb();
