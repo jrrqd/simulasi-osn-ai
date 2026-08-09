@@ -188,28 +188,50 @@ export function GenerateCuratedMockChallenge() {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${effectiveMode === "standard" ? "btn-primary" : "btn-secondary"}`}
-          onClick={() => setGenerationMode("standard")}
+          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "standard" ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => {
+            setGenerationMode("standard");
+            if (size === "kaggle") setSize("full");
+          }}
           disabled={loading}
         >
           Standar
         </button>
         <button
           type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${effectiveMode === "custom" ? "btn-primary" : "btn-secondary"}`}
-          onClick={() => setGenerationMode("custom")}
+          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "custom" ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => {
+            setGenerationMode("custom");
+            if (size === "kaggle") setSize("full");
+          }}
           disabled={loading}
         >
           Custom topik
         </button>
-        {sourceMode === "ai" && !isKaggle ? (
+        {sourceMode === "ai" ? (
           <button
             type="button"
-            className={`btn !px-3 !py-1.5 text-sm ${generationMode === "study-case" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => setGenerationMode("study-case")}
+            className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && generationMode === "study-case" ? "btn-primary" : "btn-secondary"}`}
+            onClick={() => {
+              setGenerationMode("study-case");
+              if (size === "kaggle") setSize("full");
+            }}
             disabled={loading}
           >
             Studi kasus PREDIKSI
+          </button>
+        ) : null}
+        {sourceMode === "ai" ? (
+          <button
+            type="button"
+            className={`btn !px-3 !py-1.5 text-sm ${isKaggle ? "btn-primary" : "btn-secondary"}`}
+            onClick={() => {
+              setSize("kaggle");
+              if (generationMode === "study-case") setGenerationMode("standard");
+            }}
+            disabled={loading}
+          >
+            Kaggle · 5 jam
           </button>
         ) : null}
       </div>

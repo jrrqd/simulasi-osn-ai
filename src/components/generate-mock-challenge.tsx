@@ -96,30 +96,48 @@ export function GenerateMockChallenge() {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${effectiveMode === "standard" ? "btn-accent" : "btn-secondary"}`}
-          onClick={() => setGenerationMode("standard")}
+          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "standard" ? "btn-accent" : "btn-secondary"}`}
+          onClick={() => {
+            setGenerationMode("standard");
+            if (size === "kaggle") setSize("quick");
+          }}
           disabled={loading}
         >
           Standar
         </button>
         <button
           type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${effectiveMode === "custom" ? "btn-accent" : "btn-secondary"}`}
-          onClick={() => setGenerationMode("custom")}
+          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "custom" ? "btn-accent" : "btn-secondary"}`}
+          onClick={() => {
+            setGenerationMode("custom");
+            if (size === "kaggle") setSize("quick");
+          }}
           disabled={loading}
         >
           Custom topik
         </button>
-        {!isKaggle ? (
-          <button
-            type="button"
-            className={`btn !px-3 !py-1.5 text-sm ${generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
-            onClick={() => setGenerationMode("study-case")}
-            disabled={loading}
-          >
-            Studi kasus PREDIKSI
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
+          onClick={() => {
+            setGenerationMode("study-case");
+            if (size === "kaggle") setSize("quick");
+          }}
+          disabled={loading}
+        >
+          Studi kasus PREDIKSI
+        </button>
+        <button
+          type="button"
+          className={`btn !px-3 !py-1.5 text-sm ${isKaggle ? "btn-accent" : "btn-secondary"}`}
+          onClick={() => {
+            setSize("kaggle");
+            if (generationMode === "study-case") setGenerationMode("standard");
+          }}
+          disabled={loading}
+        >
+          Kaggle · 5 jam
+        </button>
       </div>
 
       {isKaggle ? (
