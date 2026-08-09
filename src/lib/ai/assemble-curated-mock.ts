@@ -190,6 +190,7 @@ export async function assembleCuratedMockWithLlm(params: {
     apiKey: params.apiKey,
     modelId: params.modelId,
     jsonOutput: true,
+    disableThinking: true,
   });
 
   const topicBlock = topicPrompt

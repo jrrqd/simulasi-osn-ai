@@ -86,6 +86,7 @@ export async function generateLessonChecks(params: {
     apiKey: params.apiKey,
     modelId: params.modelId,
     jsonOutput: false,
+    disableThinking: true,
   });
 
   const system = `Kamu pembuat cek konsep (active recall) untuk modul belajar OSN AI / EKKA.

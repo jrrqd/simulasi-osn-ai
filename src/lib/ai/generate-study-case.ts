@@ -208,6 +208,7 @@ export async function generateAndStoreStudyCase(params: {
     apiKey: params.apiKey,
     modelId: params.modelId,
     jsonOutput: false,
+    disableThinking: true,
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
