@@ -11,7 +11,6 @@ const adminLinks = [
   { href: "/admin/resources", label: "Referensi IOAI" },
   { href: "/admin/problems", label: "Bank soal" },
   { href: "/admin/mocks", label: "Bank simulasi" },
-  { href: "/admin/resources", label: "Referensi IOAI" },
   { href: "/admin/countdown", label: "Countdown" },
   { href: "/admin/ai", label: "LLM Bersama" },
 ];
