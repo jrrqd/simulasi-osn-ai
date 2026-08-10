@@ -264,7 +264,7 @@ ${
   - "hiddenLabelsCsv": CSV id,prediction untuk SEMUA baris test (server-only)
 
 Silabus EKKA membatasi topik; referensi IOAI menginspirasi bentuk tantangan/metrik — buat ORISINAL, jangan salin dataset/cerita IOAI.
-Siswa akan unduh notebook + CSV, kerjakan lokal, lalu Submit submission.csv.
+Siswa mengerjakan di tab Notebook platform (Python + pandas via Pyodide); unduh .ipynb + CSV opsional untuk Jupyter/Colab.
 `
     : effectiveAnswerType === "codeSpec"
       ? `Instruksi coding Python (OSN AI 2026 / codeSpec):

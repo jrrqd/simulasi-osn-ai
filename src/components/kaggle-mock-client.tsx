@@ -5,6 +5,7 @@ import { Countdown } from "@/components/countdown";
 import { CompetitionWorkspace } from "@/components/competition-workspace";
 import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
 import { defaultProblemWeight, TOPIC_LABELS } from "@/lib/content/types";
+import { preloadPyodideDataScience } from "@/lib/pyodide-client";
 import type { CompetitionRunResult } from "@/lib/scoring";
 import type { ExamIntegrityMode } from "@/lib/exam-integrity-policy";
 import { DEFAULT_PENALTY_MINUTES_PER_WRONG } from "@/lib/exam/penalty";
@@ -109,6 +110,7 @@ export function KaggleMockClient({
     }
     setSessionId(data.sessionId);
     setEndsAt(data.endsAt);
+    preloadPyodideDataScience();
 
     // Restore prior competition answers/logs if any
     const answers = (data.answers ?? {}) as Record<string, unknown>;
@@ -249,8 +251,10 @@ export function KaggleMockClient({
             Format kompetisi: Overview → Data → Notebook → Submit → Logs.
           </li>
           <li>
-            Unduh starter <code>.ipynb</code> + CSV, kerjakan lokal (Jupyter /
-            VS Code / Colab), lalu Submit <code>submission.csv</code>.
+            Kerjakan di tab <strong>Notebook</strong> (Python + pandas di
+            browser), lalu Submit <code>submission.csv</code>. Unduh{" "}
+            <code>.ipynb</code> + CSV hanya jika ingin Jupyter / VS Code /
+            Colab.
           </li>
           <li>
             Skor proporsional menurut metrik tiap kompetisi (accuracy, F1,

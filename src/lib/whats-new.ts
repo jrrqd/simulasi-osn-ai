@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "kaggle-inplatform-notebook",
+    at: "2026-08-10T14:10:00+07:00",
+    tag: "Simulasi",
+    title: "Notebook Kaggle langsung di platform",
+    story:
+      "Simulasi Kaggle/IOAI kini bisa dikerjakan tanpa keluar ke VS Code atau Colab: tab Notebook menjalankan Python + pandas di browser (Pyodide), memuat CSV otomatis, lalu menghasilkan submission.csv untuk dinilai. Unduh .ipynb tetap tersedia sebagai opsi.",
+    href: "/mock",
+  },
+  {
     id: "kaggle-notebook-competitions",
     at: "2026-08-10T13:00:00+07:00",
     tag: "Simulasi",

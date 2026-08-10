@@ -31,6 +31,35 @@ function codeCell(text: string): NbCell {
   };
 }
 
+/** In-platform Pyodide starter script (CSVs mounted under /data/). */
+export function buildCompetitionStarterCode(params: {
+  targetColumn: string;
+}): string {
+  const { targetColumn } = params;
+  return `import pandas as pd
+from pathlib import Path
+
+DATA = Path("/data")
+train = pd.read_csv(DATA / "train.csv")
+test = pd.read_csv(DATA / "test.csv")
+sample = pd.read_csv(DATA / "sample_submission.csv")
+print("train", train.shape, "test", test.shape)
+print(train.head())
+
+# >>> YOUR CODE HERE <<<
+
+
+# >>> SUBMISSION CSV <<<
+submission = sample.copy()
+# Contoh baseline: isi kolom target dengan nilai tetap / moda train
+# submission["${targetColumn}"] = ...
+
+submission.to_csv(DATA / "submission.csv", index=False)
+print(submission.head())
+print("Wrote submission.csv — klik Kirim ke Submit.")
+`;
+}
+
 /**
  * Build a nbformat v4 starter notebook for a Kaggle-style competition.
  * Template-based (not LLM-authored) for reliable JSON.

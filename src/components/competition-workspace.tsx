@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CompetitionNotebookRunner } from "@/components/competition-notebook-runner";
 import { Markdown } from "@/components/markdown";
 import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
 import type { CompetitionRunResult } from "@/lib/scoring";
@@ -39,6 +40,9 @@ export function CompetitionWorkspace({
 }) {
   const [tab, setTab] = useState<TabId>("overview");
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  const [platformSubmission, setPlatformSubmission] = useState<File | null>(
+    null,
+  );
   const [notebookFile, setNotebookFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<{
     ok: boolean;
@@ -69,8 +73,10 @@ export function CompetitionWorkspace({
     );
   }
 
+  const effectiveSubmission = submissionFile ?? platformSubmission;
+
   async function runPreview() {
-    if (!submissionFile && !notebookFile) return;
+    if (!effectiveSubmission && !notebookFile) return;
     setBusy("preview");
     setError("");
     try {
@@ -78,7 +84,7 @@ export function CompetitionWorkspace({
       form.set("sessionId", sessionId);
       form.set("problemId", problem.id);
       form.set("action", "preview");
-      if (submissionFile) form.set("submission", submissionFile);
+      if (effectiveSubmission) form.set("submission", effectiveSubmission);
       if (notebookFile) form.set("notebook", notebookFile);
       const res = await fetch("/api/competition/submit", {
         method: "POST",
@@ -95,7 +101,7 @@ export function CompetitionWorkspace({
   }
 
   async function runGrade() {
-    if (!submissionFile && !notebookFile) return;
+    if (!effectiveSubmission && !notebookFile) return;
     setBusy("grade");
     setError("");
     try {
@@ -103,7 +109,7 @@ export function CompetitionWorkspace({
       form.set("sessionId", sessionId);
       form.set("problemId", problem.id);
       form.set("action", "grade");
-      if (submissionFile) form.set("submission", submissionFile);
+      if (effectiveSubmission) form.set("submission", effectiveSubmission);
       if (notebookFile) form.set("notebook", notebookFile);
       const res = await fetch("/api/competition/submit", {
         method: "POST",
@@ -164,8 +170,8 @@ export function CompetitionWorkspace({
       {tab === "data" ? (
         <div className="space-y-4">
           <p className="text-sm text-[var(--muted)]">
-            Unduh file data, lalu letakkan di folder yang sama dengan notebook
-            starter.
+            Data dimuat otomatis di tab Notebook. Unduh di sini jika ingin
+            mengerjakan di Jupyter / VS Code / Colab.
           </p>
           {competition.files.map((file) => (
             <div
@@ -204,23 +210,16 @@ export function CompetitionWorkspace({
       ) : null}
 
       {tab === "notebook" ? (
-        <div className="space-y-3">
-          <p className="text-sm text-[var(--muted)]">
-            Unduh starter <code>.ipynb</code>, kerjakan di Jupyter / VS Code /
-            Colab bersama file CSV dari tab Data, lalu kembali ke Submit.
-          </p>
-          <a
-            className="btn btn-primary !px-4 !py-2 text-sm"
-            href={`/api/competition/${problem.id}/notebook`}
-          >
-            Download starter notebook
-          </a>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--muted)]">
-            <li>Jupyter Lab / Notebook</li>
-            <li>VS Code + Python extension</li>
-            <li>Google Colab (unggah CSV + notebook)</li>
-          </ul>
-        </div>
+        <CompetitionNotebookRunner
+          problemId={problem.id}
+          sessionId={sessionId}
+          competition={competition}
+          onSubmissionReady={(file) => {
+            setPlatformSubmission(file);
+            if (file) setSubmissionFile(null);
+          }}
+          onGoToSubmit={() => setTab("submit")}
+        />
       ) : null}
 
       {tab === "submit" ? (
@@ -230,6 +229,24 @@ export function CompetitionWorkspace({
             notebook. Preview opsional; skor hanya dihitung setelah Anda klik{" "}
             <strong>Submit untuk dinilai</strong>.
           </p>
+          {platformSubmission && !submissionFile ? (
+            <div className="rounded-2xl border border-[var(--accent)] bg-[rgba(56,120,90,0.06)] p-3 text-sm">
+              <p className="font-medium text-[var(--accent)]">
+                submission.csv dari tab Notebook siap dikirim
+              </p>
+              <p className="text-[var(--muted)]">
+                {platformSubmission.name} ·{" "}
+                {Math.round(platformSubmission.size / 1024)} KB
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs text-[var(--muted)] underline"
+                onClick={() => setPlatformSubmission(null)}
+              >
+                Hapus dan unggah file lain
+              </button>
+            </div>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1 text-sm">
               <span className="font-medium">submission.csv</span>
@@ -237,9 +254,10 @@ export function CompetitionWorkspace({
                 type="file"
                 accept=".csv,text/csv"
                 className="block w-full text-sm"
-                onChange={(e) =>
-                  setSubmissionFile(e.target.files?.[0] ?? null)
-                }
+                onChange={(e) => {
+                  setSubmissionFile(e.target.files?.[0] ?? null);
+                  if (e.target.files?.[0]) setPlatformSubmission(null);
+                }}
               />
             </label>
             <label className="block space-y-1 text-sm">
@@ -257,7 +275,7 @@ export function CompetitionWorkspace({
               type="button"
               className="btn btn-secondary !px-4 !py-2 text-sm"
               disabled={
-                busy != null || (!submissionFile && !notebookFile)
+                busy != null || (!effectiveSubmission && !notebookFile)
               }
               onClick={() => void runPreview()}
             >
@@ -266,7 +284,7 @@ export function CompetitionWorkspace({
             <button
               type="button"
               className="btn btn-accent !px-4 !py-2 text-sm"
-              disabled={busy != null || (!submissionFile && !notebookFile)}
+              disabled={busy != null || (!effectiveSubmission && !notebookFile)}
               onClick={() => void runGrade()}
             >
               {busy === "grade" ? "Menilai…" : "Submit untuk dinilai"}

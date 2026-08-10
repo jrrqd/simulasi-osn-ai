@@ -489,7 +489,7 @@ export function buildAiMockPlan(params: {
       : params.topicPrompt,
   });
   const description = isKaggle
-    ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit). Unduh .ipynb + data, kerjakan lokal, Submit CSV untuk dinilai.`
+    ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit). Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
     : isStudyCase
       ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
       : generationMode === "custom" && params.topicPrompt

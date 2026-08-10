@@ -150,9 +150,10 @@ export function GenerateMockChallenge() {
 
       {isKaggle ? (
         <p className="text-xs text-[var(--muted)]">
-          Format Kaggle/IOAI: 3 kompetisi notebook · 150 menit. Unduh .ipynb +
-          data, kerjakan lokal, Submit CSV. Referensi arsip IOAI dipakai saat
-          generate. Studi kasus PREDIKSI tidak tersedia untuk ukuran ini.
+          Format Kaggle/IOAI: 3 kompetisi notebook · 150 menit. Kerjakan di tab
+          Notebook (Python + pandas di browser), Submit CSV. Unduh .ipynb opsional.
+          Referensi arsip IOAI dipakai saat generate. Studi kasus PREDIKSI tidak
+          tersedia untuk ukuran ini.
         </p>
       ) : effectiveMode === "study-case" ? (
         <p className="text-xs text-[var(--muted)]">
