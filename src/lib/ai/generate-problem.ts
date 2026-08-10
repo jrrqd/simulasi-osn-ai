@@ -22,6 +22,7 @@ import {
   materializeImages,
   parseImagePrompts,
 } from "@/lib/ai/materialize-images";
+import { buildIoaiKnowledgeContextForUser } from "@/lib/ai/ioai-prompt-context";
 import { getLessonsForTopic } from "@/lib/content/load";
 import type { Lesson } from "@/lib/content/types";
 import {
@@ -174,6 +175,12 @@ export async function generateAndStoreProblem(params: {
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
+  const ioaiContext = await buildIoaiKnowledgeContextForUser({
+    userId: params.userId,
+    topics: [params.topic],
+    focusPrompt: params.focusPrompt,
+    limit: 4,
+  });
   const focusBlock = params.focusPrompt?.trim()
     ? `
 Preferensi / brief siswa untuk paket kuis ini:
@@ -184,6 +191,7 @@ ${params.focusPrompt.trim()}
 - Jika preferensi menyebut beberapa topik, fokuskan bagian yang relevan dengan topic saat ini.
 `
     : "";
+  const ioaiBlock = ioaiContext ? `\n${ioaiContext}\n` : "";
 
   const includeFigures = Boolean(params.includeFigures);
   const figureBlock = includeFigures
@@ -216,6 +224,7 @@ AnswerType: ${answerType}
 
 ${syllabus}
 ${focusBlock}
+${ioaiBlock}
 ${figureBlock}
 ${
   answerType === "codeSpec"

@@ -141,23 +141,67 @@ export async function getIoaiResource(
   return toRecord(row, guide?.id);
 }
 
+function focusMatchScore(row: IoaiResourceRecord, focus: string): number {
+  if (!focus) return 0;
+  const hay = [
+    row.title,
+    row.summary,
+    row.promptHint ?? "",
+    row.topics.join(" "),
+    row.id,
+  ]
+    .join(" ")
+    .toLowerCase();
+  const tokens = focus
+    .toLowerCase()
+    .split(/[^a-z0-9]+/i)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 4);
+  if (tokens.length === 0) return 0;
+  let score = 0;
+  for (const token of tokens) {
+    if (hay.includes(token)) score += 1;
+  }
+  return score;
+}
+
 export async function listIoaiResourcesForPrompt(params?: {
   topics?: string[];
+  focusPrompt?: string;
   limit?: number;
 }): Promise<IoaiResourceRecord[]> {
   const all = await listVisibleIoaiResources();
   const topics = params?.topics?.filter(Boolean) ?? [];
+  const focus = params?.focusPrompt?.trim() ?? "";
   const limit = Math.max(1, Math.min(params?.limit ?? 8, 20));
-  if (topics.length === 0) return all.slice(0, limit);
+  if (topics.length === 0 && !focus) {
+    return [...all]
+      .sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || a.title.localeCompare(b.title))
+      .slice(0, limit);
+  }
 
   const topicSet = new Set(topics);
   const scored = all
     .map((row) => {
-      const hits = row.topics.filter((t) => topicSet.has(t)).length;
-      return { row, hits };
+      const topicHits = row.topics.filter((t) => topicSet.has(t)).length;
+      const focusHits = focusMatchScore(row, focus);
+      const hintBonus = row.promptHint ? 0.25 : 0;
+      return {
+        row,
+        score: topicHits * 3 + focusHits * 2 + hintBonus,
+      };
     })
-    .filter((x) => x.hits > 0 || x.row.promptHint)
-    .sort((a, b) => b.hits - a.hits || (b.row.year ?? 0) - (a.row.year ?? 0));
+    .filter((x) => x.score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score || (b.row.year ?? 0) - (a.row.year ?? 0),
+    );
+
+  if (scored.length === 0) {
+    return [...all]
+      .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
+      .slice(0, limit);
+  }
 
   return scored.slice(0, limit).map((x) => x.row);
 }

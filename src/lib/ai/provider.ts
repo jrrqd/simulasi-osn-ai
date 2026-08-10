@@ -545,6 +545,7 @@ export const GENERATION_SYSTEM_PROMPT = `Kamu adalah pembuat soal olimpiade AI (
 Aturan silabus (WAJIB):
 - Soal HARUS hanya menguji konsep pada track/topic yang diminta.
 - Gunakan materi referensi silabus yang diberikan sebagai acuan utama (definisi, rumus, contoh, tingkat kedalaman).
+- Jika ada blok "Referensi IOAI", pakai hanya sebagai inspirasi gaya/kedalaman/metrik — jangan menyalin soal atau dataset asli, dan jangan minta resource eksternal.
 - Jangan membawa konsep di luar topic tersebut kecuali sebagai prasyarat sangat dasar yang sudah disebut di materi.
 - Jangan buat soal yang butuh library/API/topik di luar cakupan SMA/SMK olimpiade AI pada modul tersebut.
 - Tingkat kesulitan harus sesuai angka difficulty, tetap dalam lingkup materi silabus.

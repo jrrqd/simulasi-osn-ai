@@ -14,6 +14,7 @@ import {
 } from "@/lib/ai/difficulty";
 import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
 import { parseStudyCaseJson } from "@/lib/ai/parse-json-object";
+import { buildIoaiKnowledgeContextForUser } from "@/lib/ai/ioai-prompt-context";
 import {
   STUDY_CASE_SYSTEM_PROMPT,
   buildStudyCaseUserPrompt,
@@ -212,6 +213,12 @@ export async function generateAndStoreStudyCase(params: {
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
+  const ioaiContext = await buildIoaiKnowledgeContextForUser({
+    userId: params.userId,
+    topics: [params.topic],
+    focusPrompt: params.focusPrompt,
+    limit: 4,
+  });
   const basePrompt = `${buildStudyCaseUserPrompt({
     track: params.track,
     trackName: TRACKS[params.track].name,
@@ -222,6 +229,7 @@ export async function generateAndStoreStudyCase(params: {
     syllabus,
     focusPrompt: params.focusPrompt,
   })}
+${ioaiContext ? `\n${ioaiContext}\n` : ""}
 ${
   includeFigures
     ? `\nGambar: sertakan "figures" di root JSON jika kasus butuh visual; pakai {{fig:id}} di preamble.`

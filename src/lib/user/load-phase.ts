@@ -5,14 +5,29 @@ import { getDb } from "@/db";
 import { user } from "@/db/schema";
 import { getPhase, type Phase } from "@/lib/user/phase";
 
+export type UserPhaseAccess = {
+  phase: Phase;
+  role: string | null;
+};
+
 /** Server-only helper — never import from client components. */
 export async function loadUserPhase(userId: string): Promise<Phase> {
+  const access = await loadUserPhaseAccess(userId);
+  return access.phase;
+}
+
+export async function loadUserPhaseAccess(
+  userId: string,
+): Promise<UserPhaseAccess> {
   const db = await getDb();
   const row = await db.query.user.findFirst({
     where: eq(user.id, userId),
     columns: { phase: true, role: true },
   });
-  return getPhase(row);
+  return {
+    phase: getPhase(row),
+    role: row?.role ?? null,
+  };
 }
 
 export function canAccessIoaiResources(
