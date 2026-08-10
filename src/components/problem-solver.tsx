@@ -6,7 +6,7 @@ import { Markdown } from "@/components/markdown";
 import { PythonRunner } from "@/components/python-runner";
 import { CodeRunner } from "@/components/code-runner";
 import { NumericInput } from "@/components/numeric-input";
-import type { Problem } from "@/lib/content/types";
+import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
 import {
   TOPIC_LABELS,
   defaultProblemWeight,
@@ -19,13 +19,12 @@ import {
 import { StudyCaseNav } from "@/components/study-case-nav";
 import { needsCodeSpecRunner } from "@/lib/ai/exam-python-policy";
 import type { CodeSpecRunResult } from "@/lib/scoring/index";
-import type { RunCodeSpecAggregate } from "@/lib/scoring/test-case-runner";
 
 export function ProblemSolver({
   problem,
   reviewMode = false,
 }: {
-  problem: Problem;
+  problem: ExamFacingProblem;
   reviewMode?: boolean;
 }) {
   const [answer, setAnswer] = useState("");
@@ -72,9 +71,14 @@ export function ProblemSolver({
     }
   }
 
-  function handleCodeResult(agg: RunCodeSpecAggregate, userCode: string) {
+  function handleCodeResult(agg: CodeSpecRunResult, userCode: string) {
     setCodeResult(agg);
     setAnswer(userCode);
+  }
+
+  function handleCodeChange(userCode: string) {
+    setAnswer(userCode);
+    setCodeResult(null);
   }
 
   const canClickSubmit = isCodeSpec
@@ -117,9 +121,10 @@ export function ProblemSolver({
         <div className="panel space-y-3 rounded-3xl p-5">
           {isCodeSpec && problem.codeSpec ? (
             <CodeRunner
+              problemId={problem.id}
               codeSpec={problem.codeSpec}
               onResult={handleCodeResult}
-              onCodeChange={setAnswer}
+              onCodeChange={handleCodeChange}
             />
           ) : problem.answerType === "mcq" && problem.choices ? (
             <div className="space-y-2">
@@ -204,6 +209,8 @@ export function ProblemSolver({
   );
 }
 
-export function useClientProblem(problem: Problem) {
+export function useClientProblem(
+  problem: ExamFacingProblem,
+): ExamFacingProblem {
   return problem;
 }

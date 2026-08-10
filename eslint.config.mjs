@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Dev-only diagnostic scripts:
     "scripts/diagnose-*.ts",
+    "scripts/judge0-mock.mjs",
   ]),
 ]);
 

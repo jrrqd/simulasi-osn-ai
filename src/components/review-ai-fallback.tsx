@@ -3,16 +3,17 @@
 import { useEffect, useState } from "react";
 import { Markdown } from "@/components/markdown";
 import { ReviewChat } from "@/components/review-chat";
-import type { Problem } from "@/lib/content/types";
+import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
+import { problemCacheKey } from "@/lib/content/problem-cache";
 
 export function ReviewAiFallback({ id }: { id: string }) {
-  const [problem, setProblem] = useState<Problem | null>(null);
+  const [problem, setProblem] = useState<ExamFacingProblem | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const raw = sessionStorage.getItem(`problem:${id}`);
+      const raw = sessionStorage.getItem(problemCacheKey(id));
       if (raw) {
         try {
           if (!cancelled) setProblem(JSON.parse(raw));
@@ -51,8 +52,9 @@ export function ReviewAiFallback({ id }: { id: string }) {
           <Markdown content={problem.stem} />
         </div>
         <div className="panel rounded-3xl p-5">
-          <h2 className="display mb-2 text-xl">Solusi</h2>
-          <Markdown content={problem.solution} />
+          <p className="text-sm text-[var(--muted)]">
+            Pembahasan tersedia dari hasil pengumpulan jawaban.
+          </p>
         </div>
       </div>
       <ReviewChat problemId={problem.id} />

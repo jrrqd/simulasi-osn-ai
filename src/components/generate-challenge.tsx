@@ -10,6 +10,7 @@ import {
 import { defaultIncludeFigures } from "@/lib/ai/diagrams";
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
 import type { GenerationProgressEvent } from "@/lib/ai/generation-progress";
+import { problemCacheKey } from "@/lib/content/problem-cache";
 import {
   applyGenerationProgressEvent,
   GenerationProgressPanel,
@@ -164,7 +165,7 @@ export function GenerateChallenge() {
 
       const problem = (problemData as { problem: { id: string } }).problem;
       sessionStorage.setItem(
-        `problem:${problem.id}`,
+        problemCacheKey(problem.id),
         JSON.stringify(
           (problemData as { problem: Record<string, unknown> }).problem,
         ),

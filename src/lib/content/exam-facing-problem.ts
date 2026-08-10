@@ -1,11 +1,12 @@
-import type { Problem } from "@/lib/content/types";
+import type { ClientCodeSpec, Problem } from "@/lib/content/types";
 import { resolveNumericFormat } from "@/lib/content/types";
 
-/** Problem shape safe to send to the exam client (no keys/solutions). */
+/** Problem shape safe to send to student clients (no keys, solutions, or tests). */
 export type ExamFacingProblem = Omit<
   Problem,
-  "answer" | "solution" | "parts"
+  "answer" | "solution" | "parts" | "codeSpec"
 > & {
+  codeSpec?: ClientCodeSpec;
   parts?: Omit<NonNullable<Problem["parts"]>[number], "answer">[];
 };
 
@@ -32,11 +33,13 @@ export function toExamFacingProblem(problem: Problem): ExamFacingProblem {
     weight: problem.weight,
     codeSpec: problem.codeSpec
       ? {
-          ...problem.codeSpec,
-          // Hide expected outputs from exam client? Keep them for in-exam
-          // self-check against sample cases — OSN practice shows sample tests.
-          // Full hidden tests would strip expectedOutput; for simulation we keep.
-          testCases: problem.codeSpec.testCases,
+          skeleton: problem.codeSpec.skeleton,
+          lockedMarkers: problem.codeSpec.lockedMarkers,
+          lockedRanges: problem.codeSpec.lockedRanges,
+          timeLimitMs: problem.codeSpec.timeLimitMs,
+          memoryLimitMb: problem.codeSpec.memoryLimitMb,
+          forbiddenImports: problem.codeSpec.forbiddenImports,
+          testCaseCount: problem.codeSpec.testCases.length,
         }
       : undefined,
     legacy: problem.legacy,

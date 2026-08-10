@@ -211,7 +211,6 @@ export function MockExamClient({
         action: "submit_problem",
         problemId,
         answer: answersRef.current[problemId] ?? "",
-        codeResult: codeResultsRef.current[problemId],
       }),
     });
     const data = await response.json();
@@ -272,11 +271,10 @@ export function MockExamClient({
     const response = await fetch("/api/mocks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId: id,
-        answers: answersRef.current,
-        codeResults: codeResultsRef.current,
-        integrityForcedSubmit: options?.integrityForced === true,
+        body: JSON.stringify({
+          sessionId: id,
+          answers: answersRef.current,
+          integrityForcedSubmit: options?.integrityForced === true,
         integrity: options?.integrity
           ? {
               events: options.integrity.events,
@@ -592,10 +590,12 @@ export function MockExamClient({
               {needsCodeSpecRunner(problem) && problem.codeSpec ? (
                 <div className="space-y-2 rounded-2xl border border-[var(--line)] bg-white/50 p-4">
                   <p className="text-xs text-[var(--muted)]">
-                    Isi zona WRITE HERE saja. Jalankan test case sebelum
-                    mengumpulkan — skor = bobot × (test case lulus).
+                    Isi zona WRITE HERE saja. Tekan &quot;Jalankan tes&quot;
+                    untuk menilai kode di server. Test case bersifat rahasia —
+                    hanya jumlah lulus yang ditampilkan.
                   </p>
                   <CodeRunner
+                    problemId={problem.id}
                     codeSpec={problem.codeSpec}
                     onResult={(agg, userCode) => {
                       if (locked) return;
@@ -614,6 +614,12 @@ export function MockExamClient({
                         ...current,
                         [problem.id]: userCode,
                       }));
+                      setCodeResults((current) => {
+                        if (!current[problem.id]) return current;
+                        const next = { ...current };
+                        delete next[problem.id];
+                        return next;
+                      });
                     }}
                   />
                 </div>

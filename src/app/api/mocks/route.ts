@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { mockSessions, submissionEvents } from "@/db/schema";
 import { requireApiUser } from "@/lib/api";
+import { rateLimit } from "@/lib/api";
 import {
   listAllMocks,
   resolveMock,
@@ -28,6 +29,13 @@ import {
   totalAttempts,
   totalPenaltyMinutes,
 } from "@/lib/exam/penalty";
+import {
+  GraderUnavailableError,
+  gradeCodeWithJudge0,
+  readJudge0Config,
+} from "@/lib/grading/judge0";
+
+export const runtime = "nodejs";
 
 function sessionIntegrity(session: {
   integrityEvents?: unknown;
@@ -73,6 +81,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+  if (!rateLimit(`mock-start:${authResult.user.id}`, 10, 60_000)) {
+    return Response.json(
+      { error: "Terlalu banyak percobaan. Coba lagi sebentar." },
+      { status: 429 },
+    );
+  }
   const body = await req.json();
   const mockId = String(body.mockId ?? "");
   const mock = await resolveMock(mockId);
@@ -143,6 +157,12 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+  if (!rateLimit(`mock-patch:${authResult.user.id}`, 60, 60_000)) {
+    return Response.json(
+      { error: "Terlalu banyak percobaan. Coba lagi sebentar." },
+      { status: 429 },
+    );
+  }
   const body = await req.json();
   const sessionId = String(body.sessionId ?? "");
   const action = String(body.action ?? "");
@@ -181,10 +201,42 @@ export async function PATCH(req: NextRequest) {
     }
 
     const answer = body.answer;
-    const codeResult =
-      body.codeResult && typeof body.codeResult === "object"
-        ? (body.codeResult as CodeSpecRunResult)
-        : undefined;
+    // Server-side grading for codeSpec — never trust client codeResult.
+    let codeSpecResult: CodeSpecRunResult | undefined;
+    if (problem.answerType === "codeSpec" && problem.codeSpec) {
+      const config = readJudge0Config();
+      if (!config) {
+        return Response.json(
+          { error: "Penilaian coding belum disiapkan" },
+          { status: 503 },
+        );
+      }
+      const userCode = String(answer ?? "");
+      if (!userCode.trim()) {
+        return Response.json(
+          { error: "Kode belum diisi" },
+          { status: 400 },
+        );
+      }
+      try {
+        codeSpecResult = await gradeCodeWithJudge0({
+          codeSpec: problem.codeSpec,
+          userCode,
+          config,
+        });
+      } catch (error) {
+        if (error instanceof GraderUnavailableError) {
+          return Response.json(
+            { error: "Grader tidak tersedia" },
+            { status: 502 },
+          );
+        }
+        return Response.json(
+          { error: "Gagal menilai kode" },
+          { status: 500 },
+        );
+      }
+    }
 
     const graded = scoreAnswer({
       answerType: problem.answerType,
@@ -193,7 +245,7 @@ export async function PATCH(req: NextRequest) {
       tolerance: problem.tolerance,
       numericFormat: problem.numericFormat ?? problem.expectedFormat,
       legacy: problem.legacy,
-      codeSpecResult: codeResult,
+      codeSpecResult,
     });
 
     // ICPC lock only on full solve
@@ -218,6 +270,7 @@ export async function PATCH(req: NextRequest) {
         alreadyLocked: true,
         correct: recorded.problem.solved,
         score: graded.score,
+        codeSpecResult,
         formatHint:
           "formatHint" in graded
             ? (graded as { formatHint?: string }).formatHint
@@ -260,6 +313,7 @@ export async function PATCH(req: NextRequest) {
       score: graded.score,
       locked: recorded.problem.solved,
       problemPenalty: recorded.problem,
+      codeSpecResult,
       formatHint:
         "formatHint" in graded
           ? (graded as { formatHint?: string }).formatHint
@@ -320,6 +374,12 @@ export async function PATCH(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+  if (!rateLimit(`mock-put:${authResult.user.id}`, 12, 60_000)) {
+    return Response.json(
+      { error: "Terlalu banyak percobaan. Coba lagi sebentar." },
+      { status: 429 },
+    );
+  }
   const body = await req.json();
   const sessionId = String(body.sessionId ?? "");
 
@@ -376,10 +436,74 @@ export async function PUT(req: NextRequest) {
   const elapsedMs = Math.min(rawElapsedMs, capMs);
   const durationPerQuestion = Math.round(elapsedMs / problems.length);
 
+  // Server-grade each codeSpec answer; ignore any client codeResults for coding.
+  const config = readJudge0Config();
+  const hasCodeSpecProblems = problems.some(
+    (problem) => problem.answerType === "codeSpec" && problem.codeSpec,
+  );
+  if (hasCodeSpecProblems && !config) {
+    return Response.json(
+      { error: "Penilaian coding belum disiapkan" },
+      { status: 503 },
+    );
+  }
+  const serverCodeResults: Record<string, CodeSpecRunResult> = {};
+  for (const p of problems) {
+    if (p.answerType !== "codeSpec" || !p.codeSpec) continue;
+    const userCode = String((answers as Record<string, unknown>)[p.id] ?? "");
+    if (!userCode.trim()) {
+      serverCodeResults[p.id] = {
+        passedCount: 0,
+        totalCount: p.codeSpec.testCases.length,
+        passedWeight: 0,
+        totalWeight: p.codeSpec.testCases.reduce(
+          (sum, c) => sum + (c.weight ?? 1),
+          0,
+        ),
+        timedOut: false,
+        memoryExceeded: false,
+        skeletonViolated: false,
+      };
+      continue;
+    }
+    if (!config) {
+      return Response.json(
+        { error: "Penilaian coding belum disiapkan" },
+        { status: 503 },
+      );
+    }
+    try {
+      serverCodeResults[p.id] = await gradeCodeWithJudge0({
+          codeSpec: p.codeSpec,
+          userCode,
+          config: config!,
+      });
+    } catch (error) {
+      if (error instanceof GraderUnavailableError) {
+        return Response.json(
+          { error: "Grader tidak tersedia" },
+          { status: 502 },
+        );
+      }
+      return Response.json(
+        { error: "Gagal menilai kode" },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Merge: server codeSpec overrides client codeResults for coding problems.
+  const finalCodeResults: Record<string, CodeSpecRunResult> = {
+    ...codeResultsRaw,
+  };
+  for (const [pid, res] of Object.entries(serverCodeResults)) {
+    finalCodeResults[pid] = res;
+  }
+
   const scored = scoreMockProblems({
     problems,
     answers,
-    codeResults: codeResultsRaw,
+    codeResults: finalCodeResults,
   });
 
   const penaltyState = normalizePenaltyState(session.penaltyState);

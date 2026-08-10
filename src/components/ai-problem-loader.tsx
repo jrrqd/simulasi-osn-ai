@@ -2,23 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { ProblemSolver } from "@/components/problem-solver";
-import type { Problem } from "@/lib/content/types";
+import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
+import { problemCacheKey } from "@/lib/content/problem-cache";
 
 export function AiProblemLoader({ id }: { id: string }) {
-  const [problem, setProblem] = useState<Problem | null>(null);
+  const [problem, setProblem] = useState<ExamFacingProblem | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      const raw = sessionStorage.getItem(`problem:${id}`);
+      const cacheKey = problemCacheKey(id);
+      const raw = sessionStorage.getItem(cacheKey);
       if (raw) {
         try {
           if (!cancelled) setProblem(JSON.parse(raw));
           return;
         } catch {
-          // fall through to API
+          sessionStorage.removeItem(cacheKey);
         }
       }
 
@@ -28,10 +30,7 @@ export function AiProblemLoader({ id }: { id: string }) {
         if (!res.ok) throw new Error(data.error || "Soal tidak ditemukan");
         if (!cancelled) {
           setProblem(data.problem);
-          sessionStorage.setItem(
-            `problem:${id}`,
-            JSON.stringify(data.problem),
-          );
+          sessionStorage.setItem(cacheKey, JSON.stringify(data.problem));
         }
       } catch (e) {
         if (!cancelled) {

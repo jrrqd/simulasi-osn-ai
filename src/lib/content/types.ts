@@ -38,6 +38,11 @@ export type CodeSpec = {
   forbiddenImports?: string[];
 };
 
+/** Coding shape safe for student clients. Hidden tests stay server-only. */
+export type ClientCodeSpec = Omit<CodeSpec, "testCases"> & {
+  testCaseCount: number;
+};
+
 /** Resolve numericFormat with expectedFormat alias. */
 export function resolveNumericFormat(problem: {
   numericFormat?: NumericFormat;

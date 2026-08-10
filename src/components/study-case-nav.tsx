@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 type StudyCaseBundle = {
@@ -35,11 +35,9 @@ function readBundleForProblem(problemId: string): StudyCaseBundle | null {
 }
 
 export function StudyCaseNav({ problemId }: { problemId: string }) {
-  const [bundle, setBundle] = useState<StudyCaseBundle | null>(null);
-
-  useEffect(() => {
-    setBundle(readBundleForProblem(problemId));
-  }, [problemId]);
+  const [bundle] = useState<StudyCaseBundle | null>(() =>
+    readBundleForProblem(problemId),
+  );
 
   if (!bundle) return null;
 
