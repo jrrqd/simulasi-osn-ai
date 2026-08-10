@@ -13,7 +13,7 @@ import {
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
 import { createNdjsonStreamResponse } from "@/lib/ai/generation-progress";
-import { loadUserPhase } from "@/lib/user/phase";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);

@@ -5,7 +5,7 @@ import { getLessons } from "@/lib/content/load";
 import { TRACKS } from "@/lib/content/types";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
-import { loadUserPhase } from "@/lib/user/phase";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 export default async function StudyPage() {
   const user = await requireUser();

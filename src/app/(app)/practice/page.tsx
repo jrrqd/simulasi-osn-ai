@@ -8,7 +8,7 @@ import { getUserProblemProgress } from "@/lib/attempts";
 import { GenerateChallenge } from "@/components/generate-challenge";
 import { PracticeProblemCard } from "@/components/practice-problem-card";
 import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
-import { loadUserPhase } from "@/lib/user/phase";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 export default async function PracticePage({
   searchParams,

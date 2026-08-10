@@ -34,7 +34,7 @@ import {
   TOPIC_PROMPT_MIN_LEN,
 } from "@/lib/ai/topic-prompt";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
-import { loadUserPhase } from "@/lib/user/phase";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 type GenerationPhase = "plan" | "slot" | "case" | "commit" | "legacy";
 

@@ -8,7 +8,7 @@ import { Markdown } from "@/components/markdown";
 import { extractMarkdownToc } from "@/lib/lesson-toc";
 import { LessonStudyClient } from "@/components/lesson-study-client";
 import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
-import { loadUserPhase } from "@/lib/user/phase";
+import { loadUserPhase } from "@/lib/user/load-phase";
 import {
   dueQuestionIds,
   getLessonCheckQuestions,
