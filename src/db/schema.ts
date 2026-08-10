@@ -329,6 +329,8 @@ export const generatedMocks = pgTable(
     problemIds: jsonb("problem_ids").notNull().$type<string[]>(),
     track: text("track").notNull(),
     kind: text("kind").notNull().default("ai"),
+    /** standard | kaggle — drives exam UI + integrity policy. */
+    examFormat: text("exam_format").notNull().default("standard"),
     penaltyEnabled: boolean("penalty_enabled").notNull().default(true),
     penaltyMinutesPerWrong: integer("penalty_minutes_per_wrong")
       .notNull()

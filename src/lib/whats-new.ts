@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "kaggle-notebook-competitions",
+    at: "2026-08-10T13:00:00+07:00",
+    tag: "Simulasi",
+    title: "Mode Kaggle clone + referensi IOAI di semua fase",
+    story:
+      "Generate simulasi Kaggle kini 3 kompetisi / 150 menit: unduh starter .ipynb dan CSV, kerjakan lokal, lalu Submit untuk skor proporsional (accuracy, F1, RMSE). Referensi IOAI sekarang tampil di Belajar/Latihan untuk pre-seleksi, semifinal, dan final. Fase semifinal/final tidak lagi memaksa layar penuh browser.",
+    href: "/mock",
+  },
+  {
     id: "fix-study-practice-pages",
     at: "2026-08-10T11:30:00+07:00",
     tag: "Belajar",

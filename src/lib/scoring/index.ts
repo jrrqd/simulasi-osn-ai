@@ -310,6 +310,17 @@ export type CodeSpecRunResult = {
   totalCount?: number;
 };
 
+/** Result from Kaggle-style competition CSV grading. */
+export type CompetitionRunResult = {
+  metricValue: number;
+  score: number;
+  metricLabel: string;
+  log: string;
+  summary?: string;
+  rowCount: number;
+  gradedBy?: "deterministic" | "llm_assisted";
+};
+
 /** Score from client-side test-case runner result (0–1 fraction). */
 export function scoreCodeSpecResult(
   result: CodeSpecRunResult | null | undefined,
@@ -324,6 +335,14 @@ export function scoreCodeSpecResult(
   return { correct: ratio === 1, score: ratio };
 }
 
+export function scoreCompetitionResult(
+  result: CompetitionRunResult | null | undefined,
+): { correct: boolean; score: number } {
+  if (!result) return { correct: false, score: 0 };
+  const score = Math.max(0, Math.min(1, result.score));
+  return { correct: score >= 0.999, score };
+}
+
 export function scoreAnswer(params: {
   answerType: string;
   submitted: unknown;
@@ -334,6 +353,7 @@ export function scoreAnswer(params: {
   expectedFormat?: NumericFormat;
   legacy?: boolean;
   codeSpecResult?: CodeSpecRunResult | null;
+  competitionResult?: CompetitionRunResult | null;
 }) {
   const {
     answerType,
@@ -342,8 +362,13 @@ export function scoreAnswer(params: {
     tolerance,
     legacy,
     codeSpecResult,
+    competitionResult,
   } = params;
   const numericFormat = params.numericFormat ?? params.expectedFormat;
+
+  if (answerType === "notebook_submission") {
+    return scoreCompetitionResult(competitionResult);
+  }
 
   if (answerType === "codeSpec") {
     return scoreCodeSpecResult(codeSpecResult);

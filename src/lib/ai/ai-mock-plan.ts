@@ -16,6 +16,7 @@ import {
 } from "@/lib/ai/topic-prompt";
 import { buildNaturalMockTitle } from "@/lib/ai/mock-title";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
+import type { SubmissionScoringMode } from "@/lib/content/types";
 import {
   SEMIFINAL_TOPICS,
   type Phase,
@@ -109,6 +110,13 @@ export const MOCK_DURATION_MINUTES = 30;
 
 export const KAGGLE_CODING_WEIGHT = 5;
 
+/** Rotating metrics for the 3 kaggle competitions in a mock. */
+export const KAGGLE_SLOT_METRICS: SubmissionScoringMode[] = [
+  "accuracy",
+  "f1_macro",
+  "rmse",
+];
+
 /** Any size whose label/mix is Kaggle-style coding marathon. */
 export const KAGGLE_SIZES = ["kaggle", "kaggle-150"] as const;
 export type KaggleSize = (typeof KAGGLE_SIZES)[number];
@@ -136,16 +144,16 @@ export const AI_MOCK_SIZES: {
   ...CURATED_MOCK_SIZES,
   {
     value: "kaggle-150",
-    label: "Kaggle style · 2 coding · 150 menit",
-    count: 2,
+    label: "Kaggle style · 3 kompetisi · 150 menit",
+    count: 3,
     durationMinutes: 150,
     codingRatio: 1,
   },
   {
     value: "kaggle",
-    label: "Kaggle style · 3 coding · 300 menit",
+    label: "Kaggle style · 3 kompetisi · 150 menit",
     count: 3,
-    durationMinutes: 300,
+    durationMinutes: 150,
     codingRatio: 1,
   },
 ];
@@ -173,7 +181,8 @@ export type AiMockAnswerType =
   | "mcq"
   | "short_string"
   | "python_output"
-  | "codeSpec";
+  | "codeSpec"
+  | "notebook_submission";
 
 export type AiMockSlot = {
   index: number;
@@ -182,6 +191,8 @@ export type AiMockSlot = {
   difficulty: 1 | 2 | 3 | 4 | 5;
   answerType: AiMockAnswerType;
   weight: number;
+  /** Kaggle competition metric for this slot. */
+  scoringMetric?: SubmissionScoringMode;
 };
 
 export type AiMockGenerationMode = "standard" | "custom" | "study-case";
@@ -209,8 +220,29 @@ export type AiMockPlanMeta = {
   size: AiMockSize;
   codingCount: number;
   numericCount: number;
+  /** User onboarding phase (persisted for display). */
   phase: Phase;
+  /** Phase for IOAI refs + topic weighting during LLM generation. */
+  generationPhase: Phase;
+  /** standard exam vs kaggle competition workspace. */
+  examFormat: "standard" | "kaggle";
 };
+
+/** IOAI reference context is skipped for pre-seleksi unless kaggle or semifinal restrict. */
+export function resolveGenerationPhase(
+  userPhase: Phase,
+  difficultyMode: DifficultyMode,
+  isKaggle: boolean,
+): Phase {
+  const restrictToSemifinalTopics = difficultyMode === "semifinal";
+  if (restrictToSemifinalTopics && userPhase === "pre-seleksi") {
+    return "semifinal";
+  }
+  if (isKaggle && userPhase === "pre-seleksi" && !restrictToSemifinalTopics) {
+    return "final";
+  }
+  return userPhase;
+}
 
 /** Split total questions into study-case sizes of 3–5 that sum exactly. */
 export function partitionStudyCaseSizes(total: number): number[] {
@@ -304,6 +336,7 @@ const ALL_ANSWER_TYPES: AiMockAnswerType[] = [
   "short_string",
   "python_output",
   "codeSpec",
+  "notebook_submission",
 ];
 
 export function buildAiMockPlan(params: {
@@ -342,10 +375,10 @@ export function buildAiMockPlan(params: {
     track = topicPairs[0]!.track;
   }
 
-  // Kaggle: all codeSpec weight 5. Study-case: numeric-adjacent. Else ~70:30 mix.
+  // Kaggle: notebook competitions weight 5. Study-case: numeric-adjacent. Else ~70:30 mix.
   const mix = isKaggle
     ? Array.from({ length: count }, () => ({
-        answerType: "codeSpec" as const,
+        answerType: "notebook_submission" as const,
         weight: KAGGLE_CODING_WEIGHT,
       }))
     : isStudyCase
@@ -361,14 +394,11 @@ export function buildAiMockPlan(params: {
     ? { codingCount: count, numericCount: 0 }
     : codingCountForTotal(count, sizeMeta.codingRatio);
 
-  const restrictToSemifinalTopics = params.difficultyMode === "semifinal";
-  // Semifinal difficulty keeps topic restrict; otherwise kaggle biases to final.
-  let effectivePhase: Phase = phase;
-  if (restrictToSemifinalTopics && phase === "pre-seleksi") {
-    effectivePhase = "semifinal";
-  } else if (isKaggle && phase === "pre-seleksi" && !restrictToSemifinalTopics) {
-    effectivePhase = "final";
-  }
+  const generationPhase = resolveGenerationPhase(
+    phase,
+    params.difficultyMode,
+    isKaggle,
+  );
 
   const slots: AiMockSlot[] = [];
   for (let i = 0; i < count; i++) {
@@ -387,13 +417,16 @@ export function buildAiMockPlan(params: {
       questionTrack = TRACK_CYCLE[i % TRACK_CYCLE.length]!;
       topic = pickTopicForTrack(
         questionTrack,
-        effectivePhase,
+        generationPhase,
         params.preferredTopic,
-        { restrictToSemifinalTopics },
+        {
+          restrictToSemifinalTopics:
+            params.difficultyMode === "semifinal",
+        },
       );
     } else {
-      topic = pickTopicForTrack(track, effectivePhase, params.preferredTopic, {
-        restrictToSemifinalTopics,
+      topic = pickTopicForTrack(track, generationPhase, params.preferredTopic, {
+        restrictToSemifinalTopics: params.difficultyMode === "semifinal",
       });
     }
 
@@ -405,6 +438,9 @@ export function buildAiMockPlan(params: {
       difficulty,
       answerType: slotMix.answerType,
       weight: slotMix.weight,
+      scoringMetric: isKaggle
+        ? KAGGLE_SLOT_METRICS[i % KAGGLE_SLOT_METRICS.length]
+        : undefined,
     });
   }
 
@@ -453,7 +489,7 @@ export function buildAiMockPlan(params: {
       : params.topicPrompt,
   });
   const description = isKaggle
-    ? `${count} soal coding marathon gaya Kaggle style (${durationMinutes} menit). Dibuat otomatis; fokus implementasi Python in-exam.`
+    ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit). Unduh .ipynb + data, kerjakan lokal, Submit CSV untuk dinilai.`
     : isStudyCase
       ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
       : generationMode === "custom" && params.topicPrompt
@@ -476,6 +512,8 @@ export function buildAiMockPlan(params: {
       codingCount: isStudyCase ? 0 : codingCount,
       numericCount: isStudyCase ? count : numericCount,
       phase,
+      generationPhase,
+      examFormat: isKaggle ? "kaggle" : "standard",
     },
   };
 }

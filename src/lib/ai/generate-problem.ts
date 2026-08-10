@@ -30,6 +30,7 @@ import {
   TOPIC_LABELS,
   type Problem,
   type TrackId,
+  type SubmissionScoringMode,
 } from "@/lib/content/types";
 import type { Phase } from "@/lib/user/phase";
 
@@ -58,6 +59,7 @@ const ANSWER_TYPES = [
   "mcq",
   "python_output",
   "codeSpec",
+  "notebook_submission",
 ] as const;
 
 const MAX_LESSON_BODY_CHARS = 2200;
@@ -134,8 +136,10 @@ export async function generateAndStoreProblem(params: {
   focusPrompt?: string;
   /** When true, prompt model for diagram specs and materialize SVG figures. */
   includeFigures?: boolean;
-  /** Longer Kaggle-style codeSpec (richer stem, ≥5 tests, weight 5). */
+  /** Longer Kaggle-style competition (notebook + CSV submit, weight 5). */
   longFormCoding?: boolean;
+  /** Preferred scoring metric for kaggle competitions. */
+  preferredScoringMetric?: SubmissionScoringMode;
   /** User prep phase — IOAI refs injected for semifinal/final. */
   phase?: Phase;
   baseUrl: string;
@@ -178,10 +182,16 @@ export async function generateAndStoreProblem(params: {
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
+  const isCompetition =
+    params.longFormCoding || answerType === "notebook_submission";
+  const scoringMetric: SubmissionScoringMode =
+    params.preferredScoringMetric ?? "accuracy";
   const ioaiBlock = await buildIoaiReferenceContext({
     track: params.track,
     topic: params.topic,
     phase: params.phase ?? "pre-seleksi",
+    forceInclude: isCompetition,
+    limit: isCompetition ? 8 : undefined,
   });
   const focusBlock = params.focusPrompt?.trim()
     ? `
@@ -212,45 +222,52 @@ Gambar:
 - Jika tidak butuh geometri, jangan sertakan imagePrompts dan jangan tulis placeholder {{fig:...}}.
 `;
 
+  const effectiveAnswerType = isCompetition
+    ? "notebook_submission"
+    : answerType;
+
   const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS${
-    params.longFormCoding && answerType === "codeSpec"
-      ? ", bergaya Kaggle style / coding marathon (satu tantangan implementasi yang dalam)"
+    isCompetition
+      ? ", bergaya kompetisi Kaggle/IOAI (satu challenge notebook: overview, data CSV kecil, metrik penilaian)"
       : ", bergaya studi kasus PREDIKSI (cerita konkret, hitung-lalu-pilih)"
   }.
 
 Track: ${params.track} (${TRACKS[params.track].name})
 Topic: ${params.topic} (${TOPIC_LABELS[params.topic] ?? params.topic})
 Difficulty: ${difficulty} (1 mudah .. 5 sulit)
-AnswerType: ${answerType}
-
+AnswerType: ${effectiveAnswerType}
+${isCompetition ? `Scoring metric WAJIB: ${scoringMetric}\n` : ""}
 ${syllabus}
 ${ioaiBlock ? `\n${ioaiBlock}\n` : ""}
 ${focusBlock}
-${figureBlock}
+${isCompetition ? "" : figureBlock}
 ${
-  answerType === "codeSpec"
-    ? params.longFormCoding
-      ? `WAJIB: JSON berisi field persis ini (string kecuali ditentukan lain):
-- "title": string pendek ≤ 120 char
+  isCompetition
+    ? `WAJIB: JSON berisi field persis ini:
+- "title": string pendek ≤ 120 char (nama kompetisi)
 - "track": "${params.track}"
 - "topic": "${params.topic}"
 - "difficulty": ${difficulty}
-- "answerType": "codeSpec"
-- "stem": string markdown kaya — gabungkan di sini: konteks/latar, spesifikasi I/O lengkap, constraints, contoh input/output, edge case. Gunakan heading ## / daftar untuk keterbacaan. JANGAN pecah jadi field lain (story/inputFormat/...); semuanya masuk "stem".
-- "answer": boleh string ringkas (mis. "lihat testCases") — penilaian dari test case.
-- "solution": string 3–8 kalimat menjelaskan ide algoritma + kompleksitas.
-- "codeSpec": object { skeleton, testCases, timeLimitMs, memoryLimitMb }
-  - skeleton: string Python WAJIB berisi marker "# >>> WRITE HERE <<<" … "# <<< END <<<".
-  - testCases: array ≥ 5 {input, expectedOutput}; termasuk edge case.
-  - timeLimitMs: integer 500–10000.
-  - memoryLimitMb: integer 64–1024.
+- "answerType": "notebook_submission"
+- "stem": ringkasan singkat 2–4 kalimat untuk daftar kompetisi
+- "answer": "lihat submission"
+- "solution": 3–8 kalimat ide baseline + metrik
 - "weight": 5
-- "tags": [], tambahkan "prediksi-style" dan "kaggle-style".
+- "tags": ["kaggle-style","ioai-style","prediksi-style"]
+- "competitionSpec": object:
+  - "overview": markdown kaya (pernyataan masalah, deskripsi kolom, aturan, metrik ${scoringMetric})
+  - "scoring": { "mode": "${scoringMetric}", "label": string manusiawi }
+  - "files": array minimal train.csv, test.csv (tanpa label), sample_submission.csv
+    - setiap file: { "name", "description", "content" } — content = CSV teks lengkap
+    - train ≤ 120 baris data; test ≤ 40 baris; data SINTETIS kecil (boleh numerik/teks sederhana)
+  - "submission": { "idColumn": "id", "targetColumn": "prediction", "columns": ["id","prediction"] }
+  - "hiddenLabelsCsv": CSV id,prediction untuk SEMUA baris test (server-only)
 
-Jangan minta siswa pindah tab / buka IDE eksternal / unduh dataset eksternal.
-Fokus implementasi algoritma/ML kecil yang realistis in-exam dalam ~1–2 jam.
+Silabus EKKA membatasi topik; referensi IOAI menginspirasi bentuk tantangan/metrik — buat ORISINAL, jangan salin dataset/cerita IOAI.
+Siswa akan unduh notebook + CSV, kerjakan lokal, lalu Submit submission.csv.
 `
-      : `Instruksi coding Python (OSN AI 2026 / codeSpec):
+    : effectiveAnswerType === "codeSpec"
+      ? `Instruksi coding Python (OSN AI 2026 / codeSpec):
 - WAJIB isi "codeSpec" dengan skeleton berisi marker "# >>> WRITE HERE <<<" … "# <<< END <<<".
   (opsional: lockedRanges [[startLine,endLine],…] 1-based bila marker belum ada)
 - WAJIB ≥ 3 testCases {input, expectedOutput}; sertakan edge case.
@@ -259,29 +276,34 @@ Fokus implementasi algoritma/ML kecil yang realistis in-exam dalam ~1–2 jam.
 - answer boleh string ringkas (mis. "lihat testCases") — penilaian dari test case.
 - Jangan minta siswa pindah tab / buka IDE eksternal.
 `
-    : answerType === "python_output"
-      ? `Instruksi Python legacy (python_output):
+      : effectiveAnswerType === "python_output"
+        ? `Instruksi Python legacy (python_output):
 - WAJIB isi "starterCode" dengan program lengkap untuk runner in-exam.
 - Jangan minta siswa pindah tab / buka IDE eksternal.
 - Jawaban = stdout deterministik dari starterCode.
 `
-      : answerType === "numeric"
-        ? `Instruksi numeric (OSN AI 2026):
+        : effectiveAnswerType === "numeric"
+          ? `Instruksi numeric (OSN AI 2026):
 - WAJIB isi "numericFormat": integer | decimal | space_separated | comma_separated.
   (alias "expectedFormat" juga diterima, tapi prefer numericFormat)
 - Jawaban harus PERSIS sesuai format (integer: "25" bukan "25.0").
 - Sebutkan format di stem.
 - weight = 1.
 `
-        : ""
+          : ""
 }Instruksi akhir:
 - Soal harus dapat diselesaikan hanya dengan materi di atas + prasyarat sangat dasar.
 - Jika memakai konsep matematika non-SMA, jelaskan 1–3 kalimat di awal stem.
 - Jangan menguji topic lain di luar "${params.topic}".
 - Field track/topic/difficulty/answerType pada JSON harus sesuai permintaan.
-- JANGAN bikin field terpisah (story/inputFormat/constraints/examples/...); semua penjelasan I/O, constraints, contoh, dan edge case harus masuk "stem" sebagai markdown.
+${
+  isCompetition
+    ? `- Semua deskripsi kompetisi masuk competitionSpec.overview; stem cukup ringkas.
+- Tambahkan "kaggle-style" dan "ioai-style" di tags.`
+    : `- JANGAN bikin field terpisah (story/inputFormat/constraints/examples/...); semua penjelasan I/O, constraints, contoh, dan edge case harus masuk "stem" sebagai markdown.
 - Solusi 3–8 kalimat; rumus boleh KaTeX $...$ atau plain text.
-- Tambahkan "prediksi-style" di tags${params.longFormCoding ? '; tambahkan juga "kaggle-style"' : ""}.
+- Tambahkan "prediksi-style" di tags.`
+}
 - Balas HANYA satu objek JSON SOAL (bukan JSON Schema).`;
 
   let payload: GeneratedProblemPayload | null = null;
@@ -525,11 +547,14 @@ PERINGATAN PERCOBAAN ULANG:
     weight:
       params.weight ??
       payload.weight ??
-      (payload.answerType === "codeSpec" || payload.codeSpec
-        ? params.longFormCoding
-          ? 5
-          : 2
-        : 1),
+      (payload.answerType === "notebook_submission" ||
+      payload.competitionSpec
+        ? 5
+        : payload.answerType === "codeSpec" || payload.codeSpec
+          ? params.longFormCoding
+            ? 5
+            : 2
+          : 1),
   };
 
   const db = await getDb();

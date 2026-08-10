@@ -213,6 +213,8 @@ export async function resolvePracticeMock(
         override.payload.penaltyMinutesPerWrong ??
         row.penaltyMinutesPerWrong ??
         1,
+      examFormat:
+        (row.examFormat as "standard" | "kaggle" | undefined) ?? "standard",
     };
   }
 
@@ -230,6 +232,8 @@ export async function resolvePracticeMock(
     createdAt: row.createdAt,
     penaltyEnabled: row.penaltyEnabled ?? true,
     penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 1,
+    examFormat:
+      (row.examFormat as "standard" | "kaggle" | undefined) ?? "standard",
   };
 }
 
@@ -269,6 +273,7 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
       creatorName: user.name,
       penaltyEnabled: generatedMocks.penaltyEnabled,
       penaltyMinutesPerWrong: generatedMocks.penaltyMinutesPerWrong,
+      examFormat: generatedMocks.examFormat,
     })
     .from(generatedMocks)
     .leftJoin(user, eq(generatedMocks.createdBy, user.id))
@@ -297,6 +302,8 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
           ov.payload.penaltyMinutesPerWrong ??
           row.penaltyMinutesPerWrong ??
           1,
+        examFormat:
+          (row.examFormat as "standard" | "kaggle" | undefined) ?? "standard",
       };
     }
     return {
@@ -313,6 +320,8 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
       createdAt: row.createdAt,
       penaltyEnabled: row.penaltyEnabled ?? true,
       penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 1,
+      examFormat:
+        (row.examFormat as "standard" | "kaggle" | undefined) ?? "standard",
     };
   });
 

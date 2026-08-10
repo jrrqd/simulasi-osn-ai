@@ -18,7 +18,12 @@ import {
   DEFAULT_WRITE_CLOSE,
   DEFAULT_WRITE_OPEN,
 } from "@/lib/ai/code-skeleton";
-import type { CodeSpec, NumericFormat } from "@/lib/content/types";
+import type {
+  CodeSpec,
+  CompetitionSpec,
+  NumericFormat,
+  SubmissionScoringMode,
+} from "@/lib/content/types";
 
 const answerTypeSchema = z.enum([
   "numeric",
@@ -27,6 +32,7 @@ const answerTypeSchema = z.enum([
   "python_output",
   "codeSpec",
   "mcq",
+  "notebook_submission",
 ]);
 
 const numericFormatSchema = z.enum([
@@ -34,6 +40,13 @@ const numericFormatSchema = z.enum([
   "decimal",
   "space_separated",
   "comma_separated",
+]);
+
+const submissionScoringModeSchema = z.enum([
+  "accuracy",
+  "f1_macro",
+  "rmse",
+  "mae",
 ]);
 
 const codeSpecTestCaseSchema = z.object({
@@ -54,6 +67,27 @@ const codeSpecSchema = z.object({
   timeLimitMs: z.coerce.number().default(2000),
   memoryLimitMb: z.coerce.number().default(256),
   forbiddenImports: z.array(z.coerce.string()).optional(),
+});
+
+const competitionFileSchema = z.object({
+  name: z.coerce.string().min(1),
+  description: z.coerce.string().optional(),
+  content: z.coerce.string().min(1),
+});
+
+const competitionSpecSchema = z.object({
+  overview: z.coerce.string().min(20),
+  scoring: z.object({
+    mode: submissionScoringModeSchema,
+    label: z.coerce.string().optional(),
+  }),
+  files: z.array(competitionFileSchema).min(2),
+  submission: z.object({
+    idColumn: z.coerce.string().default("id"),
+    targetColumn: z.coerce.string().default("prediction"),
+    columns: z.array(z.coerce.string()).optional(),
+  }),
+  hiddenLabelsCsv: z.coerce.string().min(1),
 });
 
 export const generatedProblemSchema = z.object({
@@ -81,6 +115,7 @@ export const generatedProblemSchema = z.object({
   numericFormat: numericFormatSchema.optional(),
   weight: z.coerce.number().optional(),
   codeSpec: codeSpecSchema.optional(),
+  competitionSpec: competitionSpecSchema.optional(),
   /** Raw figure specs from the model; materialized after id assignment. */
   figures: z.array(z.unknown()).optional(),
   /**
@@ -109,7 +144,8 @@ export type GeneratedProblemPayload = {
     | "multi_part"
     | "python_output"
     | "codeSpec"
-    | "mcq";
+    | "mcq"
+    | "notebook_submission";
   stem: string;
   answer: string | number | string[];
   tolerance?: number;
@@ -120,6 +156,7 @@ export type GeneratedProblemPayload = {
   numericFormat?: NumericFormat;
   weight?: number;
   codeSpec?: CodeSpec;
+  competitionSpec?: CompetitionSpec;
   figures?: unknown[];
   imagePrompts?: { id: string; alt: string; prompt: string }[];
   legacy?: boolean;
@@ -143,6 +180,35 @@ function normalizeCodeSpec(
     timeLimitMs: raw.timeLimitMs,
     memoryLimitMb: raw.memoryLimitMb,
     forbiddenImports: raw.forbiddenImports,
+  };
+}
+
+function normalizeCompetitionSpec(
+  raw: z.infer<typeof competitionSpecSchema> | undefined,
+): CompetitionSpec | undefined {
+  if (!raw) return undefined;
+  const idColumn = raw.submission.idColumn || "id";
+  const targetColumn = raw.submission.targetColumn || "prediction";
+  return {
+    overview: raw.overview,
+    scoring: {
+      mode: raw.scoring.mode as SubmissionScoringMode,
+      label: raw.scoring.label,
+    },
+    files: raw.files.map((f) => ({
+      name: f.name,
+      description: f.description,
+      content: f.content,
+    })),
+    submission: {
+      idColumn,
+      targetColumn,
+      columns:
+        raw.submission.columns && raw.submission.columns.length > 0
+          ? raw.submission.columns
+          : [idColumn, targetColumn],
+    },
+    hiddenLabelsCsv: raw.hiddenLabelsCsv,
   };
 }
 
@@ -402,10 +468,14 @@ export function normalizeGeneratedProblem(
     starterCode = extractPythonStarterFromStem(raw.stem);
   }
   const codeSpec = normalizeCodeSpec(raw.codeSpec);
+  const competitionSpec = normalizeCompetitionSpec(raw.competitionSpec);
   // If codeSpec present but answerType still python_output, upgrade
   let answerType = raw.answerType;
   if (codeSpec && answerType === "python_output") {
     answerType = "codeSpec";
+  }
+  if (competitionSpec && answerType !== "notebook_submission") {
+    answerType = "notebook_submission";
   }
   return {
     ...raw,
@@ -423,8 +493,13 @@ export function normalizeGeneratedProblem(
     numericFormat: raw.numericFormat,
     weight:
       raw.weight ??
-      (answerType === "codeSpec" || codeSpec ? 2 : undefined),
+      (answerType === "notebook_submission" || competitionSpec
+        ? 5
+        : answerType === "codeSpec" || codeSpec
+          ? 2
+          : undefined),
     codeSpec,
+    competitionSpec,
     figures: raw.figures,
     imagePrompts: raw.imagePrompts?.map((p) => ({
       id: String(p.id).trim(),

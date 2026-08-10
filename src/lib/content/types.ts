@@ -6,7 +6,8 @@ export type AnswerType =
   | "multi_part"
   | "python_output"
   | "codeSpec"
-  | "mcq";
+  | "mcq"
+  | "notebook_submission";
 
 /** Strict answer format for numeric short-fill (OSN AI 2026). */
 export type NumericFormat =
@@ -14,6 +15,60 @@ export type NumericFormat =
   | "decimal"
   | "space_separated"
   | "comma_separated";
+
+/** Kaggle-clone competition scoring modes (proportional 0–1). */
+export type SubmissionScoringMode =
+  | "accuracy"
+  | "f1_macro"
+  | "rmse"
+  | "mae";
+
+export type SubmissionScoring = {
+  mode: SubmissionScoringMode;
+  /** Human label shown in UI, e.g. "Accuracy", "Macro F1". */
+  label?: string;
+};
+
+export type CompetitionPublicFile = {
+  name: string;
+  description?: string;
+  /** Embedded CSV content (small, in-exam sized). */
+  content: string;
+};
+
+export type CompetitionSpec = {
+  overview: string;
+  scoring: SubmissionScoring;
+  files: CompetitionPublicFile[];
+  submission: {
+    idColumn: string;
+    targetColumn: string;
+    columns: string[];
+  };
+  /** Server-only — never sent to student clients. */
+  hiddenLabelsCsv?: string;
+};
+
+/** Client-safe competition shape (no hidden labels). */
+export type ClientCompetitionFile = {
+  name: string;
+  description?: string;
+  preview?: string;
+  rowCount?: number;
+};
+
+export type ClientCompetitionSpec = {
+  overview: string;
+  scoring: SubmissionScoring;
+  files: ClientCompetitionFile[];
+  submission: {
+    idColumn: string;
+    targetColumn: string;
+    columns: string[];
+  };
+};
+
+export type ExamFormat = "standard" | "kaggle";
 
 export type CodeSpecTestCase = {
   input: string;
@@ -121,6 +176,8 @@ export type Problem = {
   weight?: number;
   /** Coding with locked skeleton + multi test cases. */
   codeSpec?: CodeSpec;
+  /** Kaggle-clone competition (notebook download + CSV submit). */
+  competitionSpec?: CompetitionSpec;
   /**
    * Alias of numericFormat (plan name: expectedFormat).
    * Prefer numericFormat; both accepted at load/score time.
@@ -179,6 +236,8 @@ export type MockExam = {
   penaltyEnabled?: boolean;
   /** Minutes added per wrong submit on a eventually-solved problem (default 1). */
   penaltyMinutesPerWrong?: number;
+  /** standard = linear exam; kaggle = competition workspace UI. */
+  examFormat?: ExamFormat;
 };
 
 export const TRACKS: Record<
@@ -272,14 +331,21 @@ export const TOPIC_LABELS: Record<string, string> = {
   "transformer-lanjut": "Transformer Lanjut",
 };
 
-/** Default weight: coding 2×, everything else 1× (OSN AI 2026). */
+/** Default weight: coding 2×, notebook competition 5×, everything else 1×. */
 export function defaultProblemWeight(problem: {
   answerType?: string | null;
   weight?: number | null;
   codeSpec?: unknown;
+  competitionSpec?: unknown;
 }): number {
   if (typeof problem.weight === "number" && Number.isFinite(problem.weight)) {
     return Math.max(0, problem.weight);
+  }
+  if (
+    problem.answerType === "notebook_submission" ||
+    problem.competitionSpec
+  ) {
+    return 5;
   }
   if (problem.answerType === "codeSpec" || problem.codeSpec) return 2;
   return 1;
@@ -288,10 +354,13 @@ export function defaultProblemWeight(problem: {
 export function isCodingProblem(problem: {
   answerType?: string | null;
   codeSpec?: unknown;
+  competitionSpec?: unknown;
 }): boolean {
   return (
     problem.answerType === "codeSpec" ||
     Boolean(problem.codeSpec) ||
-    problem.answerType === "python_output"
+    problem.answerType === "python_output" ||
+    problem.answerType === "notebook_submission" ||
+    Boolean(problem.competitionSpec)
   );
 }

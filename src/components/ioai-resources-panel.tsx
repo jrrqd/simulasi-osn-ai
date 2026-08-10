@@ -22,8 +22,6 @@ export async function IoaiResourcesPanel({
   topic?: string;
   limit?: number;
 }) {
-  if (phase === "pre-seleksi") return null;
-
   const trackId =
     track === "A" || track === "B" || track === "C" || track === "D"
       ? track
@@ -40,6 +38,12 @@ export async function IoaiResourcesPanel({
 
   const competitions = resources.filter((r) => r.category !== "course");
   const courses = resources.filter((r) => r.category === "course");
+  const phaseLabel =
+    phase === "final"
+      ? "final"
+      : phase === "semifinal"
+        ? "semifinal"
+        : "pre-seleksi";
 
   return (
     <section className="panel space-y-3 rounded-3xl p-5">
@@ -50,7 +54,8 @@ export async function IoaiResourcesPanel({
         <h2 className="display text-2xl">Persiapan olimpiade internasional</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Tautan terbuka dari Education Hub &amp; seleksi nasional — inspirasi
-          gaya soal (bukan salinan). Fase {phase === "final" ? "final" : "semifinal"}.
+          gaya soal (bukan salinan). Tersedia di semua fase (saat ini:{" "}
+          {phaseLabel}).
         </p>
       </div>
 

@@ -52,7 +52,6 @@ export function GenerateMockChallenge() {
   const sizeMeta =
     AI_MOCK_SIZES.find((s) => s.value === size) ?? AI_MOCK_SIZES[0]!;
   const isKaggle = isKaggleSize(size);
-  const isKaggle150 = size === "kaggle-150";
   const effectiveMode: GenerationMode =
     isKaggle && generationMode === "study-case" ? "standard" : generationMode;
   const quotaExhausted =
@@ -97,7 +96,7 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Pilih Kaggle style untuk 2 atau 3 coding marathon (150 / 300 menit).`}
+      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Pilih Kaggle style untuk 3 kompetisi notebook IOAI · 150 menit.`}
       accent="accent"
     >
       <PhaseHintBanner />
@@ -145,26 +144,15 @@ export function GenerateMockChallenge() {
           }}
           disabled={loading}
         >
-          Kaggle style · 150 menit
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle" ? "btn-accent" : "btn-secondary"}`}
-          onClick={() => {
-            setSize("kaggle");
-            if (generationMode === "study-case") setGenerationMode("standard");
-          }}
-          disabled={loading}
-        >
-          Kaggle style · 5 jam
+          Kaggle style · 3 kompetisi · 150 menit
         </button>
       </div>
 
       {isKaggle ? (
         <p className="text-xs text-[var(--muted)]">
-          {isKaggle150
-            ? "Format Kaggle style: 2 soal coding panjang · 150 menit. Studi kasus PREDIKSI tidak tersedia untuk ukuran ini."
-            : "Format Kaggle style: 3 soal coding panjang · 300 menit. Studi kasus PREDIKSI tidak tersedia untuk ukuran ini."}
+          Format Kaggle/IOAI: 3 kompetisi notebook · 150 menit. Unduh .ipynb +
+          data, kerjakan lokal, Submit CSV. Referensi arsip IOAI dipakai saat
+          generate. Studi kasus PREDIKSI tidak tersedia untuk ukuran ini.
         </p>
       ) : effectiveMode === "study-case" ? (
         <p className="text-xs text-[var(--muted)]">
@@ -290,9 +278,7 @@ export function GenerateMockChallenge() {
         {loading
           ? "Menghasilkan…"
           : isKaggle
-            ? isKaggle150
-              ? "Buat simulasi Kaggle 150 menit"
-              : "Buat simulasi Kaggle 5 jam"
+            ? "Buat simulasi Kaggle · 3 kompetisi · 150 menit"
             : effectiveMode === "study-case"
               ? "Buat simulasi studi kasus"
               : effectiveMode === "custom"

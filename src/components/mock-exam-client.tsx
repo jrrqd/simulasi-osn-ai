@@ -83,6 +83,7 @@ export function MockExamClient({
   problems,
   penaltyEnabled: penaltyEnabledProp = true,
   penaltyMinutesPerWrong: penaltyPerWrongProp = DEFAULT_PENALTY_MINUTES_PER_WRONG,
+  integrityMode = "strict",
 }: {
   mockId: string;
   title: string;
@@ -90,6 +91,7 @@ export function MockExamClient({
   problems: ExamFacingProblem[];
   penaltyEnabled?: boolean;
   penaltyMinutesPerWrong?: number;
+  integrityMode?: "strict" | "off";
 }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<string | null>(null);
@@ -285,7 +287,9 @@ export function MockExamClient({
       setError(data.error || "Gagal mengirim jawaban");
       return;
     }
-    await exitFullscreen();
+    if (integrityMode === "strict") {
+      await exitFullscreen();
+    }
     setResult(data);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -311,7 +315,8 @@ export function MockExamClient({
     requestFullscreen,
     exitFullscreen,
   } = useExamIntegrity({
-    enabled: Boolean(sessionId && endsAt && !result),
+    enabled:
+      integrityMode === "strict" && Boolean(sessionId && endsAt && !result),
     sessionId,
     initial: initialIntegrity,
     onPersist: persistIntegrity,
@@ -347,7 +352,9 @@ export function MockExamClient({
     setStarting(true);
     setError("");
     // Request while still in the click gesture (best-effort).
-    void requestFullscreen();
+    if (integrityMode === "strict") {
+      void requestFullscreen();
+    }
     const response = await fetch("/api/mocks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -398,12 +405,38 @@ export function MockExamClient({
           <li>AI tutor dinonaktifkan selama ujian.</li>
           <li>Sesi aktif akan dilanjutkan jika halaman sempat tertutup.</li>
           <li>Ujian otomatis dikumpulkan saat waktu habis.</li>
-          <li>
-            Mode layar penuh akan diminta saat mulai. Jangan pindah ke tab lain
-            atau jendela lain. Tetap di tab ujian diperbolehkan (termasuk
-            runner Python di halaman). Jangan memakai alat eksternal / ekstensi
-            AI.
-          </li>
+          {integrityMode === "strict" ? (
+            <>
+              <li>
+                Mode layar penuh akan diminta saat mulai. Jangan pindah ke tab
+                lain atau jendela lain. Tetap di tab ujian diperbolehkan
+                (termasuk runner Python di halaman). Jangan memakai alat
+                eksternal / ekstensi AI.
+              </li>
+              <li>
+                Pemantauan integritas: hanya meninggalkan tab (≥1,5 detik
+                halaman tersembunyi) yang dihitung sebagai peringatan.{" "}
+                {INTEGRITY_FLAG_AT} peringatan → sesi ditandai;{" "}
+                {INTEGRITY_FORCE_SUBMIT_AT} peringatan → ujian dikumpulkan
+                otomatis.
+              </li>
+              <li>
+                Diam di tab ujian diperbolehkan — termasuk menghitung manual di
+                kertas atau tidak mengklik apa pun. Tidak ada deteksi
+                &quot;inaktivitas&quot; selama tab tetap terbuka.
+              </li>
+              <li>
+                Platform web tidak bisa sepenuhnya memblokir ekstensi AI atau
+                perangkat kedua — ini adalah deteksi dan audit, bukan lockdown.
+              </li>
+            </>
+          ) : (
+            <li>
+              Integritas: mode layar penuh browser tidak dipakai (fase
+              semifinal/final — pada event resmi diawasi proctor Zoom + rekam
+              layar). Multi-tab diperbolehkan dalam latihan ini.
+            </li>
+          )}
           {penaltyEnabledProp ? (
             <li>
               Submission penalty (tie-breaker ICPC): kumpulkan per soal untuk
@@ -412,21 +445,6 @@ export function MockExamClient({
               kebenaran.
             </li>
           ) : null}
-          <li>
-            Pemantauan integritas: hanya meninggalkan tab (≥1,5 detik halaman
-            tersembunyi) yang dihitung sebagai peringatan. {INTEGRITY_FLAG_AT}{" "}
-            peringatan → sesi ditandai; {INTEGRITY_FORCE_SUBMIT_AT} peringatan →
-            ujian dikumpulkan otomatis.
-          </li>
-          <li>
-            Diam di tab ujian diperbolehkan — termasuk menghitung manual di
-            kertas atau tidak mengklik apa pun. Tidak ada deteksi
-            &quot;inaktivitas&quot; selama tab tetap terbuka.
-          </li>
-          <li>
-            Platform web tidak bisa sepenuhnya memblokir ekstensi AI atau
-            perangkat kedua — ini adalah deteksi dan audit, bukan lockdown.
-          </li>
         </ul>
         {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
         <button
@@ -442,7 +460,7 @@ export function MockExamClient({
 
   return (
     <div className="space-y-5">
-      {showReturnOverlay && (
+      {integrityMode === "strict" && showReturnOverlay && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
           <div className="panel max-w-md space-y-4 rounded-3xl p-6 text-center shadow-lg">
             <h2 className="display text-2xl">Kembali ke ujian</h2>
@@ -451,7 +469,7 @@ export function MockExamClient({
               integritas ({integrity.violationCount}/
               {INTEGRITY_FORCE_SUBMIT_AT}).
             </p>
-            {integrity.flagged && (
+            {integrityMode === "strict" && integrity.flagged && (
               <p className="text-sm font-semibold text-[var(--bad)]">
                 Sesi ini sudah ditandai untuk tinjauan admin.
               </p>
@@ -506,7 +524,7 @@ export function MockExamClient({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            {integrity.violationCount > 0 && (
+            {integrityMode === "strict" && integrity.violationCount > 0 && (
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
                   integrity.flagged
@@ -536,7 +554,7 @@ export function MockExamClient({
         ) : null}
       </div>
 
-      {integrity.flagged && (
+      {integrityMode === "strict" && integrity.flagged && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--bad)]">
           Sesi ditandai karena terlalu sering meninggalkan halaman. Hasil tetap
           dinilai, tetapi admin dapat melihat catatan integritas.

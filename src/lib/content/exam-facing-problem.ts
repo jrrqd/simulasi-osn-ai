@@ -1,12 +1,18 @@
-import type { ClientCodeSpec, Problem } from "@/lib/content/types";
+import type {
+  ClientCodeSpec,
+  ClientCompetitionSpec,
+  Problem,
+} from "@/lib/content/types";
 import { resolveNumericFormat } from "@/lib/content/types";
+import { toClientCompetitionSpec } from "@/lib/competition/competition-spec";
 
 /** Problem shape safe to send to student clients (no keys, solutions, or tests). */
 export type ExamFacingProblem = Omit<
   Problem,
-  "answer" | "solution" | "parts" | "codeSpec"
+  "answer" | "solution" | "parts" | "codeSpec" | "competitionSpec"
 > & {
   codeSpec?: ClientCodeSpec;
+  competitionSpec?: ClientCompetitionSpec;
   parts?: Omit<NonNullable<Problem["parts"]>[number], "answer">[];
 };
 
@@ -41,6 +47,9 @@ export function toExamFacingProblem(problem: Problem): ExamFacingProblem {
           forbiddenImports: problem.codeSpec.forbiddenImports,
           testCaseCount: problem.codeSpec.testCases.length,
         }
+      : undefined,
+    competitionSpec: problem.competitionSpec
+      ? toClientCompetitionSpec(problem.competitionSpec)
       : undefined,
     legacy: problem.legacy,
     parts: problem.parts?.map((part) => ({

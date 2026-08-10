@@ -70,7 +70,6 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
   const focus = topicFocusLabel(input.topicLabels, input.topicPrompt);
   const isFull = (input.count ?? 0) >= 40;
   const isKaggle = input.size === "kaggle" || input.size === "kaggle-150";
-  const isKaggle150 = input.size === "kaggle-150";
   const isCustom = input.generationMode === "custom" || Boolean(focus);
   const curated = input.kind === "curated_assembled";
 
@@ -78,10 +77,8 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
 
   if (isKaggle) {
     title = trackLabel
-      ? `Tryout Kaggle style ${trackLabel}${isKaggle150 ? " · 150 menit" : ""}`
-      : isKaggle150
-        ? "Tryout Kaggle style · 150 menit"
-        : "Tryout Kaggle style · coding marathon";
+      ? `Tryout Kaggle/IOAI ${trackLabel} · 150 menit`
+      : "Tryout Kaggle/IOAI · 3 coding · 150 menit";
   } else if (isCustom && focus) {
     title = curated ? `Paket curated: ${focus}` : `Fokus ${focus}`;
   } else if (isCustom) {

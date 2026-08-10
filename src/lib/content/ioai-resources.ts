@@ -238,7 +238,8 @@ export async function getIoaiResourcesForPhase(
     includeCourses?: boolean;
   },
 ): Promise<IoaiResource[]> {
-  if (phase === "pre-seleksi") return [];
+  // Available for all prep phases (pre-seleksi, semifinal, final).
+  void phase;
   return getIoaiResourcesForTopic(opts?.track, opts?.topic, {
     limit: opts?.limit ?? DEFAULT_UI_LIMIT,
     includeCourses: opts?.includeCourses,
@@ -249,13 +250,15 @@ export async function buildIoaiReferenceContext(params: {
   track?: TrackId;
   topic?: string;
   phase: Phase;
+  /** @deprecated Always included for every phase; kept for call-site compat. */
+  forceInclude?: boolean;
+  limit?: number;
 }): Promise<string> {
-  if (params.phase === "pre-seleksi") return "";
+  void params.forceInclude;
+  void params.phase;
 
-  const resources = await getIoaiResourcesForPhase(params.phase, {
-    track: params.track,
-    topic: params.topic,
-    limit: MAX_PROMPT_ENTRIES,
+  const resources = await getIoaiResourcesForTopic(params.track, params.topic, {
+    limit: params.limit ?? MAX_PROMPT_ENTRIES,
     includeCourses: false,
   });
 

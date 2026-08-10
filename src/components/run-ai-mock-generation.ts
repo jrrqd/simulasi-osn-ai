@@ -22,7 +22,7 @@ export type AiMockPlanRequest = {
 
 /**
  * Client-side plan → per-slot/case stream → commit flow for AI mock generation.
- * Shared by the quick (10), full (20/40), and kaggle (2/3) generators.
+ * Shared by the quick (10), full (20/40), and kaggle (3 coding · 150 min) generators.
  */
 export async function runAiMockGeneration(params: {
   request: AiMockPlanRequest;

@@ -67,7 +67,6 @@ export function GenerateCuratedMockChallenge() {
     (sourceMode === "ai" ? AI_MOCK_SIZES[0]! : CURATED_MOCK_SIZES[1]!);
 
   const isKaggle = isKaggleSize(size);
-  const isKaggle150 = size === "kaggle-150";
   const effectiveMode: GenerationMode =
     isKaggle && generationMode === "study-case" ? "standard" : generationMode;
   const quotaExhausted =
@@ -164,7 +163,7 @@ export function GenerateCuratedMockChallenge() {
   return (
     <CollapsiblePanel
       title="Susun simulasi curated / AI penuh"
-      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk Kaggle style (2–3 coding · 150/300 menit) dan studi kasus PREDIKSI.`}
+      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk Kaggle style (3 kompetisi notebook · 150 menit, inspirasi IOAI) dan studi kasus PREDIKSI.`}
       accent="primary"
     >
       <PhaseHintBanner />
@@ -192,9 +191,7 @@ export function GenerateCuratedMockChallenge() {
         {sourceMode === "curated"
           ? "Memilih & mengurutkan soal dari bank curated (bukan menulis soal baru)."
           : isKaggle
-            ? isKaggle150
-              ? "Format Kaggle style: LLM menulis 2 soal coding marathon · 150 menit."
-              : "Format Kaggle style: LLM menulis 3 soal coding marathon · 300 menit."
+            ? "Format Kaggle/IOAI: LLM menulis 3 kompetisi notebook · 150 menit (referensi arsip IOAI)."
             : effectiveMode === "study-case"
               ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus PREDIKSI terkait — progress ditampilkan di bawah.`
               : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
@@ -246,20 +243,7 @@ export function GenerateCuratedMockChallenge() {
             }}
             disabled={loading}
           >
-            Kaggle style · 150 menit
-          </button>
-        ) : null}
-        {sourceMode === "ai" ? (
-          <button
-            type="button"
-            className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => {
-              setSize("kaggle");
-              if (generationMode === "study-case") setGenerationMode("standard");
-            }}
-            disabled={loading}
-          >
-            Kaggle style · 5 jam
+            Kaggle style · 3 kompetisi · 150 menit
           </button>
         ) : null}
       </div>
@@ -387,9 +371,7 @@ export function GenerateCuratedMockChallenge() {
             : "Menyusun…"
           : sourceMode === "ai"
             ? isKaggle
-              ? isKaggle150
-                ? "Generate simulasi Kaggle 150 menit"
-                : "Generate simulasi Kaggle 5 jam"
+              ? "Generate simulasi Kaggle · 3 kompetisi · 150 menit"
               : effectiveMode === "study-case"
                 ? `Generate ${sizeMeta.count} soal studi kasus`
                 : `Generate ${sizeMeta.count} soal AI`

@@ -17,6 +17,8 @@ function isLegacyProblem(p: Problem): boolean {
   const hasNewFields =
     Boolean(p.numericFormat || p.expectedFormat) ||
     Boolean(p.codeSpec) ||
+    Boolean(p.competitionSpec) ||
+    p.answerType === "notebook_submission" ||
     (typeof p.weight === "number" && Number.isFinite(p.weight));
   return !hasNewFields;
 }

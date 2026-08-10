@@ -3,7 +3,26 @@ import { defaultProblemWeight, isCodingProblem } from "@/lib/content/types";
 import {
   scoreAnswer,
   type CodeSpecRunResult,
+  type CompetitionRunResult,
 } from "@/lib/scoring/index";
+
+function competitionResultFromAnswer(
+  submitted: unknown,
+): CompetitionRunResult | null {
+  if (!submitted || typeof submitted !== "object") return null;
+  const row = submitted as Record<string, unknown>;
+  if (typeof row.score !== "number") return null;
+  return {
+    metricValue: Number(row.metricValue) || 0,
+    score: Number(row.score) || 0,
+    metricLabel: String(row.metricLabel || "Metric"),
+    log: String(row.log || ""),
+    summary: typeof row.summary === "string" ? row.summary : undefined,
+    rowCount: Number(row.rowCount) || 0,
+    gradedBy:
+      row.gradedBy === "llm_assisted" ? "llm_assisted" : "deterministic",
+  };
+}
 
 export type MockScoreSummary = {
   earnedWeight: number;
@@ -75,10 +94,16 @@ export function scoreMockProblems(params: {
     }
 
     const submitted = answers[p.id];
+    const competitionResult =
+      p.answerType === "notebook_submission"
+        ? competitionResultFromAnswer(submitted)
+        : null;
     const unanswered =
-      submitted === undefined ||
-      submitted === null ||
-      String(submitted).trim() === "";
+      p.answerType === "notebook_submission"
+        ? !competitionResult
+        : submitted === undefined ||
+          submitted === null ||
+          String(submitted).trim() === "";
 
     const r = scoreAnswer({
       answerType: p.answerType,
@@ -88,6 +113,7 @@ export function scoreMockProblems(params: {
       numericFormat: p.numericFormat ?? p.expectedFormat,
       legacy: p.legacy,
       codeSpecResult: codeResults?.[p.id],
+      competitionResult,
     });
 
     const weightedScore = r.score * weight;
@@ -104,9 +130,13 @@ export function scoreMockProblems(params: {
       weightedScore,
       weight,
       expected:
-        p.answerType === "codeSpec"
-          ? `${codeResult?.passedCount ?? 0}/${codeResult?.totalCount ?? p.codeSpec?.testCases.length ?? 0} test case`
-          : p.answer,
+        p.answerType === "notebook_submission"
+          ? competitionResult
+            ? `${competitionResult.metricLabel}: ${competitionResult.metricValue.toFixed(4)}`
+            : "submission"
+          : p.answerType === "codeSpec"
+            ? `${codeResult?.passedCount ?? 0}/${codeResult?.totalCount ?? p.codeSpec?.testCases.length ?? 0} test case`
+            : p.answer,
       submitted: submitted ?? "",
       track: p.track,
       topic: p.topic,

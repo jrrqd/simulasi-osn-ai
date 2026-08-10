@@ -5,6 +5,7 @@ import {
 } from "@/lib/ai/code-skeleton";
 import { parseNumericInput, validateStrictFormat } from "@/lib/scoring";
 import { validateCodeSpecShape } from "@/lib/scoring/test-case-runner";
+import { validateCompetitionSpec } from "@/lib/competition/competition-spec";
 import {
   alignChoiceToValue,
   formatNumericAnswer,
@@ -80,6 +81,29 @@ export function verifyGeneratedProblem(
       String(next.answer).trim() === ""
     ) {
       next.answer = codeSpec.testCases[0]?.expectedOutput ?? "ok";
+    }
+  } else if (next.answerType === "notebook_submission") {
+    const competitionSpec = next.competitionSpec;
+    if (!competitionSpec) {
+      return {
+        ok: false,
+        payload: next,
+        warnings,
+        error: "competitionSpec wajib untuk answerType=notebook_submission",
+      };
+    }
+    const shape = validateCompetitionSpec(competitionSpec);
+    if (!shape.ok) {
+      return { ok: false, payload: next, warnings, error: shape.error };
+    }
+    next.competitionSpec = competitionSpec;
+    next.weight = next.weight ?? 5;
+    if (
+      next.answer === undefined ||
+      next.answer === null ||
+      String(next.answer).trim() === ""
+    ) {
+      next.answer = "lihat submission";
     }
   } else if (next.answerType === "python_output") {
     const starter = next.starterCode?.trim();

@@ -74,7 +74,7 @@ async function generateSlotProblem(params: {
   onProgress?: GenerationProgressHandler;
 }) {
   const answerRotation: AiMockAnswerType[] = params.longFormCoding
-    ? ["codeSpec", "codeSpec", "codeSpec"]
+    ? ["notebook_submission", "notebook_submission", "notebook_submission"]
     : [
         params.slot.answerType,
         "numeric",
@@ -127,6 +127,7 @@ async function generateSlotProblem(params: {
         answerType: answerRotation[slotAttempt % answerRotation.length],
         weight: params.slot.weight,
         longFormCoding: params.longFormCoding,
+        preferredScoringMetric: params.slot.scoringMetric,
         phase: params.phase,
         baseUrl: params.baseUrl,
         apiKey: params.apiKey,
@@ -348,7 +349,7 @@ export async function POST(req: NextRequest) {
             : undefined,
         difficultyMode: session.meta.difficultyMode,
         longFormCoding: isKaggleSize(session.meta.size),
-        phase: userPhase,
+        phase: session.meta.generationPhase ?? userPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -603,6 +604,7 @@ export async function POST(req: NextRequest) {
       problemIds: problemIds as string[],
       track: session.meta.mockTrack,
       kind: "ai",
+      examFormat: session.meta.examFormat ?? "standard",
     });
 
     return Response.json({
@@ -616,6 +618,7 @@ export async function POST(req: NextRequest) {
         difficultyMode: session.meta.difficultyMode,
         source: "ai" as const,
         generationMode: session.meta.generationMode,
+        examFormat: session.meta.examFormat ?? "standard",
         topics: session.slots.map((s) => s.topic),
       },
     });
@@ -716,7 +719,7 @@ export async function POST(req: NextRequest) {
           generationMode === "custom" ? topicPrompt : undefined,
         difficultyMode,
         longFormCoding: isKaggleSize(size),
-        phase: userPhase,
+        phase: meta.generationPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -744,6 +747,7 @@ export async function POST(req: NextRequest) {
       problemIds,
       track: meta.mockTrack,
       kind: "ai",
+      examFormat: meta.examFormat ?? "standard",
     });
 
     return Response.json({
@@ -758,6 +762,7 @@ export async function POST(req: NextRequest) {
         source: "ai" as const,
         difficulties,
         generationMode,
+        examFormat: meta.examFormat ?? "standard",
         topics: [...usedTopics],
       },
       providerSource: settings.source,

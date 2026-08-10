@@ -17,19 +17,19 @@ test("JSON fallback catalog has curated IOAI resources", () => {
   assert.ok(all.some((r) => r.id === "syllabus-2025"));
 });
 
-test("pre-seleksi phase yields empty prompt context and UI list", async () => {
+test("pre-seleksi phase also yields prompt context and UI list", async () => {
   const ctx = await buildIoaiReferenceContext({
     phase: "pre-seleksi",
     track: "C",
     topic: "cnn-arsitektur",
   });
-  assert.equal(ctx, "");
+  assert.ok(ctx.includes("Referensi kompetisi IOAI"));
 
   const list = await getIoaiResourcesForPhase("pre-seleksi", {
     track: "C",
     topic: "cnn-arsitektur",
   });
-  assert.equal(list.length, 0);
+  assert.ok(list.length > 0);
 });
 
 test("filter: final + cnn-arsitektur returns CV-related entries within limit", () => {

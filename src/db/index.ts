@@ -201,6 +201,7 @@ async function migratePglite(client: PGlite) {
       created_at timestamptz NOT NULL DEFAULT now()
     );
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'ai';
+    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS exam_format text NOT NULL DEFAULT 'standard';
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_enabled boolean NOT NULL DEFAULT true;
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 1;
     CREATE INDEX IF NOT EXISTS generated_mocks_created_by_idx ON generated_mocks(created_by);
@@ -349,6 +350,7 @@ async function createDb(): Promise<AppDb> {
     CREATE INDEX IF NOT EXISTS submission_events_user_idx ON submission_events(user_id);
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_enabled boolean NOT NULL DEFAULT true;
     ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 1;
+    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS exam_format text NOT NULL DEFAULT 'standard';
     ALTER TABLE generated_mocks ALTER COLUMN penalty_minutes_per_wrong SET DEFAULT 1;
     UPDATE generated_mocks
       SET penalty_minutes_per_wrong = 1
