@@ -2,6 +2,9 @@ import { getAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { user } from "@/db/schema";
+import { shouldBypassRateLimits } from "@/lib/ai/access-policy";
+import { loadUserAccess } from "@/lib/user/load-user-access";
+import type { UserAccess } from "@/lib/user/user-type";
 
 export async function requireApiUser(req: Request) {
   const auth = await getAuth();
@@ -44,4 +47,22 @@ export function rateLimit(key: string, limit = 20, windowMs = 60_000) {
   if (cur.count >= limit) return false;
   cur.count += 1;
   return true;
+}
+
+/**
+ * Per-user rate limit that skips the bucket for admin and test accounts.
+ * Pass `access` when already loaded to avoid an extra DB round-trip.
+ */
+export async function rateLimitForUser(
+  userId: string,
+  key: string,
+  limit = 20,
+  windowMs = 60_000,
+  access?: UserAccess | null,
+): Promise<boolean> {
+  const resolved = access ?? (await loadUserAccess(userId));
+  if (resolved && shouldBypassRateLimits(resolved)) {
+    return true;
+  }
+  return rateLimit(`${key}:${userId}`, limit, windowMs);
 }

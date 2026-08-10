@@ -30,6 +30,8 @@ export const user = pgTable("user", {
   assistantPet: text("assistant_pet").notNull().default("cat"),
   /** Competition cycle: pre-seleksi | semifinal | final */
   phase: text("phase").notNull().default("pre-seleksi"),
+  /** Student tier: free | vip | test (ignored for admins) */
+  userType: text("user_type").notNull().default("free"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

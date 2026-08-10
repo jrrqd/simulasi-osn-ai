@@ -21,6 +21,10 @@ import {
 } from "@/components/generation-progress";
 import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
 import { PhaseHintBanner } from "@/components/phase-hint-banner";
+import {
+  SimulasiQuotaBanner,
+  useSimulasiQuota,
+} from "@/components/simulasi-quota-banner";
 
 type GenerationMode = "standard" | "custom" | "study-case";
 
@@ -31,6 +35,7 @@ const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
 
 export function GenerateMockChallenge() {
   const router = useRouter();
+  const { quota } = useSimulasiQuota();
   const [generationMode, setGenerationMode] =
     useState<GenerationMode>("standard");
   const [track, setTrack] = useState<"A" | "B" | "C" | "D">("B");
@@ -50,6 +55,10 @@ export function GenerateMockChallenge() {
   const isKaggle150 = size === "kaggle-150";
   const effectiveMode: GenerationMode =
     isKaggle && generationMode === "study-case" ? "standard" : generationMode;
+  const quotaExhausted =
+    quota?.simulasi.gated === true &&
+    quota.simulasi.remaining != null &&
+    quota.simulasi.remaining <= 0;
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -68,10 +77,7 @@ export function GenerateMockChallenge() {
       const { mockId } = await runAiMockGeneration({
         request: {
           generationMode: effectiveMode,
-          track:
-            effectiveMode === "custom"
-              ? undefined
-              : track,
+          track: effectiveMode === "custom" ? undefined : track,
           difficultyMode,
           size,
           topicPrompt:
@@ -95,6 +101,7 @@ export function GenerateMockChallenge() {
       accent="accent"
     >
       <PhaseHintBanner />
+      <SimulasiQuotaBanner quota={quota} />
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -278,7 +285,7 @@ export function GenerateMockChallenge() {
       <button
         className="btn btn-accent !px-4 !py-2 text-sm"
         onClick={generate}
-        disabled={loading}
+        disabled={loading || quotaExhausted}
       >
         {loading
           ? "Menghasilkan…"

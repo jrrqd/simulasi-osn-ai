@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
 import {
   parseDifficultyMode,
@@ -18,7 +18,7 @@ import { loadUserPhase } from "@/lib/user/load-phase";
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
-  if (!rateLimit(`gen-case:${authResult.user.id}`, 4)) {
+  if (!(await rateLimitForUser(authResult.user.id, "gen-case", 4))) {
     return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
   }
 

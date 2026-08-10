@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { convertToModelMessages, streamText, UIMessage } from "ai";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import {
   STUDY_ASSISTANT_SYSTEM_PROMPT,
   createUserProvider,
@@ -40,7 +40,7 @@ ${lesson.body.slice(0, 3500)}`;
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
-  if (!rateLimit(`study-assistant:${authResult.user.id}`, 40)) {
+  if (!(await rateLimitForUser(authResult.user.id, "study-assistant", 40))) {
     return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
   }
 

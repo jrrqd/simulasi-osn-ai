@@ -2,8 +2,10 @@ import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { generatedMocks } from "@/db/schema";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
+import { assertSimulasiAllowed } from "@/lib/ai/simulasi-quota";
+import { loadUserAccess } from "@/lib/user/load-user-access";
 import { parseDifficultyMode } from "@/lib/ai/difficulty";
 import {
   assembleCuratedMockWithLlm,
@@ -22,7 +24,17 @@ function parseSize(raw: unknown): CuratedMockSize {
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
-  if (!rateLimit(`gen-curated-mock:${authResult.user.id}`, 4, 60 * 60_000)) {
+
+  const access = await loadUserAccess(authResult.user.id);
+  if (
+    !(await rateLimitForUser(
+      authResult.user.id,
+      "gen-curated-mock",
+      4,
+      60 * 60_000,
+      access,
+    ))
+  ) {
     return Response.json(
       { error: "Batas susun simulasi curated: 4 per jam" },
       { status: 429 },
@@ -64,6 +76,15 @@ export async function POST(req: NextRequest) {
       },
       { status: 400 },
     );
+  }
+
+  if (access) {
+    const blocked = await assertSimulasiAllowed(
+      authResult.user.id,
+      access,
+      settings,
+    );
+    if (blocked) return blocked;
   }
 
   try {

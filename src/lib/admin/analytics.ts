@@ -51,6 +51,7 @@ function summarizeUser(
     name: item.name,
     email: item.email,
     role: item.role,
+    userType: item.userType,
     banned: item.banned,
     schoolName: item.schoolName,
     grade: item.grade,
@@ -75,7 +76,9 @@ export async function buildAdminAssistantContext(focusUserId?: string) {
   const summaries = users.map((item) =>
     summarizeUser(item, allAttempts, allMocks),
   );
-  const students = summaries.filter((item) => item.role !== "admin");
+  const students = summaries.filter(
+    (item) => item.role !== "admin" && item.userType !== "test",
+  );
   const activeStudents = students.filter((item) => item.attemptsCount > 0);
   const totalAttempts = students.reduce(
     (sum, item) => sum + item.attemptsCount,

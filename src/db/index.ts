@@ -44,6 +44,7 @@ async function migratePglite(client: PGlite) {
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS profile_prompt_snoozed_until timestamptz;
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS assistant_pet text NOT NULL DEFAULT 'cat';
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'pre-seleksi';
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS user_type text NOT NULL DEFAULT 'free';
     CREATE TABLE IF NOT EXISTS session (
       id text PRIMARY KEY,
       expires_at timestamptz NOT NULL,

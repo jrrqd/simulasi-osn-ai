@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { convertToModelMessages, streamText, UIMessage } from "ai";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import {
   PRACTICE_ASSISTANT_SYSTEM_PROMPT,
   createUserProvider,
@@ -89,7 +89,7 @@ Bantu siswa memilih soal, memahami topik, atau merencanakan generate tantangan A
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
-  if (!rateLimit(`practice-assistant:${authResult.user.id}`, 40)) {
+  if (!(await rateLimitForUser(authResult.user.id, "practice-assistant", 40))) {
     return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
   }
 
