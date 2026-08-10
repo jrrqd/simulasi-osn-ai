@@ -11,9 +11,15 @@ import {
 } from "@/lib/ai/curated-mock-size";
 import { matchTopicsFromPrompt } from "@/lib/ai/topic-prompt";
 import { buildNaturalMockTitle } from "@/lib/ai/mock-title";
+import {
+  buildIoaiReferenceContext,
+  getIoaiResourcesForPhase,
+} from "@/lib/content/ioai-resources";
 import { getProblems } from "@/lib/content/load";
 import type { Problem, TrackId } from "@/lib/content/types";
 import { TOPIC_LABELS } from "@/lib/content/types";
+import { canAccessIoaiResources } from "@/lib/user/load-phase";
+import type { Phase } from "@/lib/user/phase";
 
 export type { CuratedMockSize } from "@/lib/ai/curated-mock-size";
 export { CURATED_MOCK_SIZES } from "@/lib/ai/curated-mock-size";
@@ -152,6 +158,9 @@ export async function assembleCuratedMockWithLlm(params: {
   size: CuratedMockSize;
   trackFilter?: TrackId;
   topicPrompt?: string;
+  /** Competition phase — gates IOAI knowledge injection. */
+  phase?: Phase;
+  role?: string | null;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -162,9 +171,36 @@ export async function assembleCuratedMockWithLlm(params: {
   const count = sizeMeta.count;
   const durationMinutes = sizeMeta.durationMinutes;
   const topicPrompt = params.topicPrompt?.trim() || undefined;
-  const preferredTopics = topicPrompt
+  const preferredFromPrompt = topicPrompt
     ? matchTopicsFromPrompt(topicPrompt)
     : [];
+
+  const phase = params.phase ?? "pre-seleksi";
+  const role = params.role ?? null;
+  let ioaiTopics: string[] = [];
+  let ioaiBlock = "";
+  if (canAccessIoaiResources(phase, role)) {
+    const preferredTopic = preferredFromPrompt[0];
+    const ioaiResources = await getIoaiResourcesForPhase(phase, {
+      track: params.trackFilter,
+      topic: preferredTopic,
+      limit: 5,
+      includeCourses: false,
+    });
+    ioaiTopics = [...new Set(ioaiResources.flatMap((r) => r.topics))].slice(
+      0,
+      8,
+    );
+    ioaiBlock = await buildIoaiReferenceContext({
+      phase,
+      track: params.trackFilter,
+      topic: preferredTopic ?? ioaiTopics[0],
+    });
+  }
+
+  const preferredTopics = [
+    ...new Set([...preferredFromPrompt, ...ioaiTopics]),
+  ];
 
   let pool = getProblems();
   if (params.trackFilter) {
@@ -202,7 +238,7 @@ ${topicPrompt}
 Topik resmi di bank (untuk mapping): ${topicCatalogHint}
 ${
   preferredTopics.length > 0
-    ? `Topik yang terdeteksi dari preferensi: ${preferredTopics.join(", ")}.`
+    ? `Topik yang terdeteksi dari preferensi + IOAI: ${preferredTopics.join(", ")}.`
     : "Tidak ada id topik yang terdeteksi pasti — interpretasikan preferensi siswa secara semantik."
 }
 
@@ -212,7 +248,14 @@ Aturan preferensi topik:
 - Jangan mengabaikan preferensi hanya demi keseimbangan track.
 - Di description, sebutkan singkat fokus topik yang dipilih.
 `
-    : `
+    : ioaiTopics.length > 0
+      ? `
+Aturan cakupan (fase IOAI aktif):
+- Utamakan topik IOAI-adjacent bila tersedia di bank: ${ioaiTopics.join(", ")}.
+- Target ≥40% paket dari topik tersebut jika bank cukup; sisanya seimbangkan track.
+- Sebar track agar tidak menumpuk di satu area (kecuali filter track aktif).
+`
+      : `
 Aturan cakupan:
 - Sebar topik/track agar tidak menumpuk di satu area (kecuali filter track aktif).
 `;
@@ -225,6 +268,7 @@ Target:
 - Tingkat kesulitan target: ${modeLabel} (${params.difficultyMode})
 - Cakupan: ${trackScope}
 ${topicBlock}
+${ioaiBlock ? `${ioaiBlock}\n` : ""}
 Aturan umum:
 - Pilih HANYA id dari katalog. Jangan invent id baru.
 - Tidak boleh duplikat.
@@ -233,6 +277,11 @@ Aturan umum:
 - Untuk mode medium: utamakan D2.
 - Untuk mode hard: utamakan D3 (dan D2 jika perlu).
 - Untuk mode normal: campuran seimbang mendekati distribusi normal (lebih banyak D2).
+${
+  ioaiBlock
+    ? `- Jika referensi IOAI ada: pilih soal curated yang paling dekat gaya/topik tersebut (bukan menyalin statement IOAI).`
+    : ""
+}
 
 Judul (title):
 - Buat judul pendek & natural dalam Bahasa Indonesia, mudah dikenali (contoh: "Tryout Backprop & Regularisasi", "Paket curated ML Klasik").

@@ -16,6 +16,7 @@ import {
   TOPIC_PROMPT_MIN_LEN,
 } from "@/lib/ai/topic-prompt";
 import { TRACKS, type TrackId } from "@/lib/content/types";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 function parseSize(raw: unknown): CuratedMockSize {
   return raw === "full" ? "full" : "half";
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
   const generationMode =
     body.generationMode === "custom" ? "custom" : "standard";
   const topicPrompt = normalizeTopicPrompt(body.topicPrompt);
+  const phase = await loadUserPhase(authResult.user.id);
 
   if (generationMode === "custom") {
     if (!topicPrompt || topicPrompt.length < TOPIC_PROMPT_MIN_LEN) {
@@ -93,6 +95,8 @@ export async function POST(req: NextRequest) {
       size,
       trackFilter,
       topicPrompt: generationMode === "custom" ? topicPrompt : undefined,
+      phase,
+      role: access?.role ?? authResult.user.role,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,

@@ -1,4 +1,5 @@
 import { AdminResourceManager } from "@/components/admin-resource-manager";
+import { AdminResourcesManager } from "@/components/admin-resources-manager";
 import { listIoaiResourceRecords } from "@/lib/content/ioai-resources";
 import {
   IOAI_CATEGORIES,
@@ -22,7 +23,7 @@ export default async function AdminResourcesPage() {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       <div>
         <h1 className="display text-4xl">Referensi IOAI</h1>
         <p className="text-[var(--muted)]">
@@ -40,6 +41,16 @@ export default async function AdminResourcesPage() {
         initialPreview={initialPreview}
         initialPreviewTopic="cnn-arsitektur"
       />
+      <div className="space-y-3">
+        <div>
+          <h2 className="display text-2xl">Panduan belajar (ID)</h2>
+          <p className="text-sm text-[var(--muted)]">
+            Edit ringkasan / kunci / pembahasan Bahasa Indonesia untuk tugas
+            yang punya panduan lokal.
+          </p>
+        </div>
+        <AdminResourcesManager />
+      </div>
     </div>
   );
 }

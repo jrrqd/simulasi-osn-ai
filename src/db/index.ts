@@ -303,6 +303,25 @@ async function migratePglite(client: PGlite) {
     );
     CREATE INDEX IF NOT EXISTS ioai_resources_category_idx ON ioai_resources(category);
     CREATE INDEX IF NOT EXISTS ioai_resources_hidden_idx ON ioai_resources(hidden);
+
+    CREATE TABLE IF NOT EXISTS ioai_guides (
+      id text PRIMARY KEY,
+      resource_id text NOT NULL REFERENCES ioai_resources(id) ON DELETE CASCADE,
+      title text NOT NULL,
+      ringkasan text NOT NULL DEFAULT '',
+      kunci_jawaban text NOT NULL DEFAULT '',
+      pembahasan text NOT NULL DEFAULT '',
+      original_url text NOT NULL,
+      solution_url text,
+      credit text NOT NULL DEFAULT '',
+      topics jsonb NOT NULL DEFAULT '[]',
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS ioai_guides_resource_idx ON ioai_guides(resource_id);
+    CREATE INDEX IF NOT EXISTS ioai_guides_hidden_idx ON ioai_guides(hidden);
   `);
 }
 
@@ -426,6 +445,25 @@ async function createDb(): Promise<AppDb> {
     );
     CREATE INDEX IF NOT EXISTS ioai_resources_category_idx ON ioai_resources(category);
     CREATE INDEX IF NOT EXISTS ioai_resources_hidden_idx ON ioai_resources(hidden);
+
+    CREATE TABLE IF NOT EXISTS ioai_guides (
+      id text PRIMARY KEY,
+      resource_id text NOT NULL REFERENCES ioai_resources(id) ON DELETE CASCADE,
+      title text NOT NULL,
+      ringkasan text NOT NULL DEFAULT '',
+      kunci_jawaban text NOT NULL DEFAULT '',
+      pembahasan text NOT NULL DEFAULT '',
+      original_url text NOT NULL,
+      solution_url text,
+      credit text NOT NULL DEFAULT '',
+      topics jsonb NOT NULL DEFAULT '[]',
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS ioai_guides_resource_idx ON ioai_guides(resource_id);
+    CREATE INDEX IF NOT EXISTS ioai_guides_hidden_idx ON ioai_guides(hidden);
   `);
   return drizzlePg(client, { schema });
 }
@@ -450,6 +488,14 @@ export async function getDb() {
         await seedIoaiResourcesIfEmpty(db);
       } catch (err) {
         console.warn("[db] seedIoaiResourcesIfEmpty skipped:", err);
+      }
+      try {
+        const { seedIoaiGuidesIfEmpty } = await import(
+          "@/lib/content/seed-ioai-guides"
+        );
+        await seedIoaiGuidesIfEmpty(db);
+      } catch (err) {
+        console.warn("[db] seedIoaiGuidesIfEmpty skipped:", err);
       }
       return db;
     });

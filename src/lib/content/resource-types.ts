@@ -60,4 +60,27 @@ export type IoaiResourceRecord = IoaiResource & {
   source: IoaiResourceSource;
   hidden: boolean;
   updatedAt?: string;
+  /** Present when a localized Indonesian guide exists. */
+  guideId?: string;
+};
+
+export type IoaiGuide = {
+  id: string;
+  resourceId: string;
+  title: string;
+  /** Indonesian markdown — task overview */
+  ringkasan: string;
+  /** Indonesian markdown — metrics, I/O, key checklist */
+  kunciJawaban: string;
+  /** Indonesian markdown — solution walkthrough */
+  pembahasan: string;
+  originalUrl: string;
+  solutionUrl?: string;
+  credit: string;
+  topics: string[];
+};
+
+export type IoaiGuideRecord = IoaiGuide & {
+  hidden: boolean;
+  updatedAt?: string;
 };

@@ -105,6 +105,7 @@ Struktur keluaran: SATU objek JSON studi kasus (bukan JSON Schema):
 
 Aturan studi kasus:
 - Buat 3 sampai 5 soal yang BERKAITAN pada preamble yang sama (hitungan bertahap diperbolehkan).
+- Jika ada blok "Referensi IOAI", pakai hanya sebagai inspirasi gaya/kedalaman — jangan salin soal/dataset asli.
 - Setiap prompt harus berdiri sendiri jika digabung: stem akhir = preamble + prompt.
 - Semua soal harus auto-gradable dan konsisten dengan angka di preamble.
 - Jika ada blok "Referensi kompetisi IOAI", gunakan HANYA sebagai inspirasi format/kedalaman — JANGAN menyalin soal atau dataset.

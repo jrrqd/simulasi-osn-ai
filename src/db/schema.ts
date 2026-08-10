@@ -420,3 +420,32 @@ export const reviewMessages = pgTable("review_messages", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+/** Localized Indonesian study guides linked to ioai_resources. */
+export const ioaiGuides = pgTable(
+  "ioai_guides",
+  {
+    id: text("id").primaryKey(),
+    resourceId: text("resource_id")
+      .notNull()
+      .references(() => ioaiResources.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    ringkasan: text("ringkasan").notNull().default(""),
+    kunciJawaban: text("kunci_jawaban").notNull().default(""),
+    pembahasan: text("pembahasan").notNull().default(""),
+    originalUrl: text("original_url").notNull(),
+    solutionUrl: text("solution_url"),
+    credit: text("credit").notNull().default(""),
+    topics: jsonb("topics").notNull().$type<string[]>().default([]),
+    hidden: boolean("hidden").notNull().default(false),
+    updatedBy: text("updated_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("ioai_guides_resource_idx").on(t.resourceId),
+    index("ioai_guides_hidden_idx").on(t.hidden),
+  ],
+);

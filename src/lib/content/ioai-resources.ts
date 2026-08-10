@@ -1,4 +1,5 @@
 import ioaiData from "../../../content/resources/ioai-index.json";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { ioaiResources } from "@/db/schema";
 import type { TrackId } from "@/lib/content/types";
@@ -115,24 +116,54 @@ export async function listIoaiResourceRecords(): Promise<IoaiResourceRecord[]> {
 
     const db = await getDb();
     const rows = await db.select().from(ioaiResources);
+    let records: IoaiResourceRecord[];
     if (rows.length === 0) {
-      return JSON_FALLBACK.map((r) => ({
+      records = JSON_FALLBACK.map((r) => ({
         ...r,
         source: "curated" as IoaiResourceSource,
         hidden: false,
       }));
+    } else {
+      records = rows
+        .map(rowToRecord)
+        .filter((r): r is IoaiResourceRecord => r != null)
+        .sort((a, b) => a.title.localeCompare(b.title, "id"));
     }
-    return rows
-      .map(rowToRecord)
-      .filter((r): r is IoaiResourceRecord => r != null)
-      .sort((a, b) => a.title.localeCompare(b.title, "id"));
+    return attachGuideIds(records);
   } catch (err) {
     console.warn("[ioai-resources] DB list failed, using JSON fallback:", err);
-    return JSON_FALLBACK.map((r) => ({
+    return attachGuideIds(
+      JSON_FALLBACK.map((r) => ({
+        ...r,
+        source: "curated" as const,
+        hidden: false,
+      })),
+    );
+  }
+}
+
+async function attachGuideIds(
+  records: IoaiResourceRecord[],
+): Promise<IoaiResourceRecord[]> {
+  if (records.length === 0) return records;
+  try {
+    const { seedIoaiGuidesIfEmpty } = await import(
+      "@/lib/content/seed-ioai-guides"
+    );
+    await seedIoaiGuidesIfEmpty();
+    const db = await getDb();
+    const { ioaiGuides } = await import("@/db/schema");
+    const guides = await db
+      .select({ id: ioaiGuides.id, resourceId: ioaiGuides.resourceId })
+      .from(ioaiGuides)
+      .where(eq(ioaiGuides.hidden, false));
+    const map = new Map(guides.map((g) => [g.resourceId, g.id]));
+    return records.map((r) => ({
       ...r,
-      source: "curated" as const,
-      hidden: false,
+      guideId: map.get(r.id) ?? r.guideId,
     }));
+  } catch {
+    return records;
   }
 }
 
@@ -140,6 +171,15 @@ export async function listIoaiResourceRecords(): Promise<IoaiResourceRecord[]> {
 export async function getIoaiResources(): Promise<IoaiResource[]> {
   const all = await listIoaiResourceRecords();
   return all.filter((r) => !r.hidden).map(toPublic);
+}
+
+export async function getIoaiResource(
+  id: string,
+): Promise<IoaiResourceRecord | null> {
+  const all = await listIoaiResourceRecords();
+  const row = all.find((r) => r.id === id);
+  if (!row || row.hidden) return null;
+  return row;
 }
 
 function clip(text: string, max: number) {
@@ -272,6 +312,18 @@ export async function buildIoaiReferenceContext(params: {
       ? clip(r.promptHint, MAX_SUMMARY_CHARS)
       : clip(r.summary, MAX_SUMMARY_CHARS);
     lines.push(`- ${label}: ${hint}`);
+
+    try {
+      const { getIoaiGuideByResourceId } = await import(
+        "@/lib/content/ioai-guides"
+      );
+      const guide = await getIoaiGuideByResourceId(r.id);
+      if (guide?.ringkasan?.trim()) {
+        lines.push(`  Panduan ID: ${clip(guide.ringkasan, 180)}`);
+      }
+    } catch {
+      /* guide lookup optional */
+    }
   }
 
   let block = lines.join("\n");
