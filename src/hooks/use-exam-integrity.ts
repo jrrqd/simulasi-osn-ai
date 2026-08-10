@@ -167,11 +167,22 @@ export function useExamIntegrity({
     }
   }
 
+  async function exitFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Best-effort; user may have already left fullscreen.
+    }
+  }
+
   return {
     integrity: state,
     showReturnOverlay,
     dismissOverlay,
     requestFullscreen,
+    exitFullscreen,
     setIntegrity: setState,
   };
 }

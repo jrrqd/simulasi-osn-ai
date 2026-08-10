@@ -114,6 +114,7 @@ export function MockExamClient({
   const [penaltyState, setPenaltyState] = useState<SessionPenaltyState>({});
   const [penaltyMinutes, setPenaltyMinutes] = useState(0);
   const [totalAttemptsCount, setTotalAttemptsCount] = useState(0);
+  const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
 
   const answersRef = useRef(answers);
   const codeResultsRef = useRef(codeResults);
@@ -253,20 +254,13 @@ export function MockExamClient({
   ) => {
     const id = sessionIdRef.current;
     if (!id || submittingRef.current) return;
-    const unanswered = problems.length - answeredCountRef.current;
-    if (
-      !force &&
-      !options?.integrityForced &&
-      !window.confirm(
-        unanswered
-          ? `Masih ada ${unanswered} soal kosong. Tetap akhiri ujian?`
-          : "Akhiri ujian dan tampilkan nilai?",
-      )
-    ) {
+    if (!force && !options?.integrityForced) {
+      setSubmitConfirmOpen(true);
       return;
     }
 
     setSubmitting(true);
+    setSubmitConfirmOpen(false);
     setError("");
     const response = await fetch("/api/mocks", {
       method: "PUT",
@@ -291,6 +285,7 @@ export function MockExamClient({
       setError(data.error || "Gagal mengirim jawaban");
       return;
     }
+    await exitFullscreen();
     setResult(data);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -314,6 +309,7 @@ export function MockExamClient({
     showReturnOverlay,
     dismissOverlay,
     requestFullscreen,
+    exitFullscreen,
   } = useExamIntegrity({
     enabled: Boolean(sessionId && endsAt && !result),
     sessionId,
@@ -463,6 +459,37 @@ export function MockExamClient({
             <button className="btn btn-primary w-full" onClick={dismissOverlay}>
               Lanjutkan ujian
             </button>
+          </div>
+        </div>
+      )}
+
+      {submitConfirmOpen && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
+          <div className="panel max-w-md space-y-4 rounded-3xl p-6 text-center shadow-lg">
+            <h2 className="display text-2xl">Akhiri ujian?</h2>
+            <p className="text-sm text-[var(--muted)]">
+              {problems.length - answeredCount > 0
+                ? `Masih ada ${problems.length - answeredCount} soal kosong. Tetap akhiri ujian dan tampilkan nilai?`
+                : "Ujian akan dikumpulkan dan laporan nilai ditampilkan."}
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                className="btn btn-secondary w-full"
+                onClick={() => setSubmitConfirmOpen(false)}
+                disabled={submitting}
+              >
+                Lanjutkan ujian
+              </button>
+              <button
+                type="button"
+                className="btn btn-accent w-full"
+                onClick={() => void submitExam(true)}
+                disabled={submitting}
+              >
+                {submitting ? "Mengirim…" : "Akhiri ujian"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -838,11 +865,16 @@ function ScoringReport({
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-          Laporan penilaian
-        </p>
-        <h1 className="display text-4xl">Hasil {title}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+            Laporan penilaian
+          </p>
+          <h1 className="display text-4xl">Hasil {title}</h1>
+        </div>
+        <Link href="/mock" className="btn btn-secondary">
+          Kembali ke simulasi
+        </Link>
       </div>
 
       {integrity?.flagged && (
