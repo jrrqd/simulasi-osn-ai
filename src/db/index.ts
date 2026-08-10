@@ -330,6 +330,7 @@ async function createDb(): Promise<AppDb> {
   // Soft-migrate additive columns/tables (Postgres prod does not run PGlite migrate).
   await client.unsafe(`
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'pre-seleksi';
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS user_type text NOT NULL DEFAULT 'free';
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS score_summary jsonb;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS total_attempts integer NOT NULL DEFAULT 0;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_minutes integer NOT NULL DEFAULT 0;

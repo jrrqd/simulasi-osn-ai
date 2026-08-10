@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "fix-study-practice-pages",
+    at: "2026-08-10T11:30:00+07:00",
+    tag: "Belajar",
+    title: "Perbaikan halaman Belajar & Latihan",
+    story:
+      "Halaman Belajar dan Latihan kembali normal — perbaikan bundle client yang sempat memuat modul database. Migrasi Postgres untuk kolom user_type juga ditambahkan agar tier akun (gratis/VIP) stabil di produksi.",
+    href: "/study",
+  },
+  {
     id: "ioai-resources-kb",
     at: "2026-08-10T10:10:00+07:00",
     tag: "Belajar",
