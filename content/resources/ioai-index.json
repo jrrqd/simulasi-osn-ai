@@ -1,0 +1,90 @@
+[
+  {
+    "id": "hub-education",
+    "category": "task_repo",
+    "title": "IOAI Education Hub",
+    "url": "https://ioai-official.org/resources/",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp", "python"],
+    "topics": [],
+    "summary": "Indeks resmi materi terbuka, silabus, dan soal olimpiade nasional/regional untuk persiapan IOAI."
+  },
+  {
+    "id": "ioai-2025-repo",
+    "category": "task_repo",
+    "title": "IOAI 2025 Tasks Repository",
+    "url": "https://github.com/IOAI-official/IOAI-2025",
+    "region": "IOAI",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp"],
+    "topics": ["cnn-arsitektur", "deteksi-segmentasi", "transformer-lanjut", "feature-engineering"],
+    "summary": "Arsip soal Individual Contest IOAI 2025 (Beijing): notebook, dataset, dan solusi referensi."
+  },
+  {
+    "id": "ioai-2025-radar",
+    "category": "national_olympiad",
+    "title": "IOAI 2025 · Radar",
+    "url": "https://github.com/IOAI-official/IOAI-2025/tree/main/Individual-Contest/Radar",
+    "region": "IOAI",
+    "year": 2025,
+    "domains": ["cv", "ml"],
+    "topics": ["cnn-arsitektur", "deteksi-segmentasi", "konvolusi"],
+    "summary": "Segmentasi semantik heatmap radar indoor: prediksi label objek dari 6 heatmap.",
+    "promptHint": "Input 6×50×181 heatmaps → output label map; skor bobot tinggi pada pixel non-background."
+  },
+  {
+    "id": "ioai-2025-chicken",
+    "category": "national_olympiad",
+    "title": "IOAI 2025 · Chicken Counting",
+    "url": "https://github.com/IOAI-official/IOAI-2025/tree/main/Individual-Contest/Chicken_Counting",
+    "region": "IOAI",
+    "year": 2025,
+    "domains": ["cv", "ml"],
+    "topics": ["deteksi-segmentasi", "cnn-arsitektur", "mlp"],
+    "summary": "Density estimation untuk menghitung ayam Silkie dari citra (decoder di atas feature extractor)."
+  },
+  {
+    "id": "ioai-2025-concepts",
+    "category": "national_olympiad",
+    "title": "IOAI 2025 · Concepts",
+    "url": "https://github.com/IOAI-official/IOAI-2025/tree/main/Individual-Contest/Concepts",
+    "region": "IOAI",
+    "year": 2025,
+    "domains": ["nlp", "multimodal"],
+    "topics": ["transformer-lanjut", "tfidf-embedding", "supervised-learning"],
+    "summary": "Buat hint ikon berurutan agar AI guesser menebak kata rahasia (Hits@10 / NDCG@10)."
+  },
+  {
+    "id": "ioai-2025-restroom",
+    "category": "national_olympiad",
+    "title": "IOAI 2025 · Restroom Icon Matching",
+    "url": "https://github.com/IOAI-official/IOAI-2025/tree/main/Individual-Contest/Restroom",
+    "region": "IOAI",
+    "year": 2025,
+    "domains": ["cv", "multimodal"],
+    "topics": ["klasifikasi-citra", "cnn-arsitektur", "tfidf-embedding"],
+    "summary": "Matching ikon toilet lintas gender dari restroom yang sama (query→gallery)."
+  },
+  {
+    "id": "ioai-2025-antique",
+    "category": "national_olympiad",
+    "title": "IOAI 2025 · Antique Painting Authentication",
+    "url": "https://github.com/IOAI-official/IOAI-2025/tree/main/Individual-Contest/Antique",
+    "region": "IOAI",
+    "year": 2025,
+    "domains": ["ml", "tabular"],
+    "topics": ["supervised-learning", "unsupervised-learning", "evaluasi-model", "feature-engineering"],
+    "summary": "Klasifikasi lukisan asli vs replika dengan banyak label tidak diketahui (semi-supervised)."
+  },
+  {
+    "id": "ioai-2025-pixel",
+    "category": "national_olympiad",
+    "title": "IOAI 2025 · Pixel Efficiency",
+    "url": "https://github.com/IOAI-official/IOAI-2025/tree/main/Individual-Contest/Pixel",
+    "region": "IOAI",
+    "year": 2025,
+    "domains": ["cv", "ml"],
+    "topics": ["klasifikasi-citra", "cnn-arsitektur", "optimasi-lanjut"],
+    "summary": "Pilih ≤6.25% piksel (satu rectangle mask) agar CLIP tetap akurat mengklasifikasi hewan."
+  }
+]
