@@ -1,16 +1,56 @@
+import { AdminResourceManager } from "@/components/admin-resource-manager";
 import { AdminResourcesManager } from "@/components/admin-resources-manager";
+import { listIoaiResourceRecords } from "@/lib/content/ioai-resources";
+import {
+  IOAI_CATEGORIES,
+  IOAI_DOMAINS,
+} from "@/lib/content/resource-types";
+import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
+import { buildIoaiReferenceContext } from "@/lib/content/ioai-resources";
 
-export default function AdminResourcesPage() {
+export default async function AdminResourcesPage() {
+  const resources = await listIoaiResourceRecords();
+  const topics = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
+    id,
+    label,
+    track: (Object.keys(TRACKS) as TrackId[]).find((t) =>
+      TRACKS[t].topics.includes(id),
+    ),
+  }));
+  const initialPreview = await buildIoaiReferenceContext({
+    phase: "final",
+    topic: "cnn-arsitektur",
+  });
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       <div>
         <h1 className="display text-4xl">Referensi IOAI</h1>
         <p className="text-[var(--muted)]">
-          Katalog Education Hub + panduan belajar Bahasa Indonesia. Edit
-          ringkasan / kunci / pembahasan tanpa redeploy.
+          Knowledge base tautan Education Hub &amp; olimpiade nasional. Edit live
+          untuk panel siswa (fase semifinal/final) dan blok inspirasi LLM —
+          tanpa redeploy. Seed awal dari katalog JSON; baris admin baru bisa
+          dihapus permanen, curated hanya di-hide.
         </p>
       </div>
-      <AdminResourcesManager />
+      <AdminResourceManager
+        initialResources={resources}
+        initialCategories={[...IOAI_CATEGORIES]}
+        initialDomains={[...IOAI_DOMAINS]}
+        initialTopics={topics}
+        initialPreview={initialPreview}
+        initialPreviewTopic="cnn-arsitektur"
+      />
+      <div className="space-y-3">
+        <div>
+          <h2 className="display text-2xl">Panduan belajar (ID)</h2>
+          <p className="text-sm text-[var(--muted)]">
+            Edit ringkasan / kunci / pembahasan Bahasa Indonesia untuk tugas
+            yang punya panduan lokal.
+          </p>
+        </div>
+        <AdminResourcesManager />
+      </div>
     </div>
   );
 }

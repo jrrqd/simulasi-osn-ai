@@ -22,6 +22,10 @@ import {
 } from "@/lib/datetime";
 import { CampaignEvolution } from "@/components/campaign-evolution";
 import type { CampaignStages } from "@/lib/campaign-stages";
+import {
+  parseUserType,
+  USER_TYPE_LABELS,
+} from "@/lib/user/user-type";
 
 type ResetScope = "in_progress_only" | "all_mocks" | "full_reset";
 type ResetBehavior = "hard_delete" | "soft_abandon";
@@ -120,6 +124,7 @@ type Report = {
     name: string;
     email: string;
     role: string;
+    userType?: string;
     createdAt: string;
     lastActiveAt: string;
     birthDate: string | null;
@@ -449,9 +454,16 @@ export function AdminUserReport({ userId }: { userId: string }) {
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="rounded-full bg-white/70 px-3 py-1 text-sm">
-              {data.user.role}
-            </span>
+            <div className="flex flex-wrap justify-end gap-2">
+              <span className="rounded-full bg-white/70 px-3 py-1 text-sm">
+                {data.user.role}
+              </span>
+              {data.user.role !== "admin" ? (
+                <span className="rounded-full bg-[rgba(15,110,86,0.12)] px-3 py-1 text-sm text-[var(--accent)]">
+                  {USER_TYPE_LABELS[parseUserType(data.user.userType)]}
+                </span>
+              ) : null}
+            </div>
             <div className="w-52 max-w-full rounded-2xl border border-[var(--line)] bg-white/60 p-3">
               <p className="text-xs text-[var(--muted)]">Kesiapan OSN AI</p>
               <div className="mt-1 flex items-baseline gap-2">

@@ -108,6 +108,7 @@ Aturan studi kasus:
 - Jika ada blok "Referensi IOAI", pakai hanya sebagai inspirasi gaya/kedalaman — jangan salin soal/dataset asli.
 - Setiap prompt harus berdiri sendiri jika digabung: stem akhir = preamble + prompt.
 - Semua soal harus auto-gradable dan konsisten dengan angka di preamble.
+- Jika ada blok "Referensi kompetisi IOAI", gunakan HANYA sebagai inspirasi format/kedalaman — JANGAN menyalin soal atau dataset.
 - figures (jika ada) dipakai bersama di preamble via {{fig:id}}; jangan duplikasi di setiap prompt.
 - Text-only OK jika kasus tidak butuh visual.
 - Balas HANYA JSON instance, tanpa markdown fence, tanpa komentar.

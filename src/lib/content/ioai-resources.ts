@@ -1,287 +1,350 @@
-import { and, asc, eq } from "drizzle-orm";
+import ioaiData from "../../../content/resources/ioai-index.json";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { ioaiGuides, ioaiResources } from "@/db/schema";
-import {
-  IOAI_CATEGORIES,
-  IOAI_DOMAINS,
-  type IoaiDomain,
-  type IoaiResourceCategory,
-  type IoaiResourceRecord,
-  type IoaiResourceSource,
+import { ioaiResources } from "@/db/schema";
+import type { TrackId } from "@/lib/content/types";
+import { TRACKS } from "@/lib/content/types";
+import type {
+  IoaiDomain,
+  IoaiResource,
+  IoaiResourceCategory,
+  IoaiResourceRecord,
+  IoaiResourceSource,
 } from "@/lib/content/resource-types";
-import { loadCuratedIoaiResources } from "@/lib/content/seed-ioai-resources";
+import { IOAI_CATEGORIES } from "@/lib/content/resource-types";
+import type { Phase } from "@/lib/user/phase";
 
-function asDomains(value: unknown): IoaiDomain[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (d): d is IoaiDomain =>
-      typeof d === "string" && (IOAI_DOMAINS as string[]).includes(d),
-  );
-}
+const MAX_PROMPT_ENTRIES = 4;
+const MAX_SUMMARY_CHARS = 150;
+const MAX_PROMPT_BLOCK_CHARS = 800;
+const DEFAULT_UI_LIMIT = 6;
 
-function asCategory(value: unknown): IoaiResourceCategory {
-  if (typeof value === "string" && (IOAI_CATEGORIES as string[]).includes(value)) {
-    return value as IoaiResourceCategory;
+const CATEGORY_SET = new Set<string>(IOAI_CATEGORIES);
+
+function isIoaiResource(raw: unknown): raw is IoaiResource {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const r = raw as Record<string, unknown>;
+  if (
+    typeof r.id !== "string" ||
+    typeof r.title !== "string" ||
+    typeof r.url !== "string" ||
+    typeof r.summary !== "string" ||
+    !Array.isArray(r.domains) ||
+    !Array.isArray(r.topics) ||
+    typeof r.category !== "string" ||
+    !CATEGORY_SET.has(r.category)
+  ) {
+    return false;
   }
-  return "task_repo";
+  return true;
 }
 
-function asSource(value: unknown): IoaiResourceSource {
-  return value === "admin" ? "admin" : "curated";
-}
-
-function asTopics(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.map(String).filter(Boolean);
-}
-
-type ResourceRow = typeof ioaiResources.$inferSelect;
-
-function toRecord(
-  row: ResourceRow,
-  guideId?: string | null,
-): IoaiResourceRecord {
+function normalizeResource(raw: IoaiResource): IoaiResource {
   return {
-    id: row.id,
-    category: asCategory(row.category),
-    title: row.title,
-    url: row.url,
-    region: row.region ?? undefined,
-    year: row.year ?? undefined,
-    domains: asDomains(row.domains),
-    topics: asTopics(row.topics),
-    summary: row.summary ?? "",
-    promptHint: row.promptHint ?? undefined,
-    source: asSource(row.source),
-    hidden: Boolean(row.hidden),
-    updatedAt: row.updatedAt?.toISOString?.() ?? undefined,
-    guideId: guideId || undefined,
+    ...raw,
+    category: raw.category as IoaiResourceCategory,
+    domains: raw.domains as IoaiDomain[],
+    topics: raw.topics.map(String),
+    summary: String(raw.summary),
+    promptHint:
+      typeof raw.promptHint === "string" ? raw.promptHint : undefined,
   };
 }
 
-async function guideIdByResourceId(
-  resourceIds: string[],
-): Promise<Map<string, string>> {
-  if (resourceIds.length === 0) return new Map();
-  const db = await getDb();
-  const guides = await db.query.ioaiGuides.findMany({
-    where: and(eq(ioaiGuides.hidden, false)),
-    columns: { id: true, resourceId: true },
-  });
-  const map = new Map<string, string>();
-  const wanted = new Set(resourceIds);
-  for (const g of guides) {
-    if (wanted.has(g.resourceId)) map.set(g.resourceId, g.id);
-  }
-  return map;
+/** Static JSON fallback when DB is empty / unavailable. */
+const JSON_FALLBACK: IoaiResource[] = (ioaiData as unknown as unknown[])
+  .filter(isIoaiResource)
+  .map(normalizeResource);
+
+function rowToRecord(row: {
+  id: string;
+  category: string;
+  title: string;
+  url: string;
+  summary: string;
+  region: string | null;
+  year: number | null;
+  domains: string[];
+  topics: string[];
+  promptHint: string | null;
+  source: string;
+  hidden: boolean;
+  updatedAt: Date;
+}): IoaiResourceRecord | null {
+  if (!CATEGORY_SET.has(row.category)) return null;
+  return {
+    id: row.id,
+    category: row.category as IoaiResourceCategory,
+    title: row.title,
+    url: row.url,
+    summary: row.summary,
+    region: row.region ?? undefined,
+    year: row.year ?? undefined,
+    domains: (row.domains ?? []) as IoaiDomain[],
+    topics: row.topics ?? [],
+    promptHint: row.promptHint ?? undefined,
+    source: row.source === "admin" ? "admin" : "curated",
+    hidden: row.hidden,
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }
 
-async function fallbackFromDisk(): Promise<IoaiResourceRecord[]> {
-  return loadCuratedIoaiResources().map((row) => ({
-    ...row,
-    source: "curated" as const,
-    hidden: false,
-  }));
+function toPublic(resource: IoaiResourceRecord): IoaiResource {
+  return {
+    id: resource.id,
+    category: resource.category,
+    title: resource.title,
+    url: resource.url,
+    region: resource.region,
+    year: resource.year,
+    domains: resource.domains,
+    topics: resource.topics,
+    summary: resource.summary,
+    promptHint: resource.promptHint,
+  };
 }
 
-export async function listVisibleIoaiResources(): Promise<IoaiResourceRecord[]> {
-  const db = await getDb();
-  const rows = await db.query.ioaiResources.findMany({
-    where: eq(ioaiResources.hidden, false),
-    orderBy: [asc(ioaiResources.year), asc(ioaiResources.title)],
-  });
-  if (rows.length === 0) {
-    return fallbackFromDisk();
+/**
+ * All admin-visible rows (including hidden). Seeds from JSON if table empty.
+ */
+export async function listIoaiResourceRecords(): Promise<IoaiResourceRecord[]> {
+  try {
+    const { seedIoaiResourcesIfEmpty } = await import(
+      "@/lib/content/seed-ioai-resources"
+    );
+    await seedIoaiResourcesIfEmpty();
+
+    const db = await getDb();
+    const rows = await db.select().from(ioaiResources);
+    let records: IoaiResourceRecord[];
+    if (rows.length === 0) {
+      records = JSON_FALLBACK.map((r) => ({
+        ...r,
+        source: "curated" as IoaiResourceSource,
+        hidden: false,
+      }));
+    } else {
+      records = rows
+        .map(rowToRecord)
+        .filter((r): r is IoaiResourceRecord => r != null)
+        .sort((a, b) => a.title.localeCompare(b.title, "id"));
+    }
+    return attachGuideIds(records);
+  } catch (err) {
+    console.warn("[ioai-resources] DB list failed, using JSON fallback:", err);
+    return attachGuideIds(
+      JSON_FALLBACK.map((r) => ({
+        ...r,
+        source: "curated" as const,
+        hidden: false,
+      })),
+    );
   }
-  const guideMap = await guideIdByResourceId(rows.map((r) => r.id));
-  return rows.map((row) => toRecord(row, guideMap.get(row.id)));
 }
 
-export async function listAdminIoaiResources(): Promise<IoaiResourceRecord[]> {
-  const db = await getDb();
-  const rows = await db.query.ioaiResources.findMany({
-    orderBy: [asc(ioaiResources.category), asc(ioaiResources.title)],
-  });
-  const guideMap = await guideIdByResourceId(rows.map((r) => r.id));
-  // Include hidden guides for admin badge context
-  const allGuides = await db.query.ioaiGuides.findMany({
-    columns: { id: true, resourceId: true },
-  });
-  for (const g of allGuides) {
-    if (!guideMap.has(g.resourceId)) guideMap.set(g.resourceId, g.id);
+async function attachGuideIds(
+  records: IoaiResourceRecord[],
+): Promise<IoaiResourceRecord[]> {
+  if (records.length === 0) return records;
+  try {
+    const { seedIoaiGuidesIfEmpty } = await import(
+      "@/lib/content/seed-ioai-guides"
+    );
+    await seedIoaiGuidesIfEmpty();
+    const db = await getDb();
+    const { ioaiGuides } = await import("@/db/schema");
+    const guides = await db
+      .select({ id: ioaiGuides.id, resourceId: ioaiGuides.resourceId })
+      .from(ioaiGuides)
+      .where(eq(ioaiGuides.hidden, false));
+    const map = new Map(guides.map((g) => [g.resourceId, g.id]));
+    return records.map((r) => ({
+      ...r,
+      guideId: map.get(r.id) ?? r.guideId,
+    }));
+  } catch {
+    return records;
   }
-  return rows.map((row) => toRecord(row, guideMap.get(row.id)));
+}
+
+/** Visible (non-hidden) resources for student UI + LLM. */
+export async function getIoaiResources(): Promise<IoaiResource[]> {
+  const all = await listIoaiResourceRecords();
+  return all.filter((r) => !r.hidden).map(toPublic);
 }
 
 export async function getIoaiResource(
   id: string,
 ): Promise<IoaiResourceRecord | null> {
-  const db = await getDb();
-  const row = await db.query.ioaiResources.findFirst({
-    where: eq(ioaiResources.id, id),
+  const all = await listIoaiResourceRecords();
+  const row = all.find((r) => r.id === id);
+  if (!row || row.hidden) return null;
+  return row;
+}
+
+function clip(text: string, max: number) {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max).trimEnd()}…`;
+}
+
+function scoreForTopic(resource: IoaiResource, topic: string | undefined) {
+  if (!topic) return 0;
+  if (resource.topics.includes(topic)) return 3;
+  return 0;
+}
+
+function categoryPriority(category: IoaiResourceCategory) {
+  switch (category) {
+    case "national_olympiad":
+      return 4;
+    case "task_repo":
+      return 3;
+    case "syllabus":
+      return 2;
+    case "course":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function sortResources(
+  resources: IoaiResource[],
+  topic?: string,
+): IoaiResource[] {
+  return [...resources].sort((a, b) => {
+    const topicDiff = scoreForTopic(b, topic) - scoreForTopic(a, topic);
+    if (topicDiff !== 0) return topicDiff;
+    const catDiff = categoryPriority(b.category) - categoryPriority(a.category);
+    if (catDiff !== 0) return catDiff;
+    return (b.year ?? 0) - (a.year ?? 0);
   });
-  if (!row || row.hidden) {
-    const curated = loadCuratedIoaiResources().find((r) => r.id === id);
-    if (!curated) return null;
-    const guide = await db.query.ioaiGuides.findFirst({
-      where: and(eq(ioaiGuides.resourceId, id), eq(ioaiGuides.hidden, false)),
-      columns: { id: true },
-    });
-    return {
-      ...curated,
-      source: "curated",
-      hidden: false,
-      guideId: guide?.id,
-    };
-  }
-  const guide = await db.query.ioaiGuides.findFirst({
-    where: and(eq(ioaiGuides.resourceId, id), eq(ioaiGuides.hidden, false)),
-    columns: { id: true },
+}
+
+function filterForTopic(
+  all: IoaiResource[],
+  track: TrackId | undefined,
+  topic: string | undefined,
+  opts?: { limit?: number; includeCourses?: boolean },
+): IoaiResource[] {
+  const limit = opts?.limit ?? DEFAULT_UI_LIMIT;
+  const includeCourses = opts?.includeCourses ?? true;
+  const allowedTopics =
+    track && TRACKS[track] ? new Set(TRACKS[track].topics) : null;
+
+  let matched = all.filter((r) => {
+    if (!includeCourses && r.category === "course") return false;
+    if (!topic) return true;
+    if (r.topics.length === 0) {
+      return r.category === "syllabus" || r.category === "task_repo";
+    }
+    if (!r.topics.includes(topic)) return false;
+    if (allowedTopics && !r.topics.some((t) => allowedTopics.has(t))) {
+      return false;
+    }
+    return true;
   });
-  return toRecord(row, guide?.id);
-}
 
-function focusMatchScore(row: IoaiResourceRecord, focus: string): number {
-  if (!focus) return 0;
-  const hay = [
-    row.title,
-    row.summary,
-    row.promptHint ?? "",
-    row.topics.join(" "),
-    row.id,
-  ]
-    .join(" ")
-    .toLowerCase();
-  const tokens = focus
-    .toLowerCase()
-    .split(/[^a-z0-9]+/i)
-    .map((t) => t.trim())
-    .filter((t) => t.length >= 4);
-  if (tokens.length === 0) return 0;
-  let score = 0;
-  for (const token of tokens) {
-    if (hay.includes(token)) score += 1;
-  }
-  return score;
-}
-
-export async function listIoaiResourcesForPrompt(params?: {
-  topics?: string[];
-  focusPrompt?: string;
-  limit?: number;
-}): Promise<IoaiResourceRecord[]> {
-  const all = await listVisibleIoaiResources();
-  const topics = params?.topics?.filter(Boolean) ?? [];
-  const focus = params?.focusPrompt?.trim() ?? "";
-  const limit = Math.max(1, Math.min(params?.limit ?? 8, 20));
-  if (topics.length === 0 && !focus) {
-    return [...all]
-      .sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || a.title.localeCompare(b.title))
-      .slice(0, limit);
+  if (topic) {
+    const topicHits = matched.filter((r) => r.topics.includes(topic));
+    if (topicHits.length > 0) {
+      matched = topicHits;
+    } else {
+      matched = all.filter(
+        (r) => r.category === "syllabus" || r.category === "task_repo",
+      );
+    }
   }
 
-  const topicSet = new Set(topics);
-  const scored = all
-    .map((row) => {
-      const topicHits = row.topics.filter((t) => topicSet.has(t)).length;
-      const focusHits = focusMatchScore(row, focus);
-      const hintBonus = row.promptHint ? 0.25 : 0;
-      return {
-        row,
-        score: topicHits * 3 + focusHits * 2 + hintBonus,
-      };
-    })
-    .filter((x) => x.score > 0)
-    .sort(
-      (a, b) =>
-        b.score - a.score || (b.row.year ?? 0) - (a.row.year ?? 0),
-    );
-
-  if (scored.length === 0) {
-    return [...all]
-      .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
-      .slice(0, limit);
-  }
-
-  return scored.slice(0, limit).map((x) => x.row);
+  return sortResources(matched, topic).slice(0, limit);
 }
 
-export async function upsertAdminIoaiResource(
-  input: {
-    id: string;
-    category: IoaiResourceCategory;
-    title: string;
-    url: string;
-    region?: string | null;
-    year?: number | null;
-    domains: IoaiDomain[];
-    topics: string[];
-    summary: string;
-    promptHint?: string | null;
-    hidden?: boolean;
+export async function getIoaiResourcesForTopic(
+  track: TrackId | undefined,
+  topic: string | undefined,
+  opts?: { limit?: number; includeCourses?: boolean },
+): Promise<IoaiResource[]> {
+  const all = await getIoaiResources();
+  return filterForTopic(all, track, topic, opts);
+}
+
+export async function getIoaiResourcesForPhase(
+  phase: Phase,
+  opts?: {
+    track?: TrackId;
+    topic?: string;
+    limit?: number;
+    includeCourses?: boolean;
   },
-  updatedBy: string,
-): Promise<IoaiResourceRecord> {
-  const db = await getDb();
-  const now = new Date();
-  const existing = await db.query.ioaiResources.findFirst({
-    where: eq(ioaiResources.id, input.id),
+): Promise<IoaiResource[]> {
+  if (phase === "pre-seleksi") return [];
+  return getIoaiResourcesForTopic(opts?.track, opts?.topic, {
+    limit: opts?.limit ?? DEFAULT_UI_LIMIT,
+    includeCourses: opts?.includeCourses,
+  });
+}
+
+export async function buildIoaiReferenceContext(params: {
+  track?: TrackId;
+  topic?: string;
+  phase: Phase;
+}): Promise<string> {
+  if (params.phase === "pre-seleksi") return "";
+
+  const resources = await getIoaiResourcesForPhase(params.phase, {
+    track: params.track,
+    topic: params.topic,
+    limit: MAX_PROMPT_ENTRIES,
+    includeCourses: false,
   });
 
-  const values = {
-    id: input.id,
-    category: input.category,
-    title: input.title,
-    url: input.url,
-    region: input.region ?? null,
-    year: input.year ?? null,
-    domains: input.domains,
-    topics: input.topics,
-    summary: input.summary,
-    promptHint: input.promptHint ?? null,
-    hidden: Boolean(input.hidden),
-    updatedBy,
-    updatedAt: now,
-  };
+  if (resources.length === 0) return "";
 
-  if (existing) {
-    await db
-      .update(ioaiResources)
-      .set(values)
-      .where(eq(ioaiResources.id, input.id));
-  } else {
-    await db.insert(ioaiResources).values({
-      ...values,
-      source: "admin",
-      createdAt: now,
-    });
+  const lines: string[] = [
+    "## Referensi kompetisi IOAI (inspirasi gaya — JANGAN salin soal atau dataset)",
+  ];
+
+  for (const r of resources) {
+    const regionYear = [r.region, r.year].filter(Boolean).join(" ");
+    const label = regionYear ? `${regionYear} · ${r.title}` : r.title;
+    const hint = r.promptHint?.trim()
+      ? clip(r.promptHint, MAX_SUMMARY_CHARS)
+      : clip(r.summary, MAX_SUMMARY_CHARS);
+    lines.push(`- ${label}: ${hint}`);
+
+    try {
+      const { getIoaiGuideByResourceId } = await import(
+        "@/lib/content/ioai-guides"
+      );
+      const guide = await getIoaiGuideByResourceId(r.id);
+      if (guide?.ringkasan?.trim()) {
+        lines.push(`  Panduan ID: ${clip(guide.ringkasan, 180)}`);
+      }
+    } catch {
+      /* guide lookup optional */
+    }
   }
 
-  const row = await db.query.ioaiResources.findFirst({
-    where: eq(ioaiResources.id, input.id),
-  });
-  if (!row) throw new Error("Failed to upsert ioai resource");
-  const guide = await db.query.ioaiGuides.findFirst({
-    where: eq(ioaiGuides.resourceId, input.id),
-    columns: { id: true },
-  });
-  return toRecord(row, guide?.id);
+  let block = lines.join("\n");
+  if (block.length > MAX_PROMPT_BLOCK_CHARS) {
+    block = `${block.slice(0, MAX_PROMPT_BLOCK_CHARS).trimEnd()}\n…`;
+  }
+  return block;
 }
 
-export async function setIoaiResourceHidden(
-  id: string,
-  hidden: boolean,
-  updatedBy: string,
-): Promise<boolean> {
-  const db = await getDb();
-  const existing = await db.query.ioaiResources.findFirst({
-    where: eq(ioaiResources.id, id),
-    columns: { id: true },
-  });
-  if (!existing) return false;
-  await db
-    .update(ioaiResources)
-    .set({ hidden, updatedBy, updatedAt: new Date() })
-    .where(eq(ioaiResources.id, id));
-  return true;
+/** Sync helpers for tests that exercise filtering without DB. */
+export function filterIoaiResourcesFromList(
+  all: IoaiResource[],
+  track: TrackId | undefined,
+  topic: string | undefined,
+  opts?: { limit?: number; includeCourses?: boolean },
+): IoaiResource[] {
+  return filterForTopic(all, track, topic, opts);
 }
+
+export function getJsonIoaiFallback(): IoaiResource[] {
+  return JSON_FALLBACK;
+}
+
+export { MAX_PROMPT_ENTRIES, MAX_PROMPT_BLOCK_CHARS };

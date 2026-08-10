@@ -14,7 +14,6 @@ import {
 } from "@/lib/ai/difficulty";
 import type { GenerationProgressHandler } from "@/lib/ai/generation-progress";
 import { parseStudyCaseJson } from "@/lib/ai/parse-json-object";
-import { buildIoaiKnowledgeContextForUser } from "@/lib/ai/ioai-prompt-context";
 import {
   STUDY_CASE_SYSTEM_PROMPT,
   buildStudyCaseUserPrompt,
@@ -22,12 +21,14 @@ import {
 import { verifyGeneratedProblem } from "@/lib/ai/verify-generated-answer";
 import { materializeFigures } from "@/lib/ai/diagrams";
 import { getLessonsForTopic } from "@/lib/content/load";
+import { buildIoaiReferenceContext } from "@/lib/content/ioai-resources";
 import {
   TRACKS,
   TOPIC_LABELS,
   type Problem,
   type TrackId,
 } from "@/lib/content/types";
+import type { Phase } from "@/lib/user/phase";
 
 const MAX_ATTEMPTS = 4;
 const MAX_OUTPUT_TOKENS = 10_000;
@@ -186,6 +187,8 @@ export async function generateAndStoreStudyCase(params: {
   problemCount?: number;
   focusPrompt?: string;
   includeFigures?: boolean;
+  /** User prep phase — IOAI refs injected for semifinal/final. */
+  phase?: Phase;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -213,11 +216,10 @@ export async function generateAndStoreStudyCase(params: {
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
-  const ioaiContext = await buildIoaiKnowledgeContextForUser({
-    userId: params.userId,
-    topics: [params.topic],
-    focusPrompt: params.focusPrompt,
-    limit: 4,
+  const ioaiBlock = await buildIoaiReferenceContext({
+    track: params.track,
+    topic: params.topic,
+    phase: params.phase ?? "pre-seleksi",
   });
   const basePrompt = `${buildStudyCaseUserPrompt({
     track: params.track,
@@ -229,7 +231,7 @@ export async function generateAndStoreStudyCase(params: {
     syllabus,
     focusPrompt: params.focusPrompt,
   })}
-${ioaiContext ? `\n${ioaiContext}\n` : ""}
+${ioaiBlock ? `\n${ioaiBlock}\n` : ""}
 ${
   includeFigures
     ? `\nGambar: sertakan "figures" di root JSON jika kasus butuh visual; pakai {{fig:id}} di preamble.`

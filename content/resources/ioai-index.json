@@ -10,6 +10,27 @@
     "summary": "Indeks resmi materi terbuka, silabus, dan soal olimpiade nasional/regional untuk persiapan IOAI."
   },
   {
+    "id": "syllabus-2025",
+    "category": "syllabus",
+    "title": "IOAI Syllabus 2025",
+    "url": "https://ioai-official.org/china-2025/syllabus-2025/",
+    "year": 2025,
+    "domains": ["python", "ml", "cv", "nlp", "ethics"],
+    "topics": ["python-dasar", "supervised-learning", "cnn-arsitektur", "transformer-dasar"],
+    "summary": "Garis besar topik IOAI: Python, ML, CV, NLP, etika AI, dan analisis data.",
+    "promptHint": "Soal kompetisi internasional menekankan penerapan konsep (bukan hafalan) dengan dataset nyata dan metrik evaluasi eksplisit."
+  },
+  {
+    "id": "awesome-ioai-tasks",
+    "category": "task_repo",
+    "title": "awesome-ioai-tasks",
+    "url": "https://github.com/open-cu/awesome-ioai-tasks",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp", "multimodal"],
+    "topics": [],
+    "summary": "Koleksi tautan soal IOAI, seleksi nasional, dan materi belajar dari berbagai negara."
+  },
+  {
     "id": "ioai-2025-repo",
     "category": "task_repo",
     "title": "IOAI 2025 Tasks Repository",
@@ -18,7 +39,30 @@
     "year": 2025,
     "domains": ["ml", "cv", "nlp"],
     "topics": ["cnn-arsitektur", "deteksi-segmentasi", "transformer-lanjut", "feature-engineering"],
-    "summary": "Arsip soal Individual Contest IOAI 2025 (Beijing): notebook, dataset, dan solusi referensi."
+    "summary": "Arsip soal Individual Contest IOAI 2025 (Beijing): notebook, dataset, dan solusi referensi.",
+    "promptHint": "Format tipikal: notebook Colab, spesifikasi input/output tensor, baseline CNN, skor 0–1 dengan bobot kelas."
+  },
+  {
+    "id": "ioai-2024-repo",
+    "category": "task_repo",
+    "title": "IOAI 2024 Tasks Repository",
+    "url": "https://github.com/IOAI-official/IOAI-2024",
+    "region": "IOAI",
+    "year": 2024,
+    "domains": ["ml", "cv", "nlp", "generative"],
+    "topics": ["feature-engineering", "transformer-lanjut", "cnn-arsitektur"],
+    "summary": "Arsip IOAI 2024 (Sofia): scientific round at-home/on-site dan practical generative AI."
+  },
+  {
+    "id": "ioai-2026-repo",
+    "category": "task_repo",
+    "title": "IOAI 2026 Tasks Repository",
+    "url": "https://github.com/IOAI-official/IOAI-2026",
+    "region": "IOAI",
+    "year": 2026,
+    "domains": ["ml", "cv", "nlp"],
+    "topics": ["cnn-arsitektur", "transformer-lanjut", "ensemble"],
+    "summary": "Arsip tugas dan dataset IOAI 2026 (Astana) untuk benchmarking dan latihan."
   },
   {
     "id": "ioai-2025-radar",
@@ -29,8 +73,8 @@
     "year": 2025,
     "domains": ["cv", "ml"],
     "topics": ["cnn-arsitektur", "deteksi-segmentasi", "konvolusi"],
-    "summary": "Segmentasi semantik heatmap radar indoor: prediksi label objek dari 6 heatmap.",
-    "promptHint": "Input 6×50×181 heatmaps → output label map; skor bobot tinggi pada pixel non-background."
+    "summary": "Segmentasi semantik heatmap radar indoor: prediksi label objek dari 6 heatmap range-azimuth/elevation/velocity.",
+    "promptHint": "Input 6×50×181 heatmaps → output label map 50×181; skor bobot tinggi pada pixel non-background; baseline Conv2d sederhana."
   },
   {
     "id": "ioai-2025-chicken",
@@ -40,8 +84,9 @@
     "region": "IOAI",
     "year": 2025,
     "domains": ["cv", "ml"],
-    "topics": ["deteksi-segmentasi", "cnn-arsitektur", "mlp"],
-    "summary": "Density estimation untuk menghitung ayam Silkie dari citra (decoder di atas feature extractor)."
+    "topics": ["deteksi-segmentasi", "cnn-arsitektur", "klasifikasi-citra"],
+    "summary": "Hitung/deteksi objek (ayam) dari citra satelit/cuaca — tugas counting + CV praktis.",
+    "promptHint": "Gaya IOAI: dataset citra nyata, metrik counting/deteksi, baseline CNN; tekankan definisi I/O dan edge case."
   },
   {
     "id": "ioai-2025-concepts",
@@ -50,9 +95,10 @@
     "url": "https://github.com/IOAI-official/IOAI-2025/tree/main/Individual-Contest/Concepts",
     "region": "IOAI",
     "year": 2025,
-    "domains": ["nlp", "multimodal"],
+    "domains": ["nlp", "ml"],
     "topics": ["transformer-lanjut", "tfidf-embedding", "supervised-learning"],
-    "summary": "Buat hint ikon berurutan agar AI guesser menebak kata rahasia (Hits@10 / NDCG@10)."
+    "summary": "Tugas NLP/konsep: model bahasa dan klasifikasi konsep dari teks.",
+    "promptHint": "Soal NLP IOAI sering meminta fine-tune kecil atau klasifikasi dengan data terbatas dan metrik F1/akurasi."
   },
   {
     "id": "ioai-2025-restroom",
@@ -63,7 +109,8 @@
     "year": 2025,
     "domains": ["cv", "multimodal"],
     "topics": ["klasifikasi-citra", "cnn-arsitektur", "tfidf-embedding"],
-    "summary": "Matching ikon toilet lintas gender dari restroom yang sama (query→gallery)."
+    "summary": "Matching ikon toilet/restroom — klasifikasi/pencocokan citra ikonografis.",
+    "promptHint": "Matching visual: embedding citra, similarity, atau klasifikasi multi-kelas dengan baseline CNN."
   },
   {
     "id": "ioai-2025-antique",
@@ -72,9 +119,10 @@
     "url": "https://github.com/IOAI-official/IOAI-2025/tree/main/Individual-Contest/Antique",
     "region": "IOAI",
     "year": 2025,
-    "domains": ["ml", "tabular"],
-    "topics": ["supervised-learning", "unsupervised-learning", "evaluasi-model", "feature-engineering"],
-    "summary": "Klasifikasi lukisan asli vs replika dengan banyak label tidak diketahui (semi-supervised)."
+    "domains": ["cv", "ml"],
+    "topics": ["klasifikasi-citra", "cnn-arsitektur", "evaluasi-model"],
+    "summary": "Autentikasi lukisan antik — klasifikasi asli vs palsu/gaya dari citra.",
+    "promptHint": "Binary/multi-class CV dengan penekanan evaluasi model dan ketidakseimbangan kelas."
   },
   {
     "id": "ioai-2025-pixel",
@@ -84,7 +132,549 @@
     "region": "IOAI",
     "year": 2025,
     "domains": ["cv", "ml"],
-    "topics": ["klasifikasi-citra", "cnn-arsitektur", "optimasi-lanjut"],
-    "summary": "Pilih ≤6.25% piksel (satu rectangle mask) agar CLIP tetap akurat mengklasifikasi hewan."
+    "topics": ["cnn-arsitektur", "optimasi-lanjut", "regularisasi"],
+    "summary": "Efisiensi piksel/model — trade-off akurasi vs ukuran atau komputasi.",
+    "promptHint": "Soal menekankan efisiensi: quantization, pruning, atau arsitektur ringan dengan metrik ganda."
+  },
+  {
+    "id": "ioai-2024-athome-ml",
+    "category": "national_olympiad",
+    "title": "IOAI 2024 At-Home · Feature Engineering",
+    "url": "https://ioai-official.org/wp-content/uploads/2025/06/At-home-problems.zip",
+    "region": "IOAI",
+    "year": 2024,
+    "domains": ["ml", "tabular"],
+    "topics": ["feature-engineering", "supervised-learning", "evaluasi-model"],
+    "summary": "Generate fitur terbaik untuk model ML tetap pada data matriks terstruktur.",
+    "promptHint": "Model fixed — siswa hanya merancang fitur; evaluasi pada skor model yang dikunci."
+  },
+  {
+    "id": "ioai-2024-athome-nlp",
+    "category": "national_olympiad",
+    "title": "IOAI 2024 At-Home · Ciphered LM Fine-tune",
+    "url": "https://ioai-official.org/wp-content/uploads/2025/06/At-home-problems.zip",
+    "region": "IOAI",
+    "year": 2024,
+    "domains": ["nlp"],
+    "topics": ["transformer-lanjut", "rnn-lstm", "tfidf-embedding"],
+    "summary": "Fine-tune LM pada teks tersandi bahasa tidak dikenal.",
+    "promptHint": "NLP dengan data terenkripsi/asing: transfer learning dan adaptasi domain."
+  },
+  {
+    "id": "ioai-2024-athome-cv",
+    "category": "national_olympiad",
+    "title": "IOAI 2024 At-Home · SDXL Weight Steering",
+    "url": "https://ioai-official.org/wp-content/uploads/2025/06/At-home-problems.zip",
+    "region": "IOAI",
+    "year": 2024,
+    "domains": ["generative", "cv"],
+    "topics": ["cnn-arsitektur", "mlp", "optimasi-lanjut"],
+    "summary": "Ubah bobot SDXL-mini agar zebra↔giraffe tanpa mengubah prompt.",
+    "promptHint": "Manipulasi bobot jaringan (bukan prompt engineering); konsep editing representasi."
+  },
+  {
+    "id": "neoai-2025-evading",
+    "category": "national_olympiad",
+    "title": "NEOAI 2025 · Evading AI-Generated Text Detection",
+    "url": "https://github.com/open-cu/neoai-2025/tree/main/3_Evading_AI_Generated_Text_Detection",
+    "region": "NEOAI",
+    "year": 2025,
+    "domains": ["nlp", "generative"],
+    "topics": ["transformer-lanjut", "tfidf-embedding", "evaluasi-model"],
+    "summary": "Craft teks AI yang bypass detektor human-vs-AI.",
+    "promptHint": "Adversarial NLP: trade-off kelayakan teks vs skor detektor."
+  },
+  {
+    "id": "neoai-2025-broken-bert",
+    "category": "national_olympiad",
+    "title": "NEOAI 2025 · Broken BERT",
+    "url": "https://github.com/open-cu/neoai-2025/tree/main/5_Broken_BERT",
+    "region": "NEOAI",
+    "year": 2025,
+    "domains": ["nlp"],
+    "topics": ["transformer-lanjut", "tfidf-embedding", "mlp"],
+    "summary": "Perbaiki embedding BERT yang rusak/korupsi.",
+    "promptHint": "Diagnostik embedding: rekonstruksi atau fine-tune ringan pada model transformer rusak."
+  },
+  {
+    "id": "neoai-2025-cluster",
+    "category": "national_olympiad",
+    "title": "NEOAI 2025 · Cluster Pictures",
+    "url": "https://www.kaggle.com/competitions/neoai-2025-cluster-pictures",
+    "region": "NEOAI",
+    "year": 2025,
+    "domains": ["cv", "ml"],
+    "topics": ["unsupervised-learning", "cnn-arsitektur", "klasifikasi-citra"],
+    "summary": "Clustering patch gambar tanpa label (unsupervised CV).",
+    "promptHint": "Unsupervised: embedding + clustering; evaluasi terhadap ground-truth cluster tersembunyi."
+  },
+  {
+    "id": "neoai-2025-cuties",
+    "category": "national_olympiad",
+    "title": "NEOAI 2025 · Cuties Segmentation",
+    "url": "https://github.com/open-cu/neoai-2025/tree/main/8_Cuties_Segmentation",
+    "region": "NEOAI",
+    "year": 2025,
+    "domains": ["cv"],
+    "topics": ["deteksi-segmentasi", "cnn-arsitektur", "konvolusi"],
+    "summary": "Segmentasi semantik karakter kartun.",
+    "promptHint": "Semantic segmentation: U-Net/FCN-style, IoU/mIoU sebagai metrik."
+  },
+  {
+    "id": "neoai-2025-hogspell",
+    "category": "national_olympiad",
+    "title": "NEOAI 2025 · Hogspell Challenge",
+    "url": "https://github.com/lenjjiv/steering-hogs",
+    "region": "NEOAI",
+    "year": 2025,
+    "domains": ["generative", "cv"],
+    "topics": ["cnn-arsitektur", "mlp", "optimasi-lanjut"],
+    "summary": "Steer diffusion model agar menghasilkan gambar babi (hogs).",
+    "promptHint": "Activation/weight steering pada model generatif; evaluasi visual atau classifier-based."
+  },
+  {
+    "id": "neoai-2025-tricy",
+    "category": "national_olympiad",
+    "title": "NEOAI 2025 · Tricy Table",
+    "url": "https://www.kaggle.com/competitions/neoai-2025-tricy-table-data",
+    "region": "NEOAI",
+    "year": 2025,
+    "domains": ["ml", "tabular"],
+    "topics": ["feature-engineering", "ensemble", "pohon-keputusan", "supervised-learning"],
+    "summary": "Feature engineering pada data tabular tricky.",
+    "promptHint": "Tabular ML: encoding, interaksi fitur, ensemble pohon; leaderboard Kaggle-style."
+  },
+  {
+    "id": "neoai-2025-underfitting",
+    "category": "national_olympiad",
+    "title": "NEOAI 2025 · Underfitting CV",
+    "url": "https://www.kaggle.com/competitions/neoai-2025-underfitting-cv",
+    "region": "NEOAI",
+    "year": 2025,
+    "domains": ["cv", "ml"],
+    "topics": ["cnn-arsitektur", "regularisasi", "evaluasi-model", "mlp"],
+    "summary": "Perbaiki model CV yang underfitting.",
+    "promptHint": "Diagnostik underfitting: kapasitas model, learning rate, augmentasi — bukan overfitting."
+  },
+  {
+    "id": "neoai-2025-intent",
+    "category": "national_olympiad",
+    "title": "NEOAI 2025 · Intent Detection & Slot Filling",
+    "url": "https://www.kaggle.com/competitions/neoai-2025-intent-detection-and-slot-filling",
+    "region": "NEOAI",
+    "year": 2025,
+    "domains": ["nlp"],
+    "topics": ["transformer-lanjut", "rnn-lstm", "tfidf-embedding"],
+    "summary": "Intent recognition multilingual + slot filling.",
+    "promptHint": "Joint NLU: klasifikasi intent + sequence labeling slot; metrik F1 per slot."
+  },
+  {
+    "id": "benin-2025",
+    "category": "national_olympiad",
+    "title": "Benin National AI Olympiad 2025",
+    "url": "https://www.kaggle.com/competitions/benin-national-ai-olympiad-selection",
+    "region": "Benin",
+    "year": 2025,
+    "domains": ["ml", "tabular"],
+    "topics": ["supervised-learning", "evaluasi-model", "feature-engineering"],
+    "summary": "Klasifikasi biner tabular pada Kaggle sebagai seleksi nasional."
+  },
+  {
+    "id": "bdaio-2025",
+    "category": "national_olympiad",
+    "title": "BdAIO 2025 Preliminary",
+    "url": "https://github.com/mdajijulhakimquanta/BdAIO/blob/main/bdaio-2025-preliminary.pdf",
+    "region": "Bangladesh",
+    "year": 2025,
+    "domains": ["python", "ml"],
+    "topics": ["python-dasar", "probabilitas", "aljabar-linier"],
+    "summary": "11 soal pemrograman bertema AI (algoritma) pada putaran awal Bangladesh."
+  },
+  {
+    "id": "noai-china-2024-basketball",
+    "category": "national_olympiad",
+    "title": "NOAI China 2024 · Basketball Shooting",
+    "url": "https://github.com/jaredliw/ioai-tsp-2025/tree/main/noai-china-2024/basketball-shooting",
+    "region": "China",
+    "year": 2024,
+    "domains": ["ml", "tabular"],
+    "topics": ["supervised-learning", "feature-engineering", "evaluasi-model"],
+    "summary": "Prediksi keberhasilan tembakan basket dari fitur tabular."
+  },
+  {
+    "id": "noai-china-2024-news",
+    "category": "national_olympiad",
+    "title": "NOAI China 2024 · News Text Classification",
+    "url": "https://github.com/jaredliw/ioai-tsp-2025/tree/main/noai-china-2024/news-text-classification",
+    "region": "China",
+    "year": 2024,
+    "domains": ["nlp"],
+    "topics": ["tfidf-embedding", "supervised-learning", "transformer-dasar"],
+    "summary": "Kategorisasi artikel berita (klasifikasi teks)."
+  },
+  {
+    "id": "noai-china-2024-pendulum",
+    "category": "national_olympiad",
+    "title": "NOAI China 2024 · Pendulum Motion",
+    "url": "https://github.com/jaredliw/ioai-tsp-2025/tree/main/noai-china-2024/pendulum-motion",
+    "region": "China",
+    "year": 2024,
+    "domains": ["ml", "time_series"],
+    "topics": ["supervised-learning", "feature-engineering", "mlp"],
+    "summary": "Model gerakan bandul dengan data hilang (time series imputation)."
+  },
+  {
+    "id": "noai-china-2024-fake",
+    "category": "national_olympiad",
+    "title": "NOAI China 2024 · Real or Fake Image",
+    "url": "https://github.com/jaredliw/ioai-tsp-2025/tree/main/noai-china-2024/real-or-fake-image",
+    "region": "China",
+    "year": 2024,
+    "domains": ["cv", "generative"],
+    "topics": ["klasifikasi-citra", "cnn-arsitektur", "konvolusi"],
+    "summary": "Deteksi citra asli vs generated/fake."
+  },
+  {
+    "id": "georgia-2025-ml",
+    "category": "national_olympiad",
+    "title": "Georgia 2025 · Multi-class from Binary Classifiers",
+    "url": "https://www.bohrium.com/competitions/3072370612?tab=introduce",
+    "region": "Georgia",
+    "year": 2025,
+    "domains": ["ml"],
+    "topics": ["supervised-learning", "evaluasi-model", "ensemble"],
+    "summary": "Gabungkan 3 classifier biner menjadi prediksi multi-kelas."
+  },
+  {
+    "id": "georgia-2025-nlp",
+    "category": "national_olympiad",
+    "title": "Georgia 2025 · BERT Deduplication",
+    "url": "https://www.bohrium.com/competitions/7927749324?tab=introduce",
+    "region": "Georgia",
+    "year": 2025,
+    "domains": ["nlp"],
+    "topics": ["transformer-lanjut", "tfidf-embedding", "supervised-learning"],
+    "summary": "Deduplikasi kalimat dengan pasangan positif/negatif dan model BERT kecil."
+  },
+  {
+    "id": "georgia-2025-cv",
+    "category": "national_olympiad",
+    "title": "Georgia 2025 · Caption-guided Image Classification",
+    "url": "https://www.bohrium.com/competitions/6576265377?tab=introduce",
+    "region": "Georgia",
+    "year": 2025,
+    "domains": ["cv", "multimodal", "nlp"],
+    "topics": ["klasifikasi-citra", "cnn-arsitektur", "tfidf-embedding"],
+    "summary": "Klasifikasi citra tanpa label memakai caption dari image2text."
+  },
+  {
+    "id": "haio-repo",
+    "category": "task_repo",
+    "title": "HAIO — Hungarian AI Olympiad",
+    "url": "https://github.com/Hungarian-AI-Olympiad/HAIO-Hungarian-AI-Olympiad",
+    "region": "Hungary",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp"],
+    "topics": ["cnn-arsitektur", "transformer-lanjut", "supervised-learning"],
+    "summary": "Soal, solusi, dan materi pelatihan olimpiade AI Hungaria (SMA)."
+  },
+  {
+    "id": "joai-2025",
+    "category": "national_olympiad",
+    "title": "JOAI 2025 · Multimodal Gas Classification",
+    "url": "https://www.kaggle.com/competitions/joai-2025-competition/overview",
+    "region": "Japan",
+    "year": 2025,
+    "domains": ["multimodal", "ml", "cv", "nlp"],
+    "topics": ["ensemble", "cnn-arsitektur", "transformer-lanjut", "feature-engineering"],
+    "summary": "Klasifikasi gas dari sensor tabular + citra + teks (multimodal).",
+    "promptHint": "Ensemble multimodal: ResNet + DeBERTa + LightGBM adalah pola solusi tipikal."
+  },
+  {
+    "id": "kz-day1-restore",
+    "category": "national_olympiad",
+    "title": "Kazakhstan TST · Image Restoration",
+    "url": "https://github.com/batyrq/IOAI-TST-solution-day1",
+    "region": "Kazakhstan",
+    "year": 2025,
+    "domains": ["cv"],
+    "topics": ["cnn-arsitektur", "konvolusi", "mlp"],
+    "summary": "Restorasi citra setelah filter channel 2×2."
+  },
+  {
+    "id": "kz-day2-cluster",
+    "category": "national_olympiad",
+    "title": "Kazakhstan TST · Player Clustering",
+    "url": "https://github.com/batyrq/IOAI-TST-solution-day2",
+    "region": "Kazakhstan",
+    "year": 2025,
+    "domains": ["ml", "tabular"],
+    "topics": ["unsupervised-learning", "feature-engineering", "evaluasi-model"],
+    "summary": "Clustering pemain sepak bola dari statistik."
+  },
+  {
+    "id": "kz-day3-code",
+    "category": "national_olympiad",
+    "title": "Kazakhstan TST · Code Difficulty",
+    "url": "https://github.com/batyrq/IOAI-TST-solution-day3",
+    "region": "Kazakhstan",
+    "year": 2025,
+    "domains": ["nlp"],
+    "topics": ["transformer-dasar", "tfidf-embedding", "supervised-learning"],
+    "summary": "Klasifikasi kesulitan cuplikan kode (easy/medium/hard)."
+  },
+  {
+    "id": "kz-day4-masked",
+    "category": "national_olympiad",
+    "title": "Kazakhstan TST · Masked Word Position",
+    "url": "https://github.com/batyrq/IOAI-TST-solution-day4",
+    "region": "Kazakhstan",
+    "year": 2025,
+    "domains": ["nlp"],
+    "topics": ["transformer-lanjut", "rnn-lstm", "tfidf-embedding"],
+    "summary": "Pulihkan posisi kata yang di-mask dalam kalimat."
+  },
+  {
+    "id": "malaysia-tsp-2025",
+    "category": "task_repo",
+    "title": "Malaysia IOAI Training Programme 2025",
+    "url": "https://github.com/jaredliw/ioai-tsp-2025",
+    "region": "Malaysia",
+    "year": 2025,
+    "domains": ["ml", "cv", "multimodal"],
+    "topics": ["cnn-arsitektur", "deteksi-segmentasi", "klasifikasi-citra"],
+    "summary": "Lab ResNet fine-tuning, FCN segmentation, dan multimodal fusion."
+  },
+  {
+    "id": "poland-2024-stage1",
+    "category": "national_olympiad",
+    "title": "Polish AI Olympiad 2024 · Stage I",
+    "url": "https://github.com/OlimpiadaAI/I-OlimpiadaAI/tree/main/first_stage",
+    "region": "Poland",
+    "year": 2024,
+    "domains": ["cv", "ml", "nlp"],
+    "topics": ["cnn-arsitektur", "regularisasi", "transformer-dasar", "evaluasi-model"],
+    "summary": "Adversarial attacks, quantization, tracking, pruning, reading-comprehension riddles."
+  },
+  {
+    "id": "poland-2024-final",
+    "category": "national_olympiad",
+    "title": "Polish AI Olympiad 2024 · Final",
+    "url": "https://github.com/OlimpiadaAI/I-OlimpiadaAI/tree/main/final_stage",
+    "region": "Poland",
+    "year": 2024,
+    "domains": ["cv", "ml", "nlp", "time_series"],
+    "topics": ["klasifikasi-citra", "rnn-lstm", "transformer-lanjut", "unsupervised-learning"],
+    "summary": "Cipher breaking, OOD detection, self-supervised time-series, machine translation."
+  },
+  {
+    "id": "poland-2025-coins",
+    "category": "national_olympiad",
+    "title": "Polish AI Olympiad 2025 · Coin Counting",
+    "url": "https://github.com/OlimpiadaAI/II-OlimpiadaAI/blob/main/1_etap/1_maszynka_do_liczenia_monet/1_maszynka_do_liczenia_monet.ipynb",
+    "region": "Poland",
+    "year": 2025,
+    "domains": ["cv"],
+    "topics": ["deteksi-segmentasi", "cnn-arsitektur", "konvolusi"],
+    "summary": "Bangun detektor koin dari nol (CV counting/detection).",
+    "promptHint": "CV dari scratch: deteksi objek sederhana tanpa pretrained berat; fokus pipeline dan metrik counting."
+  },
+  {
+    "id": "poland-2025-hallucination",
+    "category": "national_olympiad",
+    "title": "Polish AI Olympiad 2025 · Hallucination Detection",
+    "url": "https://github.com/OlimpiadaAI/II-OlimpiadaAI/blob/main/1_etap/2_wykrywanie_halucynacji/2_wykrywanie_halucynacji_modelowe_rozwiazanie.ipynb",
+    "region": "Poland",
+    "year": 2025,
+    "domains": ["nlp"],
+    "topics": ["transformer-lanjut", "evaluasi-model", "tfidf-embedding"],
+    "summary": "Deteksi halusinasi keluaran language model.",
+    "promptHint": "Factuality/hallucination: klasifikasi claim vs konteks; metrik precision/recall penting."
+  },
+  {
+    "id": "poland-2025-stage2",
+    "category": "national_olympiad",
+    "title": "Polish AI Olympiad 2025 · Stage II",
+    "url": "https://github.com/OlimpiadaAI/II-OlimpiadaAI/tree/main/2_etap",
+    "region": "Poland",
+    "year": 2025,
+    "domains": ["cv", "ml", "nlp"],
+    "topics": ["cnn-arsitektur", "supervised-learning", "transformer-lanjut"],
+    "summary": "Noise estimation, credit-scoring explanations, query-document embedding alignment."
+  },
+  {
+    "id": "romania-onia-examples",
+    "category": "national_olympiad",
+    "title": "Romania ONIA · Example Problems",
+    "url": "https://github.com/Olimpiada-AI/Propunere-probleme-si-solutii",
+    "region": "Romania",
+    "year": 2025,
+    "domains": ["ml", "tabular"],
+    "topics": ["supervised-learning", "feature-engineering", "evaluasi-model"],
+    "summary": "Contoh soal tabular ML untuk putaran kabupaten ONIA."
+  },
+  {
+    "id": "romania-solutions",
+    "category": "task_repo",
+    "title": "roai-solved write-ups",
+    "url": "https://github.com/stefanasandei/roai-solved",
+    "region": "Romania",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp"],
+    "topics": ["cnn-arsitektur", "transformer-lanjut", "ensemble"],
+    "summary": "Write-up solusi kontes bergaya IOAI (NEOAI, ROAI, Poland)."
+  },
+  {
+    "id": "singapore-selection",
+    "category": "national_olympiad",
+    "title": "Singapore IOAI Selection 2024–2025",
+    "url": "https://ioai-official.org/resources/",
+    "region": "Singapore",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp"],
+    "topics": ["supervised-learning", "cnn-arsitektur", "transformer-dasar"],
+    "summary": "Tes seleksi dan tugas residential camp Singapura (lihat Education Hub)."
+  },
+  {
+    "id": "usa-naio-2025",
+    "category": "national_olympiad",
+    "title": "USA-North America AI Olympiad 2025",
+    "url": "https://ioai-official.org/the-usa-north-america-ai-olympiad-is-organized-by-the-usa-ai-olympiad-usaaio/",
+    "region": "USA",
+    "year": 2025,
+    "domains": ["ml", "python"],
+    "topics": ["aljabar-linier", "supervised-learning", "mlp", "feature-engineering"],
+    "summary": "Round 1 online (ML/data analysis) + finals MIT dengan fine-tuning lanjutan."
+  },
+  {
+    "id": "apoai-2025",
+    "category": "national_olympiad",
+    "title": "APOAI 2025 Competition",
+    "url": "https://www.bohrium.com/competitions/7647426696?tab=introduce",
+    "region": "APOAI",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp"],
+    "topics": ["cnn-arsitektur", "transformer-lanjut", "ensemble"],
+    "summary": "Olimpiade AI Asia-Pasifik — overview tugas regional 2025."
+  },
+  {
+    "id": "aicc-solutions",
+    "category": "task_repo",
+    "title": "AICC Community Contest Solutions",
+    "url": "https://github.com/AI-Community-Contest/solutions/tree/main",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp", "audio"],
+    "topics": ["ensemble", "cnn-arsitektur", "transformer-lanjut"],
+    "summary": "Solusi resmi kontes komunitas bulanan bergaya IOAI (banyak di Kaggle)."
+  },
+  {
+    "id": "course-fastai",
+    "category": "course",
+    "title": "Fast.ai Practical Deep Learning",
+    "url": "https://course.fast.ai/",
+    "domains": ["cv", "nlp", "ml"],
+    "topics": ["cnn-arsitektur", "klasifikasi-citra", "mlp"],
+    "summary": "Kursus hands-on deep learning dengan PyTorch untuk aplikasi praktis."
+  },
+  {
+    "id": "course-mlcc",
+    "category": "course",
+    "title": "Google Machine Learning Crash Course",
+    "url": "https://developers.google.com/machine-learning/crash-course",
+    "domains": ["ml", "python"],
+    "topics": ["supervised-learning", "evaluasi-model", "feature-engineering", "regularisasi"],
+    "summary": "Tutorial ML interaktif dengan notebook Colab dari Google."
+  },
+  {
+    "id": "course-mit-6s191",
+    "category": "course",
+    "title": "MIT 6.S191 Introduction to Deep Learning",
+    "url": "http://introtodeeplearning.com/",
+    "domains": ["cv", "nlp", "ml"],
+    "topics": ["mlp", "cnn-arsitektur", "rnn-lstm", "transformer-dasar"],
+    "summary": "Fondasi deep learning tingkat universitas (kuliah + lab)."
+  },
+  {
+    "id": "course-elements-ai",
+    "category": "course",
+    "title": "Elements of AI",
+    "url": "https://www.elementsofai.com/",
+    "domains": ["ml", "ethics", "python"],
+    "topics": ["python-dasar", "supervised-learning", "probabilitas"],
+    "summary": "Pengantar konsep AI ramah pemula (tanpa coding berat)."
+  },
+  {
+    "id": "course-d2l",
+    "category": "course",
+    "title": "Dive into Deep Learning",
+    "url": "https://d2l.ai/",
+    "domains": ["cv", "nlp", "ml"],
+    "topics": ["mlp", "cnn-arsitektur", "rnn-lstm", "transformer-dasar", "optimasi"],
+    "summary": "Buku interaktif gratis dengan Jupyter notebooks (D2L)."
+  },
+  {
+    "id": "course-goodfellow",
+    "category": "course",
+    "title": "Deep Learning Book (Goodfellow et al.)",
+    "url": "https://www.deeplearningbook.org/",
+    "domains": ["ml"],
+    "topics": ["aljabar-linier", "probabilitas", "optimasi", "mlp", "backpropagation"],
+    "summary": "Fondasi teoritis deep learning (buku teks klasik)."
+  },
+  {
+    "id": "course-ml-yearning",
+    "category": "course",
+    "title": "Machine Learning Yearning (Andrew Ng)",
+    "url": "https://www.deeplearning.ai/machine-learning-yearning/",
+    "domains": ["ml"],
+    "topics": ["evaluasi-model", "supervised-learning", "feature-engineering"],
+    "summary": "Panduan praktis desain proyek ML dan strategi debugging model."
+  },
+  {
+    "id": "course-kaggle-learn",
+    "category": "course",
+    "title": "Kaggle Learn",
+    "url": "https://www.kaggle.com/learn",
+    "domains": ["ml", "cv", "nlp", "python"],
+    "topics": ["python-dasar", "feature-engineering", "klasifikasi-citra"],
+    "summary": "Lesson pendek berbasis notebook untuk ML dan data science."
+  },
+  {
+    "id": "course-pytorch",
+    "category": "course",
+    "title": "PyTorch Tutorials",
+    "url": "https://pytorch.org/tutorials/",
+    "domains": ["cv", "nlp", "ml", "python"],
+    "topics": ["mlp", "cnn-arsitektur", "python-dasar"],
+    "summary": "Tutorial resmi training dan deployment model PyTorch."
+  },
+  {
+    "id": "course-cs231n",
+    "category": "course",
+    "title": "Stanford CS231n Slides",
+    "url": "http://cs231n.stanford.edu/",
+    "domains": ["cv"],
+    "topics": ["konvolusi", "cnn-arsitektur", "klasifikasi-citra", "deteksi-segmentasi"],
+    "summary": "Slide kuliah Computer Vision & CNN Stanford."
+  },
+  {
+    "id": "course-cs224n",
+    "category": "course",
+    "title": "Stanford CS224n Slides",
+    "url": "https://web.stanford.edu/class/cs224n/",
+    "domains": ["nlp"],
+    "topics": ["tfidf-embedding", "transformer-dasar", "transformer-lanjut", "rnn-lstm"],
+    "summary": "Materi kuliah NLP dan transformer Stanford CS224n."
+  },
+  {
+    "id": "writeup-ioai-2025",
+    "category": "task_repo",
+    "title": "IOAI 2025 Unofficial Writeups",
+    "url": "https://ioai-writeup.github.io/",
+    "region": "IOAI",
+    "year": 2025,
+    "domains": ["ml", "cv", "nlp"],
+    "topics": ["cnn-arsitektur", "deteksi-segmentasi", "transformer-lanjut"],
+    "summary": "Kumpulan write-up tidak resmi untuk soal IOAI 2025."
   }
 ]

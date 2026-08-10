@@ -10,7 +10,7 @@ export type UserPhaseAccess = {
   role: string | null;
 };
 
-/** Server-only helper — never import from client components. */
+/** Load the user's selected prep phase from the DB (defaults to pre-seleksi). */
 export async function loadUserPhase(userId: string): Promise<Phase> {
   const access = await loadUserPhaseAccess(userId);
   return access.phase;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { EventCountdown } from "@/components/event-countdown";
+import { WhatsNewSection } from "@/components/whats-new-section";
 import { listPublicCountdownPhases } from "@/lib/countdown-phases";
 import { getSession } from "@/lib/session";
 
@@ -53,6 +54,8 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        <WhatsNewSection />
       </main>
     </div>
   );

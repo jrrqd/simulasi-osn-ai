@@ -47,11 +47,15 @@ export type IoaiResource = {
   region?: string;
   year?: number;
   domains: IoaiDomain[];
+  /** Syllabus topic slugs from TRACKS (e.g. cnn-arsitektur). */
   topics: string[];
+  /** 1–2 sentences for UI + prompt (keep ≤200 chars). */
   summary: string;
+  /** Optional style note for LLM only (not shown in UI). */
   promptHint?: string;
 };
 
+/** Admin / DB row view including visibility + provenance. */
 export type IoaiResourceRecord = IoaiResource & {
   source: IoaiResourceSource;
   hidden: boolean;

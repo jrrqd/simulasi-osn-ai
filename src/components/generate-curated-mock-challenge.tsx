@@ -25,6 +25,11 @@ import {
 } from "@/components/generation-progress";
 import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
 import { PhaseHintBanner } from "@/components/phase-hint-banner";
+import {
+  formatQuotaError,
+  SimulasiQuotaBanner,
+  useSimulasiQuota,
+} from "@/components/simulasi-quota-banner";
 
 type GenerationMode = "standard" | "custom" | "study-case";
 type SourceMode = "curated" | "ai";
@@ -36,6 +41,7 @@ const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
 
 export function GenerateCuratedMockChallenge() {
   const router = useRouter();
+  const { quota } = useSimulasiQuota();
   const [sourceMode, setSourceMode] = useState<SourceMode>("curated");
   const [generationMode, setGenerationMode] =
     useState<GenerationMode>("standard");
@@ -64,6 +70,10 @@ export function GenerateCuratedMockChallenge() {
   const isKaggle150 = size === "kaggle-150";
   const effectiveMode: GenerationMode =
     isKaggle && generationMode === "study-case" ? "standard" : generationMode;
+  const quotaExhausted =
+    quota?.simulasi.gated === true &&
+    quota.simulasi.remaining != null &&
+    quota.simulasi.remaining <= 0;
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -107,7 +117,7 @@ export function GenerateCuratedMockChallenge() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menyusun simulasi");
+      if (!res.ok) throw new Error(formatQuotaError(data));
       router.push(`/mock/${data.mock.id}`);
       router.refresh();
     } catch (e) {
@@ -158,6 +168,7 @@ export function GenerateCuratedMockChallenge() {
       accent="primary"
     >
       <PhaseHintBanner />
+      <SimulasiQuotaBanner quota={quota} />
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -368,7 +379,7 @@ export function GenerateCuratedMockChallenge() {
       <button
         className="btn btn-primary !px-4 !py-2 text-sm"
         onClick={generate}
-        disabled={loading}
+        disabled={loading || quotaExhausted}
       >
         {loading
           ? sourceMode === "ai"

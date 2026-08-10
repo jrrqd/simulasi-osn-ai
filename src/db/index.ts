@@ -44,6 +44,7 @@ async function migratePglite(client: PGlite) {
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS profile_prompt_snoozed_until timestamptz;
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS assistant_pet text NOT NULL DEFAULT 'cat';
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'pre-seleksi';
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS user_type text NOT NULL DEFAULT 'free';
     CREATE TABLE IF NOT EXISTS session (
       id text PRIMARY KEY,
       expires_at timestamptz NOT NULL,
@@ -289,20 +290,20 @@ async function migratePglite(client: PGlite) {
       category text NOT NULL,
       title text NOT NULL,
       url text NOT NULL,
+      summary text NOT NULL,
       region text,
       year integer,
       domains jsonb NOT NULL DEFAULT '[]',
       topics jsonb NOT NULL DEFAULT '[]',
-      summary text NOT NULL DEFAULT '',
       prompt_hint text,
       source text NOT NULL DEFAULT 'curated',
       hidden boolean NOT NULL DEFAULT false,
       updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
-      updated_at timestamptz NOT NULL DEFAULT now(),
-      created_at timestamptz NOT NULL DEFAULT now()
+      updated_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS ioai_resources_category_idx ON ioai_resources(category);
     CREATE INDEX IF NOT EXISTS ioai_resources_hidden_idx ON ioai_resources(hidden);
+
     CREATE TABLE IF NOT EXISTS ioai_guides (
       id text PRIMARY KEY,
       resource_id text NOT NULL REFERENCES ioai_resources(id) ON DELETE CASCADE,
@@ -348,6 +349,7 @@ async function createDb(): Promise<AppDb> {
   // Soft-migrate additive columns/tables (Postgres prod does not run PGlite migrate).
   await client.unsafe(`
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'pre-seleksi';
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS user_type text NOT NULL DEFAULT 'free';
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS score_summary jsonb;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS total_attempts integer NOT NULL DEFAULT 0;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_minutes integer NOT NULL DEFAULT 0;
@@ -398,25 +400,52 @@ async function createDb(): Promise<AppDb> {
     );
     CREATE INDEX IF NOT EXISTS generated_lesson_checks_lesson_idx
       ON generated_lesson_checks(lesson_id);
+    CREATE TABLE IF NOT EXISTS problem_overrides (
+      id text PRIMARY KEY,
+      payload jsonb,
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS mock_overrides (
+      id text PRIMARY KEY,
+      payload jsonb,
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS countdown_phases (
+      id text PRIMARY KEY,
+      label text NOT NULL,
+      date_label text NOT NULL,
+      at text NOT NULL,
+      ends_at text,
+      sort_order integer NOT NULL DEFAULT 0,
+      enabled boolean NOT NULL DEFAULT true,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS countdown_phases_sort_idx ON countdown_phases(sort_order, at);
     CREATE TABLE IF NOT EXISTS ioai_resources (
       id text PRIMARY KEY,
       category text NOT NULL,
       title text NOT NULL,
       url text NOT NULL,
+      summary text NOT NULL,
       region text,
       year integer,
       domains jsonb NOT NULL DEFAULT '[]',
       topics jsonb NOT NULL DEFAULT '[]',
-      summary text NOT NULL DEFAULT '',
       prompt_hint text,
       source text NOT NULL DEFAULT 'curated',
       hidden boolean NOT NULL DEFAULT false,
       updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
-      updated_at timestamptz NOT NULL DEFAULT now(),
-      created_at timestamptz NOT NULL DEFAULT now()
+      updated_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS ioai_resources_category_idx ON ioai_resources(category);
     CREATE INDEX IF NOT EXISTS ioai_resources_hidden_idx ON ioai_resources(hidden);
+
     CREATE TABLE IF NOT EXISTS ioai_guides (
       id text PRIMARY KEY,
       resource_id text NOT NULL REFERENCES ioai_resources(id) ON DELETE CASCADE,

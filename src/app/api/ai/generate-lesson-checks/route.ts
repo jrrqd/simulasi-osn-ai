@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { topicMastery } from "@/db/schema";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
 import { generateLessonChecks } from "@/lib/ai/generate-lesson-checks";
 import { getLesson } from "@/lib/content/load";
@@ -12,7 +12,14 @@ export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
 
-  if (!rateLimit(`gen-checks:${authResult.user.id}`, 8, 60 * 60_000)) {
+  if (
+    !(await rateLimitForUser(
+      authResult.user.id,
+      "gen-checks",
+      8,
+      60 * 60_000,
+    ))
+  ) {
     return Response.json(
       { error: "Batas generate cek konsep: 8 per jam" },
       { status: 429 },

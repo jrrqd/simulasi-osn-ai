@@ -1,23 +1,17 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
 import { requireUser } from "@/lib/session";
 import { getLessons } from "@/lib/content/load";
-import { listVisibleIoaiResources } from "@/lib/content/ioai-resources";
 import { TRACKS } from "@/lib/content/types";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
-import {
-  canAccessIoaiResources,
-  loadUserPhase,
-} from "@/lib/user/load-phase";
+import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 export default async function StudyPage() {
   const user = await requireUser();
   const lessons = getLessons();
   const progressMap = await getUserLessonProgress(user.id);
   const phase = await loadUserPhase(user.id);
-  const showIoai = canAccessIoaiResources(phase, user.role);
-  const ioaiResources = showIoai ? await listVisibleIoaiResources() : [];
 
   const totalLevels = lessons.length;
   const completedLevels = lessons.filter(
@@ -50,9 +44,6 @@ export default async function StudyPage() {
           </div>
         </div>
       </div>
-
-      {showIoai ? <IoaiResourcesPanel resources={ioaiResources} /> : null}
-
       <div className="grid gap-4 md:grid-cols-2">
         {Object.entries(TRACKS).map(([id, meta]) => {
           const trackLessons = lessons.filter((l) => l.track === id);
@@ -127,6 +118,8 @@ export default async function StudyPage() {
           );
         })}
       </div>
+
+      <IoaiResourcesPanel phase={phase} />
     </div>
   );
 }

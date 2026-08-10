@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { convertToModelMessages, streamText, UIMessage } from "ai";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import {
   REVIEW_SYSTEM_PROMPT,
   createUserProvider,
@@ -11,7 +11,7 @@ import { resolveProblem } from "@/lib/content/shared";
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
-  if (!rateLimit(`chat:${authResult.user.id}`, 30)) {
+  if (!(await rateLimitForUser(authResult.user.id, "chat", 30))) {
     return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
   }
 

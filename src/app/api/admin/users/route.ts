@@ -20,6 +20,7 @@ import { getLessons } from "@/lib/content/load";
 import { countVisiblePracticeProblems } from "@/lib/content/problem-library";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { buildCampaignPayload } from "@/lib/campaign-stages";
+import { isUserType, parseUserType } from "@/lib/user/user-type";
 
 function submittedMockScores(
   userMocks: (typeof mockSessions.$inferSelect)[],
@@ -72,6 +73,7 @@ function userSummary(
     name: item.name,
     email: item.email,
     role: item.role,
+    userType: parseUserType(item.userType),
     banned: item.banned,
     createdAt: item.createdAt,
     lastActiveAt,
@@ -90,6 +92,7 @@ export async function GET(req: NextRequest) {
 
   const db = await getDb();
   const userId = req.nextUrl.searchParams.get("userId");
+  const excludeTest = req.nextUrl.searchParams.get("excludeTest") === "true";
   const [users, allAttempts, allMocks] = await Promise.all([
     db.select().from(user).orderBy(asc(user.name)),
     db.select().from(attempts).orderBy(desc(attempts.createdAt)),
@@ -97,8 +100,11 @@ export async function GET(req: NextRequest) {
   ]);
 
   if (!userId) {
+    const summaries = users
+      .filter((item) => !(excludeTest && parseUserType(item.userType) === "test"))
+      .map((item) => userSummary(item, allAttempts, allMocks));
     return Response.json({
-      users: users.map((item) => userSummary(item, allAttempts, allMocks)),
+      users: summaries,
     });
   }
 
@@ -294,6 +300,12 @@ export async function POST(req: NextRequest) {
   const password = String(body.password ?? "");
   const name = String(body.name ?? "").trim();
   const role = body.role === "admin" ? "admin" : "student";
+  const userType =
+    role === "admin"
+      ? "free"
+      : isUserType(body.userType)
+        ? body.userType
+        : "free";
   if (!email || !name || password.length < 8) {
     return Response.json(
       { error: "Nama, email, dan password minimal 8 karakter wajib diisi" },
@@ -310,9 +322,12 @@ export async function POST(req: NextRequest) {
     const db = await getDb();
     await db
       .update(user)
-      .set({ role, updatedAt: new Date() })
+      .set({ role, userType, updatedAt: new Date() })
       .where(eq(user.id, createdUser.id));
-    return Response.json({ user: { ...createdUser, role } }, { status: 201 });
+    return Response.json(
+      { user: { ...createdUser, role, userType } },
+      { status: 201 },
+    );
   } catch (error) {
     return Response.json(
       {
@@ -348,6 +363,11 @@ export async function PATCH(req: NextRequest) {
   }
   if (body.role === "admin" || body.role === "student") {
     data.role = body.role;
+  }
+  if (body.role === "admin") {
+    data.userType = "free";
+  } else if (isUserType(body.userType)) {
+    data.userType = body.userType;
   }
   if (
     body.phase === "pre-seleksi" ||

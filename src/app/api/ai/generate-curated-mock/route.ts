@@ -2,8 +2,10 @@ import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { generatedMocks } from "@/db/schema";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
+import { assertSimulasiAllowed } from "@/lib/ai/simulasi-quota";
+import { loadUserAccess } from "@/lib/user/load-user-access";
 import { parseDifficultyMode } from "@/lib/ai/difficulty";
 import {
   assembleCuratedMockWithLlm,
@@ -14,7 +16,7 @@ import {
   TOPIC_PROMPT_MIN_LEN,
 } from "@/lib/ai/topic-prompt";
 import { TRACKS, type TrackId } from "@/lib/content/types";
-import { loadUserPhaseAccess } from "@/lib/user/load-phase";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 function parseSize(raw: unknown): CuratedMockSize {
   return raw === "full" ? "full" : "half";
@@ -23,7 +25,17 @@ function parseSize(raw: unknown): CuratedMockSize {
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
-  if (!rateLimit(`gen-curated-mock:${authResult.user.id}`, 4, 60 * 60_000)) {
+
+  const access = await loadUserAccess(authResult.user.id);
+  if (
+    !(await rateLimitForUser(
+      authResult.user.id,
+      "gen-curated-mock",
+      4,
+      60 * 60_000,
+      access,
+    ))
+  ) {
     return Response.json(
       { error: "Batas susun simulasi curated: 4 per jam" },
       { status: 429 },
@@ -36,7 +48,7 @@ export async function POST(req: NextRequest) {
   const generationMode =
     body.generationMode === "custom" ? "custom" : "standard";
   const topicPrompt = normalizeTopicPrompt(body.topicPrompt);
-  const access = await loadUserPhaseAccess(authResult.user.id);
+  const phase = await loadUserPhase(authResult.user.id);
 
   if (generationMode === "custom") {
     if (!topicPrompt || topicPrompt.length < TOPIC_PROMPT_MIN_LEN) {
@@ -68,14 +80,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (access) {
+    const blocked = await assertSimulasiAllowed(
+      authResult.user.id,
+      access,
+      settings,
+    );
+    if (blocked) return blocked;
+  }
+
   try {
     const assembled = await assembleCuratedMockWithLlm({
       difficultyMode,
       size,
       trackFilter,
       topicPrompt: generationMode === "custom" ? topicPrompt : undefined,
-      phase: access.phase,
-      role: access.role,
+      phase,
+      role: access?.role ?? authResult.user.role,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,

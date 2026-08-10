@@ -1,108 +1,104 @@
+import { count } from "drizzle-orm";
 import { getDb } from "@/db";
 import { ioaiResources } from "@/db/schema";
-import curated from "../../../content/resources/ioai-index.json";
-import {
-  IOAI_CATEGORIES,
-  IOAI_DOMAINS,
-  type IoaiDomain,
-  type IoaiResource,
-  type IoaiResourceCategory,
+import ioaiData from "../../../content/resources/ioai-index.json";
+import type {
+  IoaiDomain,
+  IoaiResource,
+  IoaiResourceCategory,
 } from "@/lib/content/resource-types";
 
 type SeedDb = Awaited<ReturnType<typeof getDb>>;
 
-function isDomain(value: unknown): value is IoaiDomain {
-  return typeof value === "string" && (IOAI_DOMAINS as string[]).includes(value);
-}
+const CATEGORIES = new Set<string>([
+  "syllabus",
+  "task_repo",
+  "national_olympiad",
+  "course",
+]);
 
-function isCategory(value: unknown): value is IoaiResourceCategory {
-  return (
-    typeof value === "string" && (IOAI_CATEGORIES as string[]).includes(value)
-  );
-}
-
-export function parseIoaiResource(raw: unknown): IoaiResource | null {
+function parseSeedEntry(raw: unknown): IoaiResource | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const row = raw as Record<string, unknown>;
-  const id = String(row.id ?? "").trim();
-  const title = String(row.title ?? "").trim();
-  const url = String(row.url ?? "").trim();
-  const summary = String(row.summary ?? "").trim();
-  if (!id || !title || !url || !isCategory(row.category)) return null;
-
-  const domains = Array.isArray(row.domains)
-    ? row.domains.filter(isDomain)
+  const r = raw as Record<string, unknown>;
+  const id = String(r.id ?? "").trim();
+  const title = String(r.title ?? "").trim();
+  const url = String(r.url ?? "").trim();
+  const summary = String(r.summary ?? "").trim();
+  const category = String(r.category ?? "").trim();
+  if (!id || !title || !url || !summary || !CATEGORIES.has(category)) {
+    return null;
+  }
+  const domains = Array.isArray(r.domains)
+    ? r.domains.map(String).filter(Boolean)
     : [];
-  const topics = Array.isArray(row.topics)
-    ? row.topics.map(String).filter(Boolean)
+  const topics = Array.isArray(r.topics)
+    ? r.topics.map(String).filter(Boolean)
     : [];
-  const yearRaw = row.year == null ? undefined : Number(row.year);
+  const yearRaw = r.year == null ? undefined : Number(r.year);
   const year =
-    yearRaw != null && Number.isFinite(yearRaw) ? Math.trunc(yearRaw) : undefined;
+    typeof yearRaw === "number" && Number.isFinite(yearRaw)
+      ? Math.trunc(yearRaw)
+      : undefined;
   const region =
-    typeof row.region === "string" && row.region.trim()
-      ? row.region.trim()
+    typeof r.region === "string" && r.region.trim()
+      ? r.region.trim()
       : undefined;
   const promptHint =
-    typeof row.promptHint === "string" && row.promptHint.trim()
-      ? row.promptHint.trim()
+    typeof r.promptHint === "string" && r.promptHint.trim()
+      ? r.promptHint.trim()
       : undefined;
 
   return {
     id,
-    category: row.category,
+    category: category as IoaiResourceCategory,
     title,
     url,
+    summary,
     region,
     year,
-    domains,
+    domains: domains as IoaiDomain[],
     topics,
-    summary,
     promptHint,
   };
 }
 
-export function loadCuratedIoaiResources(): IoaiResource[] {
-  if (!Array.isArray(curated)) return [];
-  return curated
-    .map(parseIoaiResource)
-    .filter((row): row is IoaiResource => Boolean(row));
-}
-
 /**
- * Seed curated IOAI Education Hub resources when the table is empty.
- * Idempotent — permanent admin deletes stick until reseed is forced.
+ * Seed ioai_resources from content/resources/ioai-index.json when the table
+ * is empty. Idempotent — never wipes admin edits on restart.
  */
 export async function seedIoaiResourcesIfEmpty(
   db?: SeedDb,
 ): Promise<number> {
   const database = db ?? (await getDb());
-  const existing = await database.query.ioaiResources.findFirst({
-    columns: { id: true },
-  });
-  if (existing) return 0;
+  const [{ value: existing }] = await database
+    .select({ value: count() })
+    .from(ioaiResources);
+  if (Number(existing) > 0) return 0;
 
-  const rows = loadCuratedIoaiResources();
-  if (rows.length === 0) return 0;
+  const entries = (Array.isArray(ioaiData) ? ioaiData : [])
+    .map(parseSeedEntry)
+    .filter((e): e is IoaiResource => e != null);
+
+  if (entries.length === 0) return 0;
 
   const now = new Date();
   await database.insert(ioaiResources).values(
-    rows.map((row) => ({
-      id: row.id,
-      category: row.category,
-      title: row.title,
-      url: row.url,
-      region: row.region ?? null,
-      year: row.year ?? null,
-      domains: row.domains,
-      topics: row.topics,
-      summary: row.summary,
-      promptHint: row.promptHint ?? null,
-      source: "curated" as const,
+    entries.map((e) => ({
+      id: e.id,
+      category: e.category,
+      title: e.title,
+      url: e.url,
+      summary: e.summary,
+      region: e.region ?? null,
+      year: e.year ?? null,
+      domains: e.domains,
+      topics: e.topics,
+      promptHint: e.promptHint ?? null,
+      source: "curated",
       hidden: false,
       updatedAt: now,
-      createdAt: now,
     })),
   );
-  return rows.length;
+
+  return entries.length;
 }

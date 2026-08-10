@@ -8,6 +8,7 @@ type UserSummary = {
   name: string;
   email: string;
   role: string;
+  userType?: string;
   attemptsCount: number;
   avgLifetimeScore: number;
   avgScorePoints: number;
@@ -41,7 +42,9 @@ export function AdminOverview() {
     });
   }, []);
 
-  const students = users.filter((item) => item.role !== "admin");
+  const students = users.filter(
+    (item) => item.role !== "admin" && item.userType !== "test",
+  );
   const totals = useMemo(
     () => ({
       attempts: students.reduce((sum, item) => sum + item.attemptsCount, 0),

@@ -30,6 +30,8 @@ export const user = pgTable("user", {
   assistantPet: text("assistant_pet").notNull().default("cat"),
   /** Competition cycle: pre-seleksi | semifinal | final */
   phase: text("phase").notNull().default("pre-seleksi"),
+  /** Student tier: free | vip | test (ignored for admins) */
+  userType: text("user_type").notNull().default("free"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -371,6 +373,34 @@ export const countdownPhases = pgTable(
   (t) => [index("countdown_phases_sort_idx").on(t.sortOrder, t.at)],
 );
 
+/** IOAI Education Hub knowledge-base entries (seeded from JSON, admin-editable). */
+export const ioaiResources = pgTable(
+  "ioai_resources",
+  {
+    id: text("id").primaryKey(),
+    category: text("category").notNull(),
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    summary: text("summary").notNull(),
+    region: text("region"),
+    year: integer("year"),
+    domains: jsonb("domains").notNull().$type<string[]>().default([]),
+    topics: jsonb("topics").notNull().$type<string[]>().default([]),
+    promptHint: text("prompt_hint"),
+    /** curated = seeded from JSON; admin = created in console */
+    source: text("source").notNull().default("curated"),
+    hidden: boolean("hidden").notNull().default(false),
+    updatedBy: text("updated_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("ioai_resources_category_idx").on(t.category),
+    index("ioai_resources_hidden_idx").on(t.hidden),
+  ],
+);
+
 export const reviewThreads = pgTable("review_threads", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -390,34 +420,6 @@ export const reviewMessages = pgTable("review_messages", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
-
-/** Curated IOAI Education Hub / olympiad task references. */
-export const ioaiResources = pgTable(
-  "ioai_resources",
-  {
-    id: text("id").primaryKey(),
-    category: text("category").notNull(),
-    title: text("title").notNull(),
-    url: text("url").notNull(),
-    region: text("region"),
-    year: integer("year"),
-    domains: jsonb("domains").notNull().$type<string[]>().default([]),
-    topics: jsonb("topics").notNull().$type<string[]>().default([]),
-    summary: text("summary").notNull().default(""),
-    promptHint: text("prompt_hint"),
-    source: text("source").notNull().default("curated"),
-    hidden: boolean("hidden").notNull().default(false),
-    updatedBy: text("updated_by").references(() => user.id, {
-      onDelete: "set null",
-    }),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-  },
-  (t) => [
-    index("ioai_resources_category_idx").on(t.category),
-    index("ioai_resources_hidden_idx").on(t.hidden),
-  ],
-);
 
 /** Localized Indonesian study guides linked to ioai_resources. */
 export const ioaiGuides = pgTable(

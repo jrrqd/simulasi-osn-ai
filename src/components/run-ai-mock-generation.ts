@@ -60,6 +60,12 @@ export async function runAiMockGeneration(params: {
   });
   const planData = await planRes.json();
   if (!planRes.ok) {
+    if (planData.code === "SIMULASI_QUOTA_EXCEEDED") {
+      throw new Error(
+        planData.error ||
+          "Kuota simulasi hari ini sudah habis. Pasang API key di Pengaturan atau coba lagi besok.",
+      );
+    }
     throw new Error(planData.error || "Gagal menyusun rencana simulasi");
   }
 

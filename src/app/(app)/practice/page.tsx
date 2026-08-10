@@ -3,16 +3,12 @@ import { requireUser } from "@/lib/session";
 import { getLessons } from "@/lib/content/load";
 import { listSharedProblems } from "@/lib/content/shared";
 import { listVisibleCuratedProblems } from "@/lib/content/problem-library";
-import { listVisibleIoaiResources } from "@/lib/content/ioai-resources";
 import { TOPIC_LABELS } from "@/lib/content/types";
 import { getUserProblemProgress } from "@/lib/attempts";
 import { GenerateChallenge } from "@/components/generate-challenge";
-import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
 import { PracticeProblemCard } from "@/components/practice-problem-card";
-import {
-  canAccessIoaiResources,
-  loadUserPhase,
-} from "@/lib/user/load-phase";
+import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 export default async function PracticePage({
   searchParams,
@@ -22,8 +18,6 @@ export default async function PracticePage({
   const user = await requireUser();
   const sp = await searchParams;
   const phase = await loadUserPhase(user.id);
-  const showIoai = canAccessIoaiResources(phase, user.role);
-  const ioaiResources = showIoai ? await listVisibleIoaiResources() : [];
   const problems = await listVisibleCuratedProblems({
     track: sp.track,
     topic: sp.topic,
@@ -97,7 +91,11 @@ export default async function PracticePage({
         </div>
       ) : null}
 
-      {showIoai ? <IoaiResourcesPanel resources={ioaiResources} /> : null}
+      <IoaiResourcesPanel
+        phase={phase}
+        track={sp.track}
+        topic={sp.topic}
+      />
 
       <GenerateChallenge />
       <div className="flex flex-wrap gap-2 text-sm">

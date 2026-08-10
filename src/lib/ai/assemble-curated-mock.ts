@@ -11,8 +11,10 @@ import {
 } from "@/lib/ai/curated-mock-size";
 import { matchTopicsFromPrompt } from "@/lib/ai/topic-prompt";
 import { buildNaturalMockTitle } from "@/lib/ai/mock-title";
-import { buildIoaiKnowledgeContext } from "@/lib/ai/ioai-prompt-context";
-import { listIoaiResourcesForPrompt } from "@/lib/content/ioai-resources";
+import {
+  buildIoaiReferenceContext,
+  getIoaiResourcesForPhase,
+} from "@/lib/content/ioai-resources";
 import { getProblems } from "@/lib/content/load";
 import type { Problem, TrackId } from "@/lib/content/types";
 import { TOPIC_LABELS } from "@/lib/content/types";
@@ -178,22 +180,21 @@ export async function assembleCuratedMockWithLlm(params: {
   let ioaiTopics: string[] = [];
   let ioaiBlock = "";
   if (canAccessIoaiResources(phase, role)) {
-    const ioaiResources = await listIoaiResourcesForPrompt({
-      topics: preferredFromPrompt,
-      focusPrompt: topicPrompt,
+    const preferredTopic = preferredFromPrompt[0];
+    const ioaiResources = await getIoaiResourcesForPhase(phase, {
+      track: params.trackFilter,
+      topic: preferredTopic,
       limit: 5,
+      includeCourses: false,
     });
     ioaiTopics = [...new Set(ioaiResources.flatMap((r) => r.topics))].slice(
       0,
       8,
     );
-    ioaiBlock = await buildIoaiKnowledgeContext({
+    ioaiBlock = await buildIoaiReferenceContext({
       phase,
-      role,
-      topics: preferredFromPrompt.length > 0 ? preferredFromPrompt : ioaiTopics,
-      focusPrompt: topicPrompt,
-      limit: 4,
-      includeGuideRingkasan: false,
+      track: params.trackFilter,
+      topic: preferredTopic ?? ioaiTopics[0],
     });
   }
 

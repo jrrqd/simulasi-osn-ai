@@ -2,8 +2,10 @@ import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { generatedMocks } from "@/db/schema";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
+import { assertSimulasiAllowed } from "@/lib/ai/simulasi-quota";
+import { loadUserAccess } from "@/lib/user/load-user-access";
 import {
   generateAndStoreProblem,
   parseDifficultyMode,
@@ -34,9 +36,7 @@ import {
   TOPIC_PROMPT_MIN_LEN,
 } from "@/lib/ai/topic-prompt";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
-import { eq } from "drizzle-orm";
-import { user } from "@/db/schema";
-import { getPhase } from "@/lib/user/phase";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 type GenerationPhase = "plan" | "slot" | "case" | "commit" | "legacy";
 
@@ -52,15 +52,6 @@ function parseGenerationPhase(raw: unknown): GenerationPhase {
   return "legacy";
 }
 
-async function loadUserPhase(userId: string) {
-  const db = await getDb();
-  const row = await db.query.user.findFirst({
-    where: eq(user.id, userId),
-    columns: { phase: true },
-  });
-  return getPhase(row);
-}
-
 function parseGenerationMode(
   raw: unknown,
 ): "standard" | "custom" | "study-case" {
@@ -74,6 +65,7 @@ async function generateSlotProblem(params: {
   focusPrompt?: string;
   difficultyMode: ReturnType<typeof parseDifficultyMode>;
   longFormCoding?: boolean;
+  phase?: Awaited<ReturnType<typeof loadUserPhase>>;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -135,6 +127,7 @@ async function generateSlotProblem(params: {
         answerType: answerRotation[slotAttempt % answerRotation.length],
         weight: params.slot.weight,
         longFormCoding: params.longFormCoding,
+        phase: params.phase,
         baseUrl: params.baseUrl,
         apiKey: params.apiKey,
         modelId: params.modelId,
@@ -158,15 +151,34 @@ export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
 
+  const access = await loadUserAccess(authResult.user.id);
   const body = await req.json();
   const phase = parseGenerationPhase(body.phase);
 
   if (phase === "plan") {
-    if (!rateLimit(`gen-mock:${authResult.user.id}`, 2, 60 * 60_000)) {
+    if (
+      !(await rateLimitForUser(
+        authResult.user.id,
+        "gen-mock",
+        2,
+        60 * 60_000,
+        access,
+      ))
+    ) {
       return Response.json(
         { error: "Batas generate simulasi: 2 per jam" },
         { status: 429 },
       );
+    }
+
+    const planSettings = await getEffectiveAiSettings(authResult.user.id);
+    if (access) {
+      const blocked = await assertSimulasiAllowed(
+        authResult.user.id,
+        access,
+        planSettings,
+      );
+      if (blocked) return blocked;
     }
 
     const generationMode = parseGenerationMode(body.generationMode);
@@ -198,7 +210,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Track tidak valid" }, { status: 400 });
     }
 
-    const settings = await getEffectiveAiSettings(authResult.user.id);
+    const settings = planSettings;
     if (!settings) {
       return Response.json(
         {
@@ -255,7 +267,15 @@ export async function POST(req: NextRequest) {
 
   if (phase === "slot") {
     // Allow retries across a full mock (40 slots × a few attempts).
-    if (!rateLimit(`gen-mock-slot:${authResult.user.id}`, 120, 60 * 60_000)) {
+    if (
+      !(await rateLimitForUser(
+        authResult.user.id,
+        "gen-mock-slot",
+        120,
+        60 * 60_000,
+        access,
+      ))
+    ) {
       return Response.json(
         { error: "Terlalu banyak permintaan generate soal simulasi" },
         { status: 429 },
@@ -318,6 +338,7 @@ export async function POST(req: NextRequest) {
         difficulty: slot.difficulty,
       });
 
+      const userPhase = await loadUserPhase(authResult.user.id);
       const problem = await generateSlotProblem({
         userId: authResult.user.id,
         slot,
@@ -327,6 +348,7 @@ export async function POST(req: NextRequest) {
             : undefined,
         difficultyMode: session.meta.difficultyMode,
         longFormCoding: isKaggleSize(session.meta.size),
+        phase: userPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -358,7 +380,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (phase === "case") {
-    if (!rateLimit(`gen-mock-case:${authResult.user.id}`, 40, 60 * 60_000)) {
+    if (
+      !(await rateLimitForUser(
+        authResult.user.id,
+        "gen-mock-case",
+        40,
+        60 * 60_000,
+        access,
+      ))
+    ) {
       return Response.json(
         { error: "Terlalu banyak permintaan generate studi kasus simulasi" },
         { status: 429 },
@@ -433,6 +463,7 @@ export async function POST(req: NextRequest) {
     }
 
     return createNdjsonStreamResponse(async (send) => {
+      const userPhase = await loadUserPhase(authResult.user.id);
       await send({
         type: "status",
         message: `Menyusun studi kasus ${caseIndex + 1}/${session.cases.length} (${caseSlot.problemCount} soal)…`,
@@ -457,6 +488,7 @@ export async function POST(req: NextRequest) {
         difficulty: caseSlot.difficulty,
         problemCount: caseSlot.problemCount,
         focusPrompt: `Paket simulasi studi kasus PREDIKSI bagian ${caseIndex + 1} dari ${session.cases.length}. Buat tepat ${caseSlot.problemCount} soal terkait.`,
+        phase: userPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -480,6 +512,7 @@ export async function POST(req: NextRequest) {
           slot,
           focusPrompt: `Lanjutkan studi kasus "${result.caseTitle}" (soal pelengkap, gaya PREDIKSI, text-only).`,
           difficultyMode: session.meta.difficultyMode,
+          phase: userPhase,
           baseUrl: settings.baseUrl,
           apiKey: settings.apiKey,
           modelId: settings.modelId,
@@ -523,7 +556,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (phase === "commit") {
-    if (!rateLimit(`gen-mock-commit:${authResult.user.id}`, 6, 60 * 60_000)) {
+    if (
+      !(await rateLimitForUser(
+        authResult.user.id,
+        "gen-mock-commit",
+        6,
+        60 * 60_000,
+        access,
+      ))
+    ) {
       return Response.json(
         { error: "Terlalu banyak permintaan commit simulasi" },
         { status: 429 },
@@ -582,11 +623,29 @@ export async function POST(req: NextRequest) {
 
   // Legacy single-request path (kept for compatibility). Prefer plan/slot/commit
   // from the UI — one nginx-proxied request cannot finish 10 MiniMax calls.
-  if (!rateLimit(`gen-mock:${authResult.user.id}`, 2, 60 * 60_000)) {
+  if (
+    !(await rateLimitForUser(
+      authResult.user.id,
+      "gen-mock",
+      2,
+      60 * 60_000,
+      access,
+    ))
+  ) {
     return Response.json(
       { error: "Batas generate simulasi: 2 per jam" },
       { status: 429 },
     );
+  }
+
+  const legacySettings = await getEffectiveAiSettings(authResult.user.id);
+  if (access) {
+    const blocked = await assertSimulasiAllowed(
+      authResult.user.id,
+      access,
+      legacySettings,
+    );
+    if (blocked) return blocked;
   }
 
   const generationMode = parseGenerationMode(body.generationMode);
@@ -618,7 +677,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Track tidak valid" }, { status: 400 });
   }
 
-  const settings = await getEffectiveAiSettings(authResult.user.id);
+  const settings = legacySettings;
   if (!settings) {
     return Response.json(
       {
@@ -657,6 +716,7 @@ export async function POST(req: NextRequest) {
           generationMode === "custom" ? topicPrompt : undefined,
         difficultyMode,
         longFormCoding: isKaggleSize(size),
+        phase: userPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,

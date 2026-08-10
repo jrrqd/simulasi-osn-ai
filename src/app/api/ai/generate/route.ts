@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireApiUser, rateLimit } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
 import {
   generateAndStoreProblem,
@@ -13,11 +13,12 @@ import {
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
 import { createNdjsonStreamResponse } from "@/lib/ai/generation-progress";
+import { loadUserPhase } from "@/lib/user/load-phase";
 
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
-  if (!rateLimit(`gen:${authResult.user.id}`, 8)) {
+  if (!(await rateLimitForUser(authResult.user.id, "gen", 8))) {
     return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
   }
 
@@ -81,6 +82,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const userPhase = await loadUserPhase(authResult.user.id);
+
   const resolvedDifficultyMode =
     legacyDifficulty != null
       ? legacyDifficulty <= 2
@@ -122,6 +125,7 @@ export async function POST(req: NextRequest) {
       answerType,
       focusPrompt,
       includeFigures,
+      phase: userPhase,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,
