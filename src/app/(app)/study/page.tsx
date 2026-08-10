@@ -4,11 +4,14 @@ import { requireUser } from "@/lib/session";
 import { getLessons } from "@/lib/content/load";
 import { TRACKS } from "@/lib/content/types";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
+import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
+import { loadUserPhase } from "@/lib/user/phase";
 
 export default async function StudyPage() {
   const user = await requireUser();
   const lessons = getLessons();
   const progressMap = await getUserLessonProgress(user.id);
+  const phase = await loadUserPhase(user.id);
 
   const totalLevels = lessons.length;
   const completedLevels = lessons.filter(
@@ -115,6 +118,8 @@ export default async function StudyPage() {
           );
         })}
       </div>
+
+      <IoaiResourcesPanel phase={phase} />
     </div>
   );
 }

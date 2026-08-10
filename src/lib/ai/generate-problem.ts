@@ -23,6 +23,7 @@ import {
   parseImagePrompts,
 } from "@/lib/ai/materialize-images";
 import { getLessonsForTopic } from "@/lib/content/load";
+import { buildIoaiReferenceContext } from "@/lib/content/ioai-resources";
 import type { Lesson } from "@/lib/content/types";
 import {
   TRACKS,
@@ -30,6 +31,7 @@ import {
   type Problem,
   type TrackId,
 } from "@/lib/content/types";
+import type { Phase } from "@/lib/user/phase";
 
 // Keep wall-clock per request under nginx /api/ai/ proxy_read_timeout (300s).
 // Thinking models may spend many tokens on reasoning before the JSON answer,
@@ -134,6 +136,8 @@ export async function generateAndStoreProblem(params: {
   includeFigures?: boolean;
   /** Longer Kaggle-style codeSpec (richer stem, ≥5 tests, weight 5). */
   longFormCoding?: boolean;
+  /** User prep phase — IOAI refs injected for semifinal/final. */
+  phase?: Phase;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -174,6 +178,11 @@ export async function generateAndStoreProblem(params: {
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
+  const ioaiBlock = await buildIoaiReferenceContext({
+    track: params.track,
+    topic: params.topic,
+    phase: params.phase ?? "pre-seleksi",
+  });
   const focusBlock = params.focusPrompt?.trim()
     ? `
 Preferensi / brief siswa untuk paket kuis ini:
@@ -215,6 +224,7 @@ Difficulty: ${difficulty} (1 mudah .. 5 sulit)
 AnswerType: ${answerType}
 
 ${syllabus}
+${ioaiBlock ? `\n${ioaiBlock}\n` : ""}
 ${focusBlock}
 ${figureBlock}
 ${

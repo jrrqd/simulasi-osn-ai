@@ -13,6 +13,7 @@ import {
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
 import { createNdjsonStreamResponse } from "@/lib/ai/generation-progress";
+import { loadUserPhase } from "@/lib/user/phase";
 
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -105,6 +106,7 @@ export async function POST(req: NextRequest) {
       problemCount,
       focusPrompt,
       includeFigures,
+      phase: await loadUserPhase(authResult.user.id),
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,

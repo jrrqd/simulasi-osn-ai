@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "ioai-resources-kb",
+    at: "2026-08-10T10:10:00+07:00",
+    tag: "Belajar",
+    title: "Referensi IOAI & knowledge base admin",
+    story:
+      "Siswa fase semifinal/final melihat tautan Education Hub di Belajar dan Latihan; generate soal AI memakai inspirasi gaya kompetisi internasional. Admin bisa kelola katalog live di Referensi IOAI tanpa redeploy.",
+    href: "/study",
+  },
+  {
     id: "coding-judge0-fullscreen",
     at: "2026-08-10T08:00:00+07:00",
     tag: "Simulasi",

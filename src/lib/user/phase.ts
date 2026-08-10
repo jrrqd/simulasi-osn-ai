@@ -45,3 +45,16 @@ export function parsePhase(value: unknown): Phase {
 export function getPhase(user: { phase?: string | null } | null | undefined): Phase {
   return parsePhase(user?.phase);
 }
+
+/** Load the user's selected prep phase from the DB (defaults to pre-seleksi). */
+export async function loadUserPhase(userId: string): Promise<Phase> {
+  const { getDb } = await import("@/db");
+  const { user } = await import("@/db/schema");
+  const { eq } = await import("drizzle-orm");
+  const db = await getDb();
+  const row = await db.query.user.findFirst({
+    where: eq(user.id, userId),
+    columns: { phase: true },
+  });
+  return getPhase(row);
+}

@@ -284,6 +284,24 @@ async function migratePglite(client: PGlite) {
       created_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS countdown_phases_sort_idx ON countdown_phases(sort_order, at);
+    CREATE TABLE IF NOT EXISTS ioai_resources (
+      id text PRIMARY KEY,
+      category text NOT NULL,
+      title text NOT NULL,
+      url text NOT NULL,
+      summary text NOT NULL,
+      region text,
+      year integer,
+      domains jsonb NOT NULL DEFAULT '[]',
+      topics jsonb NOT NULL DEFAULT '[]',
+      prompt_hint text,
+      source text NOT NULL DEFAULT 'curated',
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS ioai_resources_category_idx ON ioai_resources(category);
+    CREATE INDEX IF NOT EXISTS ioai_resources_hidden_idx ON ioai_resources(hidden);
   `);
 }
 
@@ -361,6 +379,51 @@ async function createDb(): Promise<AppDb> {
     );
     CREATE INDEX IF NOT EXISTS generated_lesson_checks_lesson_idx
       ON generated_lesson_checks(lesson_id);
+    CREATE TABLE IF NOT EXISTS problem_overrides (
+      id text PRIMARY KEY,
+      payload jsonb,
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS mock_overrides (
+      id text PRIMARY KEY,
+      payload jsonb,
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS countdown_phases (
+      id text PRIMARY KEY,
+      label text NOT NULL,
+      date_label text NOT NULL,
+      at text NOT NULL,
+      ends_at text,
+      sort_order integer NOT NULL DEFAULT 0,
+      enabled boolean NOT NULL DEFAULT true,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS countdown_phases_sort_idx ON countdown_phases(sort_order, at);
+    CREATE TABLE IF NOT EXISTS ioai_resources (
+      id text PRIMARY KEY,
+      category text NOT NULL,
+      title text NOT NULL,
+      url text NOT NULL,
+      summary text NOT NULL,
+      region text,
+      year integer,
+      domains jsonb NOT NULL DEFAULT '[]',
+      topics jsonb NOT NULL DEFAULT '[]',
+      prompt_hint text,
+      source text NOT NULL DEFAULT 'curated',
+      hidden boolean NOT NULL DEFAULT false,
+      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS ioai_resources_category_idx ON ioai_resources(category);
+    CREATE INDEX IF NOT EXISTS ioai_resources_hidden_idx ON ioai_resources(hidden);
   `);
   return drizzlePg(client, { schema });
 }
@@ -377,6 +440,14 @@ export async function getDb() {
         await ensureOsn26MockInDb(db);
       } catch (err) {
         console.warn("[db] ensureOsn26MockInDb skipped:", err);
+      }
+      try {
+        const { seedIoaiResourcesIfEmpty } = await import(
+          "@/lib/content/seed-ioai-resources"
+        );
+        await seedIoaiResourcesIfEmpty(db);
+      } catch (err) {
+        console.warn("[db] seedIoaiResourcesIfEmpty skipped:", err);
       }
       return db;
     });

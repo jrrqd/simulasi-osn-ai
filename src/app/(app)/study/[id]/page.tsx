@@ -7,6 +7,8 @@ import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { Markdown } from "@/components/markdown";
 import { extractMarkdownToc } from "@/lib/lesson-toc";
 import { LessonStudyClient } from "@/components/lesson-study-client";
+import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
+import { loadUserPhase } from "@/lib/user/phase";
 import {
   dueQuestionIds,
   getLessonCheckQuestions,
@@ -22,6 +24,8 @@ export default async function LessonPage({
   const { id } = await params;
   const lesson = getLesson(id);
   if (!lesson) notFound();
+
+  const phase = await loadUserPhase(user.id);
 
   const trackLessons = getLessons().filter((l) => l.track === lesson.track);
   const levelIndex = trackLessons.findIndex((l) => l.id === lesson.id);
@@ -88,6 +92,11 @@ export default async function LessonPage({
         dueQuestionIds={dueIds}
         nextLessonId={nextLesson?.id ?? null}
         nextLessonHref={nextLesson ? `/study/${nextLesson.id}` : "/study"}
+      />
+      <IoaiResourcesPanel
+        phase={phase}
+        track={lesson.track}
+        topic={lesson.topic}
       />
     </article>
   );

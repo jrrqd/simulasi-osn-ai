@@ -34,9 +34,7 @@ import {
   TOPIC_PROMPT_MIN_LEN,
 } from "@/lib/ai/topic-prompt";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
-import { eq } from "drizzle-orm";
-import { user } from "@/db/schema";
-import { getPhase } from "@/lib/user/phase";
+import { loadUserPhase } from "@/lib/user/phase";
 
 type GenerationPhase = "plan" | "slot" | "case" | "commit" | "legacy";
 
@@ -52,15 +50,6 @@ function parseGenerationPhase(raw: unknown): GenerationPhase {
   return "legacy";
 }
 
-async function loadUserPhase(userId: string) {
-  const db = await getDb();
-  const row = await db.query.user.findFirst({
-    where: eq(user.id, userId),
-    columns: { phase: true },
-  });
-  return getPhase(row);
-}
-
 function parseGenerationMode(
   raw: unknown,
 ): "standard" | "custom" | "study-case" {
@@ -74,6 +63,7 @@ async function generateSlotProblem(params: {
   focusPrompt?: string;
   difficultyMode: ReturnType<typeof parseDifficultyMode>;
   longFormCoding?: boolean;
+  phase?: Awaited<ReturnType<typeof loadUserPhase>>;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -135,6 +125,7 @@ async function generateSlotProblem(params: {
         answerType: answerRotation[slotAttempt % answerRotation.length],
         weight: params.slot.weight,
         longFormCoding: params.longFormCoding,
+        phase: params.phase,
         baseUrl: params.baseUrl,
         apiKey: params.apiKey,
         modelId: params.modelId,
@@ -318,6 +309,7 @@ export async function POST(req: NextRequest) {
         difficulty: slot.difficulty,
       });
 
+      const userPhase = await loadUserPhase(authResult.user.id);
       const problem = await generateSlotProblem({
         userId: authResult.user.id,
         slot,
@@ -327,6 +319,7 @@ export async function POST(req: NextRequest) {
             : undefined,
         difficultyMode: session.meta.difficultyMode,
         longFormCoding: isKaggleSize(session.meta.size),
+        phase: userPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -433,6 +426,7 @@ export async function POST(req: NextRequest) {
     }
 
     return createNdjsonStreamResponse(async (send) => {
+      const userPhase = await loadUserPhase(authResult.user.id);
       await send({
         type: "status",
         message: `Menyusun studi kasus ${caseIndex + 1}/${session.cases.length} (${caseSlot.problemCount} soal)…`,
@@ -457,6 +451,7 @@ export async function POST(req: NextRequest) {
         difficulty: caseSlot.difficulty,
         problemCount: caseSlot.problemCount,
         focusPrompt: `Paket simulasi studi kasus PREDIKSI bagian ${caseIndex + 1} dari ${session.cases.length}. Buat tepat ${caseSlot.problemCount} soal terkait.`,
+        phase: userPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,
@@ -480,6 +475,7 @@ export async function POST(req: NextRequest) {
           slot,
           focusPrompt: `Lanjutkan studi kasus "${result.caseTitle}" (soal pelengkap, gaya PREDIKSI, text-only).`,
           difficultyMode: session.meta.difficultyMode,
+          phase: userPhase,
           baseUrl: settings.baseUrl,
           apiKey: settings.apiKey,
           modelId: settings.modelId,
@@ -657,6 +653,7 @@ export async function POST(req: NextRequest) {
           generationMode === "custom" ? topicPrompt : undefined,
         difficultyMode,
         longFormCoding: isKaggleSize(size),
+        phase: userPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
         modelId: settings.modelId,

@@ -13,6 +13,7 @@ import {
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
 import { createNdjsonStreamResponse } from "@/lib/ai/generation-progress";
+import { loadUserPhase } from "@/lib/user/phase";
 
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
@@ -81,6 +82,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const userPhase = await loadUserPhase(authResult.user.id);
+
   const resolvedDifficultyMode =
     legacyDifficulty != null
       ? legacyDifficulty <= 2
@@ -122,6 +125,7 @@ export async function POST(req: NextRequest) {
       answerType,
       focusPrompt,
       includeFigures,
+      phase: userPhase,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,

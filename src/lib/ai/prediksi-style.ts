@@ -107,6 +107,7 @@ Aturan studi kasus:
 - Buat 3 sampai 5 soal yang BERKAITAN pada preamble yang sama (hitungan bertahap diperbolehkan).
 - Setiap prompt harus berdiri sendiri jika digabung: stem akhir = preamble + prompt.
 - Semua soal harus auto-gradable dan konsisten dengan angka di preamble.
+- Jika ada blok "Referensi kompetisi IOAI", gunakan HANYA sebagai inspirasi format/kedalaman — JANGAN menyalin soal atau dataset.
 - figures (jika ada) dipakai bersama di preamble via {{fig:id}}; jangan duplikasi di setiap prompt.
 - Text-only OK jika kasus tidak butuh visual.
 - Balas HANYA JSON instance, tanpa markdown fence, tanpa komentar.

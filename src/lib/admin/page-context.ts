@@ -24,6 +24,8 @@ function routeLabel(pathname: string): string {
   if (pathname === "/admin/countdown") return "Admin · Countdown seleksi";
   if (pathname === "/admin/problems") return "Admin · Bank soal";
   if (pathname === "/admin/mocks") return "Admin · Bank simulasi";
+  if (pathname === "/admin/lessons") return "Admin · Modul belajar";
+  if (pathname === "/admin/resources") return "Admin · Referensi IOAI";
   if (pathname === "/study") return "Belajar · Daftar modul";
   if (pathname.startsWith("/study/")) return "Belajar · Modul";
   if (pathname === "/practice") return "Latihan · Bank soal";
@@ -145,6 +147,13 @@ export async function buildAdminPageContext(
   if (pathname === "/admin/ai") {
     lines.push(
       "Halaman konfigurasi LLM bersama (API key platform). Jangan mengulang secret; bantu hanya soal status/kegunaan fitur.",
+    );
+  }
+
+  if (pathname === "/admin/resources") {
+    lines.push(
+      "Admin mengelola knowledge base referensi IOAI (tautan Education Hub / olimpiade nasional).",
+      "Edit/hide langsung mempengaruhi panel siswa (semifinal/final) dan blok inspirasi generate soal.",
     );
   }
 
