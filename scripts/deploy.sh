@@ -5,10 +5,15 @@ set -euo pipefail
 # Usage:
 #   REMOTE=ubuntu@host ./scripts/deploy.sh
 # Or just ./scripts/deploy.sh (defaults to the prod VPS).
+#
+# Before syncing, verifies src/lib/whats-new.ts was updated when shipping
+# new changes (landing-page "Yang baru" section). Override with
+# SKIP_WHATS_NEW_CHECK=1 for emergency hotfixes.
 
 REMOTE="${REMOTE:-ubuntu@43.134.182.44}"
 BUILD=/opt/osnai-build
 APP=/var/www/osnai
+DEPLOY_TAG="${DEPLOY_TAG:-deploy/production}"
 RSYNC_EXCLUDES=(
   --exclude node_modules
   --exclude .next
@@ -16,6 +21,12 @@ RSYNC_EXCLUDES=(
   --exclude .data
   --exclude .env.local
 )
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+echo "==> Checking landing-page changelog (Yang baru)"
+./scripts/check-whats-new.sh
 
 echo "==> Syncing source to ${REMOTE}:${BUILD}"
 rsync -az --delete "${RSYNC_EXCLUDES[@]}" ./ "$REMOTE:$BUILD/"
@@ -33,5 +44,8 @@ ssh "$REMOTE" "\
 
 echo "==> Restarting osnai.service"
 ssh "$REMOTE" "sudo systemctl restart osnai && sleep 3 && systemctl is-active osnai"
+
+echo "==> Tagging ${DEPLOY_TAG} at HEAD (local)"
+git tag -f "$DEPLOY_TAG" HEAD
 
 echo "==> Done."

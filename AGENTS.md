@@ -40,6 +40,7 @@ Add as needed (never commit real values):
 - Host `ubuntu@43.134.182.44`. The VPS runs the app as systemd unit `osnai.service` (Next.js on port 3000).
 - Sync into `/opt/osnai-build`, `npm run build`, rsync standalone to `/var/www/osnai`, `systemctl restart osnai`
 - Env on VPS: `/etc/osnai/env`
+- **Landing changelog:** before every deploy that ships new code, add a entry at the top of `src/lib/whats-new.ts` (WIB timestamp + short story). `./scripts/deploy.sh` runs `npm run deploy:check` and blocks if `whats-new.ts` was not updated since the local `deploy/production` tag. Redeploys with no code changes pass. Emergency override: `SKIP_WHATS_NEW_CHECK=1 ./scripts/deploy.sh`.
 
 ## Recent work / handoff (continue from here)
 
