@@ -253,19 +253,31 @@ export async function buildIoaiReferenceContext(params: {
   /** @deprecated Always included for every phase; kept for call-site compat. */
   forceInclude?: boolean;
   limit?: number;
+  /** Prefer syllabus + task_repo entries (Final IOAI mode). */
+  prioritizeSyllabus?: boolean;
 }): Promise<string> {
   void params.forceInclude;
-  void params.phase;
 
-  const resources = await getIoaiResourcesForTopic(params.track, params.topic, {
-    limit: params.limit ?? MAX_PROMPT_ENTRIES,
+  const limit = params.limit ?? MAX_PROMPT_ENTRIES;
+  let resources = await getIoaiResourcesForTopic(params.track, params.topic, {
+    limit: params.prioritizeSyllabus ? Math.max(limit, 6) : limit,
     includeCourses: false,
   });
+
+  if (params.prioritizeSyllabus && resources.length > 0) {
+    resources = [...resources].sort((a, b) => {
+      const boost = (r: IoaiResource) =>
+        r.category === "syllabus" ? 10 : r.category === "task_repo" ? 5 : 0;
+      return boost(b) - boost(a);
+    });
+  }
 
   if (resources.length === 0) return "";
 
   const lines: string[] = [
-    "## Referensi kompetisi IOAI (inspirasi gaya — JANGAN salin soal atau dataset)",
+    params.prioritizeSyllabus
+      ? "## Referensi silabus & kompetisi IOAI (inspirasi gaya — JANGAN salin soal atau dataset)"
+      : "## Referensi kompetisi IOAI (inspirasi gaya — JANGAN salin soal atau dataset)",
   ];
 
   for (const r of resources) {

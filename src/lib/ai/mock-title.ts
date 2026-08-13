@@ -24,6 +24,7 @@ function difficultyPhrase(mode: DifficultyMode): string {
   if (mode === "medium") return "sedang";
   if (mode === "hard") return "sulit";
   if (mode === "semifinal") return "semifinal";
+  if (mode === "final") return "final IOAI";
   return "campuran kesulitan";
 }
 
@@ -57,7 +58,7 @@ export type NaturalMockTitleInput = {
   track?: TrackId | "ALL" | string;
   difficultyMode?: DifficultyMode | string;
   count?: number;
-  size?: "quick" | "half" | "full" | "kaggle" | "kaggle-150" | string;
+  size?: "quick" | "half" | "full" | "kaggle" | "kaggle-150" | "kaggle-300" | string;
   topicLabels?: string[];
   topicPrompt?: string;
 };
@@ -69,13 +70,20 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
   const trackLabel = trackPhrase(input.track);
   const focus = topicFocusLabel(input.topicLabels, input.topicPrompt);
   const isFull = (input.count ?? 0) >= 40;
-  const isKaggle = input.size === "kaggle" || input.size === "kaggle-150";
+  const isKaggle =
+    input.size === "kaggle" ||
+    input.size === "kaggle-150" ||
+    input.size === "kaggle-300";
   const isCustom = input.generationMode === "custom" || Boolean(focus);
   const curated = input.kind === "curated_assembled";
 
   let title: string;
 
-  if (isKaggle) {
+  if (input.size === "kaggle-300") {
+    title = trackLabel
+      ? `Tryout Final IOAI ${trackLabel} · 5 jam`
+      : "Tryout Final IOAI · 5 kompetisi · 5 jam";
+  } else if (isKaggle) {
     title = trackLabel
       ? `Tryout Kaggle/IOAI ${trackLabel} · 150 menit`
       : "Tryout Kaggle/IOAI · 3 coding · 150 menit";

@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "final-ioai-difficulty",
+    at: "2026-08-13T14:05:00+07:00",
+    tag: "Simulasi",
+    title: "Kesulitan Final (IOAI) & marathon 5 jam",
+    story:
+      "Generate simulasi AI punya mode Final (IOAI) mengikuti silabus IOAI 2025 (Python, ML, CV, NLP, etika). Pilihan Kaggle tetap 3 kompetisi · 150 menit, plus opsi baru Final IOAI · 5 kompetisi · 5 jam — satu kompetisi per pilar silabus.",
+    href: "/mock",
+  },
+  {
     id: "kaggle-inplatform-notebook",
     at: "2026-08-10T14:10:00+07:00",
     tag: "Simulasi",

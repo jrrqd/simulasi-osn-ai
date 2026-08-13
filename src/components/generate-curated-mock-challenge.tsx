@@ -14,6 +14,7 @@ import {
 } from "@/lib/ai/curated-mock-size";
 import {
   AI_MOCK_SIZES,
+  isFinalKaggleSize,
   isKaggleSize,
   type AiMockSize,
 } from "@/lib/ai/ai-mock-plan";
@@ -58,7 +59,10 @@ export function GenerateCuratedMockChallenge() {
   );
 
   const sizeOptions = useMemo(
-    () => (sourceMode === "ai" ? AI_MOCK_SIZES : CURATED_MOCK_SIZES),
+    () =>
+      sourceMode === "ai"
+        ? AI_MOCK_SIZES.filter((s) => s.value !== "kaggle")
+        : CURATED_MOCK_SIZES,
     [sourceMode],
   );
 
@@ -67,12 +71,23 @@ export function GenerateCuratedMockChallenge() {
     (sourceMode === "ai" ? AI_MOCK_SIZES[0]! : CURATED_MOCK_SIZES[1]!);
 
   const isKaggle = isKaggleSize(size);
+  const isFinalKaggle = isFinalKaggleSize(size);
   const effectiveMode: GenerationMode =
     isKaggle && generationMode === "study-case" ? "standard" : generationMode;
   const quotaExhausted =
     quota?.simulasi.gated === true &&
     quota.simulasi.remaining != null &&
     quota.simulasi.remaining <= 0;
+
+  function applySize(next: AiMockSize) {
+    setSize(next);
+    if (isFinalKaggleSize(next)) {
+      setDifficultyMode("final");
+    }
+    if (isKaggleSize(next) && generationMode === "study-case") {
+      setGenerationMode("standard");
+    }
+  }
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -136,7 +151,7 @@ export function GenerateCuratedMockChallenge() {
         request: {
           generationMode: effectiveMode,
           track: effectiveMode === "custom" ? "ALL" : track,
-          difficultyMode,
+          difficultyMode: isFinalKaggle ? "final" : difficultyMode,
           size,
           topicPrompt:
             effectiveMode === "custom" ? topicPrompt.trim() : undefined,
@@ -163,7 +178,7 @@ export function GenerateCuratedMockChallenge() {
   return (
     <CollapsiblePanel
       title="Susun simulasi curated / AI penuh"
-      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk Kaggle style (3 kompetisi notebook · 150 menit, inspirasi IOAI) dan studi kasus PREDIKSI.`}
+      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk Kaggle 3·150 menit, Final IOAI 5·5 jam, dan studi kasus PREDIKSI.`}
       accent="primary"
     >
       <PhaseHintBanner />
@@ -190,11 +205,13 @@ export function GenerateCuratedMockChallenge() {
       <p className="text-xs text-[var(--muted)]">
         {sourceMode === "curated"
           ? "Memilih & mengurutkan soal dari bank curated (bukan menulis soal baru)."
-          : isKaggle
-            ? "Format Kaggle/IOAI: LLM menulis 3 kompetisi notebook · 150 menit (referensi arsip IOAI)."
-            : effectiveMode === "study-case"
-              ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus PREDIKSI terkait — progress ditampilkan di bawah.`
-              : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
+          : isFinalKaggle
+            ? "Final IOAI: LLM menulis 5 kompetisi notebook · 5 jam (satu per pilar silabus IOAI)."
+            : isKaggle
+              ? "Format Kaggle/IOAI: LLM menulis 3 kompetisi notebook · 150 menit (referensi arsip IOAI)."
+              : effectiveMode === "study-case"
+                ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus PREDIKSI terkait — progress ditampilkan di bawah.`
+                : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -234,17 +251,24 @@ export function GenerateCuratedMockChallenge() {
           </button>
         ) : null}
         {sourceMode === "ai" ? (
-          <button
-            type="button"
-            className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-150" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => {
-              setSize("kaggle-150");
-              if (generationMode === "study-case") setGenerationMode("standard");
-            }}
-            disabled={loading}
-          >
-            Kaggle style · 3 kompetisi · 150 menit
-          </button>
+          <>
+            <button
+              type="button"
+              className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-150" ? "btn-primary" : "btn-secondary"}`}
+              onClick={() => applySize("kaggle-150")}
+              disabled={loading}
+            >
+              Kaggle style · 3 kompetisi · 150 menit
+            </button>
+            <button
+              type="button"
+              className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-300" ? "btn-primary" : "btn-secondary"}`}
+              onClick={() => applySize("kaggle-300")}
+              disabled={loading}
+            >
+              Final IOAI · 5 kompetisi · 5 jam
+            </button>
+          </>
         ) : null}
       </div>
 
@@ -280,7 +304,7 @@ export function GenerateCuratedMockChallenge() {
               onChange={(e) =>
                 setDifficultyMode(e.target.value as DifficultyMode)
               }
-              disabled={loading}
+              disabled={loading || isFinalKaggle}
             >
               {DIFFICULTY_MODES.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -291,13 +315,7 @@ export function GenerateCuratedMockChallenge() {
             <select
               className="select"
               value={size}
-              onChange={(e) => {
-                const next = e.target.value as AiMockSize;
-                setSize(next);
-                if (isKaggleSize(next) && generationMode === "study-case") {
-                  setGenerationMode("standard");
-                }
-              }}
+              onChange={(e) => applySize(e.target.value as AiMockSize)}
               disabled={loading}
             >
               {sizeOptions.map((s) => (
@@ -316,7 +334,7 @@ export function GenerateCuratedMockChallenge() {
             onChange={(e) =>
               setTrack(e.target.value as "ALL" | "A" | "B" | "C" | "D")
             }
-            disabled={loading}
+            disabled={loading || isKaggle}
           >
             <option value="ALL">Semua track (A–D)</option>
             {Object.entries(TRACKS).map(([id, meta]) => (
@@ -331,7 +349,7 @@ export function GenerateCuratedMockChallenge() {
             onChange={(e) =>
               setDifficultyMode(e.target.value as DifficultyMode)
             }
-            disabled={loading}
+            disabled={loading || isFinalKaggle}
           >
             {DIFFICULTY_MODES.map((d) => (
               <option key={d.value} value={d.value}>
@@ -342,13 +360,7 @@ export function GenerateCuratedMockChallenge() {
           <select
             className="select"
             value={size}
-            onChange={(e) => {
-              const next = e.target.value as AiMockSize;
-              setSize(next);
-              if (isKaggleSize(next) && generationMode === "study-case") {
-                setGenerationMode("standard");
-              }
-            }}
+            onChange={(e) => applySize(e.target.value as AiMockSize)}
             disabled={loading}
           >
             {sizeOptions.map((s) => (
@@ -370,11 +382,13 @@ export function GenerateCuratedMockChallenge() {
             ? "Menghasilkan…"
             : "Menyusun…"
           : sourceMode === "ai"
-            ? isKaggle
-              ? "Generate simulasi Kaggle · 3 kompetisi · 150 menit"
-              : effectiveMode === "study-case"
-                ? `Generate ${sizeMeta.count} soal studi kasus`
-                : `Generate ${sizeMeta.count} soal AI`
+            ? isFinalKaggle
+              ? "Generate Final IOAI · 5 kompetisi · 5 jam"
+              : isKaggle
+                ? "Generate simulasi Kaggle · 3 kompetisi · 150 menit"
+                : effectiveMode === "study-case"
+                  ? `Generate ${sizeMeta.count} soal studi kasus`
+                  : `Generate ${sizeMeta.count} soal AI`
             : effectiveMode === "custom"
               ? "Susun dari preferensi topik"
               : "Susun simulasi curated"}

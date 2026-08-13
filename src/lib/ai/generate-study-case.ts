@@ -22,6 +22,7 @@ import { verifyGeneratedProblem } from "@/lib/ai/verify-generated-answer";
 import { materializeFigures } from "@/lib/ai/diagrams";
 import { getLessonsForTopic } from "@/lib/content/load";
 import { buildIoaiReferenceContext } from "@/lib/content/ioai-resources";
+import { buildIoaiSyllabusStandardsBlock } from "@/lib/content/ioai-syllabus";
 import {
   TRACKS,
   TOPIC_LABELS,
@@ -216,11 +217,17 @@ export async function generateAndStoreStudyCase(params: {
   });
 
   const syllabus = buildSyllabusContext(params.track, params.topic);
+  const isFinalMode = params.difficultyMode === "final";
   const ioaiBlock = await buildIoaiReferenceContext({
     track: params.track,
     topic: params.topic,
     phase: params.phase ?? "pre-seleksi",
+    limit: isFinalMode ? 8 : undefined,
+    prioritizeSyllabus: isFinalMode,
   });
+  const ioaiStandardsBlock = isFinalMode
+    ? `\n${buildIoaiSyllabusStandardsBlock()}\n`
+    : "";
   const basePrompt = `${buildStudyCaseUserPrompt({
     track: params.track,
     trackName: TRACKS[params.track].name,
@@ -231,7 +238,7 @@ export async function generateAndStoreStudyCase(params: {
     syllabus,
     focusPrompt: params.focusPrompt,
   })}
-${ioaiBlock ? `\n${ioaiBlock}\n` : ""}
+${ioaiStandardsBlock}${ioaiBlock ? `\n${ioaiBlock}\n` : ""}
 ${
   includeFigures
     ? `\nGambar: sertakan "figures" di root JSON jika kasus butuh visual; pakai {{fig:id}} di preamble.`

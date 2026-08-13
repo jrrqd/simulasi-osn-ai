@@ -15,6 +15,11 @@ import {
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
 import { buildNaturalMockTitle } from "@/lib/ai/mock-title";
+import {
+  isIoaiSyllabusTopic,
+  pickIoaiSyllabusTopic,
+  trackForIoaiTopic,
+} from "@/lib/content/ioai-syllabus";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
 import type { SubmissionScoringMode } from "@/lib/content/types";
 import {
@@ -91,9 +96,21 @@ function pickTopicForTrack(
   track: TrackId,
   phase: Phase,
   preferred?: string,
-  options?: { restrictToSemifinalTopics?: boolean },
+  options?: {
+    restrictToSemifinalTopics?: boolean;
+    restrictToIoaiSyllabus?: boolean;
+    slotIndex?: number;
+  },
 ) {
   const trackTopics = TRACKS[track].topics;
+  if (options?.restrictToIoaiSyllabus) {
+    const ioaiOnTrack = trackTopics.filter((t) => isIoaiSyllabusTopic(t));
+    return pickIoaiSyllabusTopic(
+      ioaiOnTrack.length > 0 ? ioaiOnTrack : trackTopics,
+      options.slotIndex ?? 0,
+      preferred,
+    );
+  }
   const topics = options?.restrictToSemifinalTopics
     ? trackTopics.filter((t) => SEMIFINAL_TOPIC_SET.has(t))
     : trackTopics;
@@ -110,19 +127,26 @@ export const MOCK_DURATION_MINUTES = 30;
 
 export const KAGGLE_CODING_WEIGHT = 5;
 
-/** Rotating metrics for the 3 kaggle competitions in a mock. */
+/** Rotating metrics for kaggle competitions (supports 3- and 5-slot packs). */
 export const KAGGLE_SLOT_METRICS: SubmissionScoringMode[] = [
   "accuracy",
   "f1_macro",
   "rmse",
+  "mae",
+  "accuracy",
 ];
 
 /** Any size whose label/mix is Kaggle-style coding marathon. */
-export const KAGGLE_SIZES = ["kaggle", "kaggle-150"] as const;
+export const KAGGLE_SIZES = ["kaggle", "kaggle-150", "kaggle-300"] as const;
 export type KaggleSize = (typeof KAGGLE_SIZES)[number];
 
 export function isKaggleSize(size: AiMockSize): size is KaggleSize {
   return (KAGGLE_SIZES as readonly string[]).includes(size);
+}
+
+/** Final IOAI marathon: 5 competitions · 5 hours. */
+export function isFinalKaggleSize(size: AiMockSize): boolean {
+  return size === "kaggle-300";
 }
 
 export type AiMockSize = "quick" | CuratedMockSize | KaggleSize;
@@ -150,6 +174,13 @@ export const AI_MOCK_SIZES: {
     codingRatio: 1,
   },
   {
+    value: "kaggle-300",
+    label: "Final IOAI · 5 kompetisi · 5 jam",
+    count: 5,
+    durationMinutes: 300,
+    codingRatio: 1,
+  },
+  {
     value: "kaggle",
     label: "Kaggle style · 3 kompetisi · 150 menit",
     count: 3,
@@ -164,7 +195,8 @@ export function parseAiMockSize(raw: unknown): AiMockSize {
     raw === "full" ||
     raw === "quick" ||
     raw === "kaggle" ||
-    raw === "kaggle-150"
+    raw === "kaggle-150" ||
+    raw === "kaggle-300"
   ) {
     return raw;
   }
@@ -228,17 +260,18 @@ export type AiMockPlanMeta = {
   examFormat: "standard" | "kaggle";
 };
 
-/** IOAI reference context is skipped for pre-seleksi unless kaggle or semifinal restrict. */
+/** IOAI reference context is skipped for pre-seleksi unless kaggle or phase difficulty. */
 export function resolveGenerationPhase(
   userPhase: Phase,
   difficultyMode: DifficultyMode,
   isKaggle: boolean,
 ): Phase {
-  const restrictToSemifinalTopics = difficultyMode === "semifinal";
-  if (restrictToSemifinalTopics && userPhase === "pre-seleksi") {
-    return "semifinal";
+  if (difficultyMode === "final") return "final";
+  if (difficultyMode === "semifinal") {
+    if (userPhase === "pre-seleksi") return "semifinal";
+    return userPhase === "final" ? "final" : "semifinal";
   }
-  if (isKaggle && userPhase === "pre-seleksi" && !restrictToSemifinalTopics) {
+  if (isKaggle && userPhase === "pre-seleksi") {
     return "final";
   }
   return userPhase;
@@ -354,12 +387,19 @@ export function buildAiMockPlan(params: {
   const count = sizeMeta.count;
   const durationMinutes = sizeMeta.durationMinutes;
   const isKaggle = isKaggleSize(size);
+  const isFinalKaggle = isFinalKaggleSize(size);
+  // Final IOAI marathon always uses final difficulty.
+  const difficultyMode: DifficultyMode = isFinalKaggle
+    ? "final"
+    : params.difficultyMode;
   // Kaggle is coding-only; study-case numeric packs do not apply.
   const generationMode: AiMockGenerationMode =
     isKaggle && params.generationMode === "study-case"
       ? "standard"
       : params.generationMode;
   const isStudyCase = generationMode === "study-case";
+  const restrictToSemifinalTopics = difficultyMode === "semifinal";
+  const restrictToIoaiSyllabus = difficultyMode === "final";
 
   let track: TrackId =
     params.track !== "ALL" && TRACKS[params.track] ? params.track : "B";
@@ -396,13 +436,17 @@ export function buildAiMockPlan(params: {
 
   const generationPhase = resolveGenerationPhase(
     phase,
-    params.difficultyMode,
+    difficultyMode,
     isKaggle,
+  );
+
+  const allTopics = (Object.keys(TRACKS) as TrackId[]).flatMap(
+    (t) => TRACKS[t].topics,
   );
 
   const slots: AiMockSlot[] = [];
   for (let i = 0; i < count; i++) {
-    const difficulty = resolveDifficulty(params.difficultyMode);
+    const difficulty = resolveDifficulty(difficultyMode);
     let questionTrack = track;
     let topic: string;
 
@@ -410,6 +454,10 @@ export function buildAiMockPlan(params: {
       const pair = topicPairs[i % topicPairs.length]!;
       questionTrack = pair.track;
       topic = pair.topic;
+    } else if (restrictToIoaiSyllabus && (isFinalKaggle || params.track === "ALL")) {
+      // Final IOAI: rotate domains across full syllabus (cross-track).
+      topic = pickIoaiSyllabusTopic(allTopics, i, params.preferredTopic);
+      questionTrack = trackForIoaiTopic(topic) ?? TRACK_CYCLE[i % TRACK_CYCLE.length]!;
     } else if (
       params.track === "ALL" &&
       (generationMode === "standard" || isStudyCase)
@@ -420,13 +468,16 @@ export function buildAiMockPlan(params: {
         generationPhase,
         params.preferredTopic,
         {
-          restrictToSemifinalTopics:
-            params.difficultyMode === "semifinal",
+          restrictToSemifinalTopics,
+          restrictToIoaiSyllabus,
+          slotIndex: i,
         },
       );
     } else {
       topic = pickTopicForTrack(track, generationPhase, params.preferredTopic, {
-        restrictToSemifinalTopics: params.difficultyMode === "semifinal",
+        restrictToSemifinalTopics,
+        restrictToIoaiSyllabus,
+        slotIndex: i,
       });
     }
 
@@ -468,7 +519,9 @@ export function buildAiMockPlan(params: {
     : [];
 
   const resolvedMockTrack: TrackId | "ALL" =
-    generationMode === "custom" || params.track === "ALL"
+    generationMode === "custom" ||
+    params.track === "ALL" ||
+    (restrictToIoaiSyllabus && isFinalKaggle)
       ? "ALL"
       : track;
 
@@ -476,7 +529,7 @@ export function buildAiMockPlan(params: {
     kind: "ai",
     generationMode: generationMode === "custom" ? "custom" : "standard",
     track: resolvedMockTrack,
-    difficultyMode: params.difficultyMode,
+    difficultyMode,
     count,
     size,
     topicLabels: isStudyCase
@@ -488,20 +541,22 @@ export function buildAiMockPlan(params: {
       ? "Studi kasus PREDIKSI"
       : params.topicPrompt,
   });
-  const description = isKaggle
-    ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit). Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
-    : isStudyCase
-      ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
-      : generationMode === "custom" && params.topicPrompt
-        ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
-        : `${count} soal AI baru (${durationMinutes} menit; ~${numericCount} isian + ~${codingCount} coding). Dibuat otomatis; dapat dikerjakan semua siswa.`;
+  const description = isFinalKaggle
+    ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit / 5 jam). Satu kompetisi per pilar silabus IOAI. Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
+    : isKaggle
+      ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit). Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
+      : isStudyCase
+        ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
+        : generationMode === "custom" && params.topicPrompt
+          ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
+          : `${count} soal AI baru (${durationMinutes} menit; ~${numericCount} isian + ~${codingCount} coding). Dibuat otomatis; dapat dikerjakan semua siswa.`;
 
   return {
     slots,
     cases,
     meta: {
       generationMode,
-      difficultyMode: params.difficultyMode,
+      difficultyMode,
       topicPrompt: params.topicPrompt,
       mockTrack: resolvedMockTrack,
       title,

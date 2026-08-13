@@ -3,6 +3,7 @@ export type DifficultyMode =
   | "medium"
   | "hard"
   | "semifinal"
+  | "final"
   | "normal";
 
 export const DIFFICULTY_MODES: {
@@ -13,6 +14,7 @@ export const DIFFICULTY_MODES: {
   { value: "medium", label: "Sedang" },
   { value: "hard", label: "Sulit" },
   { value: "semifinal", label: "Semifinal" },
+  { value: "final", label: "Final (IOAI)" },
   { value: "normal", label: "Distribusi normal" },
 ];
 
@@ -30,6 +32,12 @@ const SEMIFINAL_WEIGHTS: { level: 1 | 2 | 3 | 4 | 5; weight: number }[] = [
   { level: 3, weight: 20 },
   { level: 4, weight: 40 },
   { level: 5, weight: 40 },
+];
+
+/** Final (IOAI) mock bias: D5 ~85%, D4 ~15%, no D1–D3. */
+const FINAL_WEIGHTS: { level: 1 | 2 | 3 | 4 | 5; weight: number }[] = [
+  { level: 4, weight: 15 },
+  { level: 5, weight: 85 },
 ];
 
 function pickWeightedLevel(
@@ -50,6 +58,7 @@ export function resolveDifficulty(mode: DifficultyMode): 1 | 2 | 3 | 4 | 5 {
   if (mode === "medium") return 3;
   if (mode === "hard") return 5;
   if (mode === "semifinal") return pickWeightedLevel(SEMIFINAL_WEIGHTS, 4);
+  if (mode === "final") return pickWeightedLevel(FINAL_WEIGHTS, 5);
   return pickWeightedLevel(NORMAL_WEIGHTS, 3);
 }
 
@@ -60,6 +69,7 @@ export function parseDifficultyMode(raw: unknown): DifficultyMode {
     value === "medium" ||
     value === "hard" ||
     value === "semifinal" ||
+    value === "final" ||
     value === "normal"
   ) {
     return value;
@@ -98,12 +108,13 @@ export function difficultyBandTextClass(difficulty: number): string {
 /** Map mock difficultyMode to Mudah / Normal / Sulit display band. */
 export function difficultyModeBand(mode: DifficultyMode): DifficultyBand {
   if (mode === "easy") return "easy";
-  if (mode === "hard" || mode === "semifinal") return "hard";
+  if (mode === "hard" || mode === "semifinal" || mode === "final") return "hard";
   return "normal";
 }
 
 export function labelDifficultyModeBand(mode: DifficultyMode): string {
   if (mode === "semifinal") return "Semifinal";
+  if (mode === "final") return "Final";
   const band = difficultyModeBand(mode);
   if (band === "easy") return "Mudah";
   if (band === "hard") return "Sulit";

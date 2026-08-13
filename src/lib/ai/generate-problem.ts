@@ -24,6 +24,7 @@ import {
 } from "@/lib/ai/materialize-images";
 import { getLessonsForTopic } from "@/lib/content/load";
 import { buildIoaiReferenceContext } from "@/lib/content/ioai-resources";
+import { buildIoaiSyllabusStandardsBlock } from "@/lib/content/ioai-syllabus";
 import type { Lesson } from "@/lib/content/types";
 import {
   TRACKS,
@@ -186,13 +187,18 @@ export async function generateAndStoreProblem(params: {
     params.longFormCoding || answerType === "notebook_submission";
   const scoringMetric: SubmissionScoringMode =
     params.preferredScoringMetric ?? "accuracy";
+  const isFinalMode = params.difficultyMode === "final";
   const ioaiBlock = await buildIoaiReferenceContext({
     track: params.track,
     topic: params.topic,
     phase: params.phase ?? "pre-seleksi",
     forceInclude: isCompetition,
-    limit: isCompetition ? 8 : undefined,
+    limit: isCompetition || isFinalMode ? 8 : undefined,
+    prioritizeSyllabus: isFinalMode,
   });
+  const ioaiStandardsBlock = isFinalMode
+    ? `\n${buildIoaiSyllabusStandardsBlock()}\n`
+    : "";
   const focusBlock = params.focusPrompt?.trim()
     ? `
 Preferensi / brief siswa untuk paket kuis ini:
@@ -238,7 +244,7 @@ Difficulty: ${difficulty} (1 mudah .. 5 sulit)
 AnswerType: ${effectiveAnswerType}
 ${isCompetition ? `Scoring metric WAJIB: ${scoringMetric}\n` : ""}
 ${syllabus}
-${ioaiBlock ? `\n${ioaiBlock}\n` : ""}
+${ioaiStandardsBlock}${ioaiBlock ? `\n${ioaiBlock}\n` : ""}
 ${focusBlock}
 ${isCompetition ? "" : figureBlock}
 ${

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TOPIC_LABELS, TRACKS } from "@/lib/content/types";
 import {
@@ -10,6 +10,7 @@ import {
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
 import {
   AI_MOCK_SIZES,
+  isFinalKaggleSize,
   isKaggleSize,
   type AiMockSize,
 } from "@/lib/ai/ai-mock-plan";
@@ -25,6 +26,7 @@ import {
   SimulasiQuotaBanner,
   useSimulasiQuota,
 } from "@/components/simulasi-quota-banner";
+import { parsePhase } from "@/lib/user/phase";
 
 type GenerationMode = "standard" | "custom" | "study-case";
 
@@ -32,6 +34,9 @@ const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
   id,
   label,
 }));
+
+/** Prefer canonical size keys in the dropdown (hide legacy `kaggle` alias). */
+const SIZE_OPTIONS = AI_MOCK_SIZES.filter((s) => s.value !== "kaggle");
 
 export function GenerateMockChallenge() {
   const router = useRouter();
@@ -49,15 +54,44 @@ export function GenerateMockChallenge() {
     INITIAL_GENERATION_PROGRESS,
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/profile")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const phase = parsePhase(data.phase);
+        if (phase === "final") setDifficultyMode("final");
+        else if (phase === "semifinal") setDifficultyMode("semifinal");
+      })
+      .catch(() => {
+        /* optional default */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const sizeMeta =
     AI_MOCK_SIZES.find((s) => s.value === size) ?? AI_MOCK_SIZES[0]!;
   const isKaggle = isKaggleSize(size);
+  const isFinalKaggle = isFinalKaggleSize(size);
   const effectiveMode: GenerationMode =
     isKaggle && generationMode === "study-case" ? "standard" : generationMode;
   const quotaExhausted =
     quota?.simulasi.gated === true &&
     quota.simulasi.remaining != null &&
     quota.simulasi.remaining <= 0;
+
+  function applySize(next: AiMockSize) {
+    setSize(next);
+    if (isFinalKaggleSize(next)) {
+      setDifficultyMode("final");
+    }
+    if (isKaggleSize(next) && generationMode === "study-case") {
+      setGenerationMode("standard");
+    }
+  }
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -77,7 +111,7 @@ export function GenerateMockChallenge() {
         request: {
           generationMode: effectiveMode,
           track: effectiveMode === "custom" ? undefined : track,
-          difficultyMode,
+          difficultyMode: isFinalKaggle ? "final" : difficultyMode,
           size,
           topicPrompt:
             effectiveMode === "custom" ? topicPrompt.trim() : undefined,
@@ -96,7 +130,7 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Pilih Kaggle style untuk 3 kompetisi notebook IOAI · 150 menit.`}
+      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Kaggle: 3 kompetisi · 150 menit, atau Final IOAI: 5 kompetisi · 5 jam.`}
       accent="accent"
     >
       <PhaseHintBanner />
@@ -138,22 +172,33 @@ export function GenerateMockChallenge() {
         <button
           type="button"
           className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-150" ? "btn-accent" : "btn-secondary"}`}
-          onClick={() => {
-            setSize("kaggle-150");
-            if (generationMode === "study-case") setGenerationMode("standard");
-          }}
+          onClick={() => applySize("kaggle-150")}
           disabled={loading}
         >
           Kaggle style · 3 kompetisi · 150 menit
         </button>
+        <button
+          type="button"
+          className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-300" ? "btn-accent" : "btn-secondary"}`}
+          onClick={() => applySize("kaggle-300")}
+          disabled={loading}
+        >
+          Final IOAI · 5 kompetisi · 5 jam
+        </button>
       </div>
 
-      {isKaggle ? (
+      {isFinalKaggle ? (
+        <p className="text-xs text-[var(--muted)]">
+          Marathon Final IOAI: 5 kompetisi notebook · 5 jam (300 menit), satu
+          kompetisi per pilar silabus IOAI (Python, ML, CV, NLP, etika/data).
+          Kesulitan otomatis Final (IOAI). Kerjakan di tab Notebook, Submit CSV.
+        </p>
+      ) : isKaggle ? (
         <p className="text-xs text-[var(--muted)]">
           Format Kaggle/IOAI: 3 kompetisi notebook · 150 menit. Kerjakan di tab
-          Notebook (Python + pandas di browser), Submit CSV. Unduh .ipynb opsional.
-          Referensi arsip IOAI dipakai saat generate. Studi kasus PREDIKSI tidak
-          tersedia untuk ukuran ini.
+          Notebook (Python + pandas di browser), Submit CSV. Unduh .ipynb
+          opsional. Referensi arsip IOAI dipakai saat generate. Studi kasus
+          PREDIKSI tidak tersedia untuk ukuran ini.
         </p>
       ) : effectiveMode === "study-case" ? (
         <p className="text-xs text-[var(--muted)]">
@@ -194,7 +239,7 @@ export function GenerateMockChallenge() {
               onChange={(e) =>
                 setDifficultyMode(e.target.value as DifficultyMode)
               }
-              disabled={loading}
+              disabled={loading || isFinalKaggle}
             >
               {DIFFICULTY_MODES.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -205,16 +250,10 @@ export function GenerateMockChallenge() {
             <select
               className="select"
               value={size}
-              onChange={(e) => {
-                const next = e.target.value as AiMockSize;
-                setSize(next);
-                if (isKaggleSize(next) && generationMode === "study-case") {
-                  setGenerationMode("standard");
-                }
-              }}
+              onChange={(e) => applySize(e.target.value as AiMockSize)}
               disabled={loading}
             >
-              {AI_MOCK_SIZES.map((s) => (
+              {SIZE_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
@@ -228,7 +267,7 @@ export function GenerateMockChallenge() {
             className="select"
             value={track}
             onChange={(e) => setTrack(e.target.value as "A" | "B" | "C" | "D")}
-            disabled={loading}
+            disabled={loading || isKaggle}
           >
             {Object.entries(TRACKS).map(([id, meta]) => (
               <option key={id} value={id}>
@@ -242,7 +281,7 @@ export function GenerateMockChallenge() {
             onChange={(e) =>
               setDifficultyMode(e.target.value as DifficultyMode)
             }
-            disabled={loading}
+            disabled={loading || isFinalKaggle}
           >
             {DIFFICULTY_MODES.map((d) => (
               <option key={d.value} value={d.value}>
@@ -253,16 +292,10 @@ export function GenerateMockChallenge() {
           <select
             className="select"
             value={size}
-            onChange={(e) => {
-              const next = e.target.value as AiMockSize;
-              setSize(next);
-              if (isKaggleSize(next) && generationMode === "study-case") {
-                setGenerationMode("standard");
-              }
-            }}
+            onChange={(e) => applySize(e.target.value as AiMockSize)}
             disabled={loading}
           >
-            {AI_MOCK_SIZES.map((s) => (
+            {SIZE_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
               </option>
@@ -277,19 +310,11 @@ export function GenerateMockChallenge() {
         disabled={loading || quotaExhausted}
       >
         {loading
-          ? "Menghasilkan…"
-          : isKaggle
-            ? "Buat simulasi Kaggle · 3 kompetisi · 150 menit"
-            : effectiveMode === "study-case"
-              ? "Buat simulasi studi kasus"
-              : effectiveMode === "custom"
-                ? "Generate dari brief topik"
-                : "Buat simulasi AI"}
+          ? "Membuat…"
+          : `Generate ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} mnt`}
       </button>
-      {loading || (error && progress.message) ? (
-        <GenerationProgressPanel state={progress} />
-      ) : null}
-      {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
+      {error ? <p className="text-sm text-[var(--bad)]">{error}</p> : null}
+      {loading ? <GenerationProgressPanel state={progress} /> : null}
     </CollapsiblePanel>
   );
 }

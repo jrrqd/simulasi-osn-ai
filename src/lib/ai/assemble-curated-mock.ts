@@ -11,6 +11,7 @@ import {
 } from "@/lib/ai/curated-mock-size";
 import { matchTopicsFromPrompt } from "@/lib/ai/topic-prompt";
 import { buildNaturalMockTitle } from "@/lib/ai/mock-title";
+import { isIoaiSyllabusTopic } from "@/lib/content/ioai-syllabus";
 import { getProblems } from "@/lib/content/load";
 import type { Problem, TrackId } from "@/lib/content/types";
 import { TOPIC_LABELS } from "@/lib/content/types";
@@ -42,6 +43,12 @@ function scoreForMode(p: Problem, mode: DifficultyMode) {
     if (p.difficulty >= 4) return 3;
     if (p.difficulty === 3) return 1;
     return 0;
+  }
+  if (mode === "final") {
+    const ioaiBonus = isIoaiSyllabusTopic(p.topic) ? 1 : 0;
+    if (p.difficulty === 5) return 3 + ioaiBonus;
+    if (p.difficulty === 4) return 1 + ioaiBonus;
+    return ioaiBonus > 0 ? 0 : -1;
   }
   // normal: prefer middle, still allow mix
   return p.difficulty === 2 ? 2 : 1;
@@ -233,6 +240,7 @@ Aturan umum:
 - Untuk mode medium: utamakan D2.
 - Untuk mode hard: utamakan D3 (dan D2 jika perlu).
 - Untuk mode normal: campuran seimbang mendekati distribusi normal (lebih banyak D2).
+- Untuk mode final: utamakan D5, sedikit D4; pilih soal dari topik silabus IOAI (Python, ML, CV, NLP).
 
 Judul (title):
 - Buat judul pendek & natural dalam Bahasa Indonesia, mudah dikenali (contoh: "Tryout Backprop & Regularisasi", "Paket curated ML Klasik").
