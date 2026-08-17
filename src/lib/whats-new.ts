@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "ui-section-subnav-outline",
+    at: "2026-08-17T13:02:00+07:00",
+    tag: "Navigasi",
+    title: "Tab aktif Latihan/Simulasi pakai outline",
+    story:
+      "Tab aktif di bar Latihan/Simulasi sekarang hanya ditandai outline putih — tidak lagi menukar teks ke gelap. Lebih konsisten dengan bar Admin.",
+    href: "/practice",
+  },
+  {
     id: "ui-consistency-nav-headers",
     at: "2026-08-17T12:49:00+07:00",
     tag: "Navigasi",

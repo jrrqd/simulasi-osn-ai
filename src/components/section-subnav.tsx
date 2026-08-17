@@ -83,10 +83,10 @@ export function SectionSubnav({
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-full px-3 py-1.5 text-sm transition ${
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${
                   active
-                    ? "bg-white font-medium text-[var(--ink)]"
-                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                    ? "border-white text-white"
+                    : "border-transparent text-white/80 hover:border-white/30 hover:text-white"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
