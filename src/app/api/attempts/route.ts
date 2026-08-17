@@ -27,6 +27,10 @@ export async function POST(req: NextRequest) {
   const problemId = String(body.problemId ?? "");
   const durationMs = Number(body.durationMs ?? 0);
   const submitted = body.answer;
+  const competitionResult =
+    body.competitionResult && typeof body.competitionResult === "object"
+      ? (body.competitionResult as import("@/lib/scoring").CompetitionRunResult)
+      : undefined;
   // body.codeSpecResult intentionally ignored — codeSpec grading always
   // runs server-side from the submitted code so the client cannot tamper
   // with the score.
@@ -89,6 +93,10 @@ export async function POST(req: NextRequest) {
       expectedFormat: problem.expectedFormat,
       legacy: problem.legacy,
       codeSpecResult,
+      competitionResult:
+        problem.answerType === "notebook_submission"
+          ? competitionResult
+          : undefined,
     });
     result = { ...r, earned: r.score * weight, max: weight, details: {} };
   }

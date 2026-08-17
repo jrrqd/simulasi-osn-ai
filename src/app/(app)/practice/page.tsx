@@ -5,32 +5,37 @@ import { listSharedProblems } from "@/lib/content/shared";
 import { listVisibleCuratedProblems } from "@/lib/content/problem-library";
 import { TOPIC_LABELS } from "@/lib/content/types";
 import { getUserProblemProgress } from "@/lib/attempts";
-import { GenerateChallenge } from "@/components/generate-challenge";
 import { PracticeProblemCard } from "@/components/practice-problem-card";
-import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
-import { loadUserPhase } from "@/lib/user/load-phase";
 
-export default async function PracticePage({
+export default async function PracticeBankPage({
   searchParams,
 }: {
   searchParams: Promise<{ track?: string; topic?: string }>;
 }) {
   const user = await requireUser();
   const sp = await searchParams;
-  const phase = await loadUserPhase(user.id);
   const problems = await listVisibleCuratedProblems({
     track: sp.track,
     topic: sp.topic,
   });
 
-  const shared = await listSharedProblems({
-    track: sp.track,
-    topic: sp.topic,
-    limit: 40,
-  });
+  const shared = (
+    await listSharedProblems({
+      track: sp.track,
+      topic: sp.topic,
+      limit: 40,
+    })
+  ).filter((p) => p.answerType !== "notebook_submission");
+
+  const curatedVisible = problems.filter(
+    (p) => !(p.tags ?? []).includes("ioai-analog"),
+  );
 
   const problemIds = [
-    ...new Set([...problems.map((p) => p.id), ...shared.map((p) => p.id)]),
+    ...new Set([
+      ...curatedVisible.map((p) => p.id),
+      ...shared.map((p) => p.id),
+    ]),
   ];
   const progressById = await getUserProblemProgress(user.id, problemIds);
   const doneScores = problemIds
@@ -55,10 +60,20 @@ export default async function PracticePage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="display text-4xl">Latihan</h1>
+        <h1 className="display text-4xl">Bank soal</h1>
         <p className="text-[var(--muted)]">
-          Side quests — bank soal curated + bank AI bersama untuk memperkuat
-          level tutorial.
+          Side quests curated dan bank AI bersama. Buat soal baru di{" "}
+          <Link
+            href="/practice/generate"
+            className="underline underline-offset-2"
+          >
+            Generate
+          </Link>
+          ; arsip Kaggle IOAI di{" "}
+          <Link href="/practice/ioai" className="underline underline-offset-2">
+            Arsip IOAI
+          </Link>
+          .
         </p>
         {problemIds.length > 0 ? (
           <p className="mt-1 text-sm text-[var(--muted)]">
@@ -91,13 +106,6 @@ export default async function PracticePage({
         </div>
       ) : null}
 
-      <IoaiResourcesPanel
-        phase={phase}
-        track={sp.track}
-        topic={sp.topic}
-      />
-
-      <GenerateChallenge />
       <div className="flex flex-wrap gap-2 text-sm">
         {["", "A", "B", "C", "D"].map((t) => (
           <Link
@@ -144,7 +152,7 @@ export default async function PracticePage({
       <section className="space-y-3">
         <h2 className="display text-2xl">Bank curated</h2>
         <div className="grid gap-3">
-          {problems.map((p) => (
+          {curatedVisible.map((p) => (
             <PracticeProblemCard
               key={p.id}
               id={p.id}

@@ -38,6 +38,7 @@ export default async function MockPage({
       <KaggleMockClient
         mockId={mock.id}
         title={title}
+        description={mock.description}
         durationMinutes={mock.durationMinutes}
         problems={examFacing}
         integrityMode={integrityMode}

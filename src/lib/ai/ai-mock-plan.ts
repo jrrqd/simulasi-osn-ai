@@ -20,6 +20,12 @@ import {
   pickIoaiSyllabusTopic,
   trackForIoaiTopic,
 } from "@/lib/content/ioai-syllabus";
+import {
+  DEFAULT_IOAI_PACK_YEAR,
+  getIoaiYearPack,
+  parseIoaiPackYear,
+  type IoaiPackYear,
+} from "@/lib/content/ioai-year-packs";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
 import type { SubmissionScoringMode } from "@/lib/content/types";
 import {
@@ -225,6 +231,8 @@ export type AiMockSlot = {
   weight: number;
   /** Kaggle competition metric for this slot. */
   scoringMetric?: SubmissionScoringMode;
+  /** Past IOAI catalog resource this slot is analogued from (year pack). */
+  sourceResourceId?: string;
 };
 
 export type AiMockGenerationMode = "standard" | "custom" | "study-case";
@@ -258,6 +266,8 @@ export type AiMockPlanMeta = {
   generationPhase: Phase;
   /** standard exam vs kaggle competition workspace. */
   examFormat: "standard" | "kaggle";
+  /** Year-pack source year (kaggle-150 / kaggle-300). */
+  ioaiYear?: IoaiPackYear;
 };
 
 /** IOAI reference context is skipped for pre-seleksi unless kaggle or phase difficulty. */
@@ -380,6 +390,8 @@ export function buildAiMockPlan(params: {
   preferredTopic?: string;
   size?: AiMockSize;
   phase?: Phase;
+  /** IOAI year pack (kaggle-150 / kaggle-300). */
+  ioaiYear?: IoaiPackYear | number | string;
 }): { slots: AiMockSlot[]; cases: AiMockCaseSlot[]; meta: AiMockPlanMeta } {
   const phase = params.phase ?? "pre-seleksi";
   const size = params.size ?? "quick";
@@ -388,10 +400,14 @@ export function buildAiMockPlan(params: {
   const durationMinutes = sizeMeta.durationMinutes;
   const isKaggle = isKaggleSize(size);
   const isFinalKaggle = isFinalKaggleSize(size);
-  // Final IOAI marathon always uses final difficulty.
-  const difficultyMode: DifficultyMode = isFinalKaggle
-    ? "final"
-    : params.difficultyMode;
+  // Year pack for any Kaggle size when year is supplied (UI always sends one).
+  const ioaiYear: IoaiPackYear | undefined = isKaggle
+    ? parseIoaiPackYear(params.ioaiYear ?? DEFAULT_IOAI_PACK_YEAR)
+    : undefined;
+  const yearPack = ioaiYear ? getIoaiYearPack(ioaiYear, count) : null;
+  // Past-paper analogs use Final difficulty (3- and 5-comp packs).
+  const difficultyMode: DifficultyMode =
+    isFinalKaggle || yearPack ? "final" : params.difficultyMode;
   // Kaggle is coding-only; study-case numeric packs do not apply.
   const generationMode: AiMockGenerationMode =
     isKaggle && params.generationMode === "study-case"
@@ -449,8 +465,14 @@ export function buildAiMockPlan(params: {
     const difficulty = resolveDifficulty(difficultyMode);
     let questionTrack = track;
     let topic: string;
+    let sourceResourceId: string | undefined;
 
-    if (topicPairs && topicPairs.length > 0) {
+    if (yearPack && yearPack[i]) {
+      const packSlot = yearPack[i]!;
+      questionTrack = packSlot.track;
+      topic = packSlot.topic;
+      sourceResourceId = packSlot.resourceId;
+    } else if (topicPairs && topicPairs.length > 0) {
       const pair = topicPairs[i % topicPairs.length]!;
       questionTrack = pair.track;
       topic = pair.topic;
@@ -492,6 +514,7 @@ export function buildAiMockPlan(params: {
       scoringMetric: isKaggle
         ? KAGGLE_SLOT_METRICS[i % KAGGLE_SLOT_METRICS.length]
         : undefined,
+      sourceResourceId,
     });
   }
 
@@ -521,10 +544,12 @@ export function buildAiMockPlan(params: {
   const resolvedMockTrack: TrackId | "ALL" =
     generationMode === "custom" ||
     params.track === "ALL" ||
+    Boolean(yearPack) ||
     (restrictToIoaiSyllabus && isFinalKaggle)
       ? "ALL"
       : track;
 
+  const packTaskNames = yearPack?.map((s) => s.title) ?? [];
   const title = buildNaturalMockTitle({
     kind: "ai",
     generationMode: generationMode === "custom" ? "custom" : "standard",
@@ -532,6 +557,7 @@ export function buildAiMockPlan(params: {
     difficultyMode,
     count,
     size,
+    ioaiYear,
     topicLabels: isStudyCase
       ? ["Studi kasus PREDIKSI"]
       : preferred.length > 0
@@ -541,15 +567,18 @@ export function buildAiMockPlan(params: {
       ? "Studi kasus PREDIKSI"
       : params.topicPrompt,
   });
-  const description = isFinalKaggle
-    ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit / 5 jam). Satu kompetisi per pilar silabus IOAI. Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
-    : isKaggle
-      ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit). Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
-      : isStudyCase
-        ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
-        : generationMode === "custom" && params.topicPrompt
-          ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
-          : `${count} soal AI baru (${durationMinutes} menit; ~${numericCount} isian + ~${codingCount} coding). Dibuat otomatis; dapat dikerjakan semua siswa.`;
+  const description =
+    yearPack && ioaiYear
+      ? `Analog paper resmi (IOAI ${ioaiYear}). ${count} kompetisi notebook · ${durationMinutes} menit${isFinalKaggle ? " / 5 jam" : ""}. Inspirasi: ${packTaskNames.join("; ")}. Orisinal (bukan soal/dataset resmi). Kerjakan di tab Notebook, Submit CSV.`
+      : isFinalKaggle
+        ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit / 5 jam). Satu kompetisi per pilar silabus IOAI. Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
+        : isKaggle
+          ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit). Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
+          : isStudyCase
+            ? `${count} soal AI dalam paket studi kasus PREDIKSI terkait (${durationMinutes} menit).`
+            : generationMode === "custom" && params.topicPrompt
+              ? `${count} soal AI bersama (${durationMinutes} menit) mengikuti brief: ${params.topicPrompt.slice(0, 180)}`
+              : `${count} soal AI baru (${durationMinutes} menit; ~${numericCount} isian + ~${codingCount} coding). Dibuat otomatis; dapat dikerjakan semua siswa.`;
 
   return {
     slots,
@@ -569,6 +598,7 @@ export function buildAiMockPlan(params: {
       phase,
       generationPhase,
       examFormat: isKaggle ? "kaggle" : "standard",
+      ioaiYear,
     },
   };
 }

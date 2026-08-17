@@ -25,7 +25,10 @@ function PracticeAssistantInner() {
 
   const problemId = useMemo(() => {
     const match = pathname?.match(/^\/practice\/([^/?#]+)/);
-    return match?.[1] ?? "";
+    const id = match?.[1] ?? "";
+    // Section tabs are not problem routes.
+    if (id === "generate" || id === "ioai") return "";
+    return id;
   }, [pathname]);
 
   const track = searchParams.get("track") ?? "";

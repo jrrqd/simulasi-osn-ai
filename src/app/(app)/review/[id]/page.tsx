@@ -20,6 +20,10 @@ export default async function ReviewPage({
     return <ReviewAiFallback id={id} />;
   }
 
+  const isCompetition =
+    problem.answerType === "notebook_submission" &&
+    Boolean(problem.competitionSpec);
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-4">
@@ -27,12 +31,29 @@ export default async function ReviewPage({
         <div className="panel rounded-3xl p-5">
           <Markdown content={problem.stem} />
         </div>
+        {isCompetition && problem.competitionSpec?.overview ? (
+          <div className="panel rounded-3xl p-5">
+            <h2 className="display mb-2 text-xl">Overview kompetisi</h2>
+            <Markdown content={problem.competitionSpec.overview} />
+          </div>
+        ) : null}
         <div className="panel rounded-3xl p-5">
-          <h2 className="display mb-2 text-xl">Solusi</h2>
+          <h2 className="display mb-2 text-xl">
+            {isCompetition ? "Pembahasan" : "Solusi"}
+          </h2>
           <Markdown content={problem.solution} />
-          <p className="mt-3 text-sm text-[var(--muted)]">
-            Jawaban: {JSON.stringify(problem.answer)}
-          </p>
+          {!isCompetition ? (
+            <p className="mt-3 text-sm text-[var(--muted)]">
+              Jawaban: {JSON.stringify(problem.answer)}
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-[var(--muted)]">
+              Penilaian lewat submission CSV (
+              {problem.competitionSpec?.scoring.label ??
+                problem.competitionSpec?.scoring.mode}
+              ). Label tersembunyi tidak ditampilkan di sini.
+            </p>
+          )}
         </div>
       </div>
       <ReviewChat problemId={problem.id} />

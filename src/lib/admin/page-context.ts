@@ -29,8 +29,11 @@ function routeLabel(pathname: string): string {
   if (pathname === "/study") return "Belajar · Daftar modul";
   if (pathname.startsWith("/study/")) return "Belajar · Modul";
   if (pathname === "/practice") return "Latihan · Bank soal";
+  if (pathname === "/practice/generate") return "Latihan · Generate";
+  if (pathname === "/practice/ioai") return "Latihan · Arsip IOAI";
   if (pathname.startsWith("/practice/")) return "Latihan · Soal";
-  if (pathname === "/mock") return "Simulasi · Daftar";
+  if (pathname === "/mock") return "Simulasi · Bank paket";
+  if (pathname === "/mock/generate") return "Simulasi · Generate";
   if (pathname.startsWith("/mock/")) return "Simulasi · Sesi";
   if (pathname === "/performance") return "Performa siswa";
   if (pathname === "/settings") return "Pengaturan";
@@ -89,7 +92,7 @@ export async function buildAdminPageContext(
   }
 
   const problemId = pathname.match(/^\/practice\/([^/?#]+)/)?.[1];
-  if (problemId) {
+  if (problemId && problemId !== "generate" && problemId !== "ioai") {
     const problem = await resolveProblem(problemId);
     if (problem) {
       lines.push(
@@ -108,16 +111,20 @@ export async function buildAdminPageContext(
     const track = params.get("track");
     const topic = params.get("topic");
     lines.push(
-      "Admin melihat bank latihan / generate tantangan.",
+      "Admin melihat bank latihan (curated + AI bersama).",
       track ? `Filter track=${track}` : "Filter track: semua",
       topic
         ? `Filter topik=${TOPIC_LABELS[topic] ?? topic}`
         : "Filter topik: semua",
     );
+  } else if (pathname === "/practice/generate") {
+    lines.push("Admin melihat generator soal latihan AI.");
+  } else if (pathname === "/practice/ioai") {
+    lines.push("Admin melihat arsip paper IOAI (latihan Kaggle-style).");
   }
 
   const mockId = pathname.match(/^\/mock\/([^/?#]+)/)?.[1];
-  if (mockId) {
+  if (mockId && mockId !== "generate") {
     const curated = getMock(mockId);
     const resolved = curated ?? (await resolveMock(mockId));
     if (resolved) {
@@ -129,7 +136,9 @@ export async function buildAdminPageContext(
       lines.push(`Simulasi id=${mockId} (belum bisa dimuat)`);
     }
   } else if (pathname === "/mock") {
-    lines.push("Admin melihat daftar simulasi (curated + AI).");
+    lines.push("Admin melihat bank paket simulasi (curated + AI).");
+  } else if (pathname === "/mock/generate") {
+    lines.push("Admin melihat generator paket simulasi (curated + AI).");
   }
 
   if (pathname === "/performance") {

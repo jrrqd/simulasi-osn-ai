@@ -24,6 +24,7 @@ import {
 } from "@/lib/ai/materialize-images";
 import { getLessonsForTopic } from "@/lib/content/load";
 import { buildIoaiReferenceContext } from "@/lib/content/ioai-resources";
+import { getCatalogResource } from "@/lib/content/ioai-year-packs";
 import { buildIoaiSyllabusStandardsBlock } from "@/lib/content/ioai-syllabus";
 import type { Lesson } from "@/lib/content/types";
 import {
@@ -141,6 +142,8 @@ export async function generateAndStoreProblem(params: {
   longFormCoding?: boolean;
   /** Preferred scoring metric for kaggle competitions. */
   preferredScoringMetric?: SubmissionScoringMode;
+  /** Past IOAI catalog resource to analog (year-pack Final). */
+  sourceResourceId?: string;
   /** User prep phase — IOAI refs injected for semifinal/final. */
   phase?: Phase;
   baseUrl: string;
@@ -188,14 +191,32 @@ export async function generateAndStoreProblem(params: {
   const scoringMetric: SubmissionScoringMode =
     params.preferredScoringMetric ?? "accuracy";
   const isFinalMode = params.difficultyMode === "final";
+  const sourceResource = params.sourceResourceId
+    ? getCatalogResource(params.sourceResourceId)
+    : null;
   const ioaiBlock = await buildIoaiReferenceContext({
     track: params.track,
     topic: params.topic,
     phase: params.phase ?? "pre-seleksi",
     forceInclude: isCompetition,
-    limit: isCompetition || isFinalMode ? 8 : undefined,
-    prioritizeSyllabus: isFinalMode,
+    limit: sourceResource ? 1 : isCompetition || isFinalMode ? 8 : undefined,
+    prioritizeSyllabus: isFinalMode && !sourceResource,
+    resourceIds: sourceResource ? [sourceResource.id] : undefined,
   });
+  const analogBrief =
+    sourceResource && isCompetition
+      ? `
+## Brief analog paper IOAI (WAJIB diikuti spirit-nya, BUKAN salinan)
+Paper sumber: "${sourceResource.title}"
+Ringkasan resmi: ${sourceResource.summary}
+${sourceResource.promptHint ? `Hint gaya: ${sourceResource.promptHint}` : ""}
+
+Buat kompetisi ORISINAL yang:
+- Meniru KELAS masalah / spirit I/O / jenis metrik paper di atas (bukan judul/cerita/dataset yang sama).
+- Jika paper asli memakai citra, tensor, audio, GPU, atau model besar: REDUKSI ke tugas tabular/CSV kecil (fitur proxy numerik/teks) yang bisa dikerjakan dengan pandas di browser.
+- Cerita, nama kolom, dan data SINTETIS baru; JANGAN salin dataset, angka, atau narasi resmi IOAI.
+`
+      : "";
   const ioaiStandardsBlock = isFinalMode
     ? `\n${buildIoaiSyllabusStandardsBlock()}\n`
     : "";
@@ -244,7 +265,7 @@ Difficulty: ${difficulty} (1 mudah .. 5 sulit)
 AnswerType: ${effectiveAnswerType}
 ${isCompetition ? `Scoring metric WAJIB: ${scoringMetric}\n` : ""}
 ${syllabus}
-${ioaiStandardsBlock}${ioaiBlock ? `\n${ioaiBlock}\n` : ""}
+${ioaiStandardsBlock}${ioaiBlock ? `\n${ioaiBlock}\n` : ""}${analogBrief}
 ${focusBlock}
 ${isCompetition ? "" : figureBlock}
 ${

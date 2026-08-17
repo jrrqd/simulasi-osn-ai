@@ -36,6 +36,7 @@ import {
   TOPIC_PROMPT_MIN_LEN,
 } from "@/lib/ai/topic-prompt";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
+import { parseIoaiPackYear } from "@/lib/content/ioai-year-packs";
 import { loadUserPhase } from "@/lib/user/load-phase";
 
 type GenerationPhase = "plan" | "slot" | "case" | "commit" | "legacy";
@@ -89,8 +90,10 @@ async function generateSlotProblem(params: {
   const progressTotal = params.progressTotal ?? MOCK_QUESTION_COUNT;
 
   for (let slotAttempt = 0; slotAttempt < 3 && !problem; slotAttempt++) {
+    // Year-pack Final slots keep the same paper/topic on retry (only drop brief).
+    const pinnedPaper = Boolean(params.slot.sourceResourceId);
     const attemptTopic =
-      slotAttempt === 0
+      slotAttempt === 0 || pinnedPaper
         ? params.slot.topic
         : TRACKS[params.slot.track].topics[
             Math.floor(Math.random() * TRACKS[params.slot.track].topics.length)
@@ -101,7 +104,9 @@ async function generateSlotProblem(params: {
     if (slotAttempt > 0) {
       await params.onProgress?.({
         type: "status",
-        message: `Mencoba ulang soal ${progressIndex} dengan topik lain…`,
+        message: pinnedPaper
+          ? `Mencoba ulang soal ${progressIndex} (paper yang sama)…`
+          : `Mencoba ulang soal ${progressIndex} dengan topik lain…`,
         index: progressIndex,
         total: progressTotal,
       });
@@ -128,6 +133,7 @@ async function generateSlotProblem(params: {
         weight: params.slot.weight,
         longFormCoding: params.longFormCoding,
         preferredScoringMetric: params.slot.scoringMetric,
+        sourceResourceId: params.slot.sourceResourceId,
         phase: params.phase,
         baseUrl: params.baseUrl,
         apiKey: params.apiKey,
@@ -188,6 +194,7 @@ export async function POST(req: NextRequest) {
     const preferredTopic =
       body.topic != null ? String(body.topic) : undefined;
     const size = parseAiMockSize(body.size);
+    const ioaiYear = parseIoaiPackYear(body.ioaiYear);
     const userPhase = await loadUserPhase(authResult.user.id);
 
     const rawTrack = String(body.track ?? "B");
@@ -230,6 +237,7 @@ export async function POST(req: NextRequest) {
       preferredTopic,
       size,
       phase: userPhase,
+      ioaiYear,
     });
 
     if (generationMode === "study-case" && cases.length === 0) {
@@ -693,6 +701,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const size = parseAiMockSize(body.size);
+    const ioaiYear = parseIoaiPackYear(body.ioaiYear);
     const userPhase = await loadUserPhase(authResult.user.id);
     const { slots, meta } = buildAiMockPlan({
       generationMode,
@@ -702,6 +711,7 @@ export async function POST(req: NextRequest) {
       preferredTopic,
       size,
       phase: userPhase,
+      ioaiYear,
     });
 
     const problemIds: string[] = [];

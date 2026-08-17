@@ -97,3 +97,16 @@ test("getIoaiResourcesForTopic is async and filters", async () => {
   });
   assert.ok(list.length <= 3);
 });
+
+test("buildIoaiReferenceContext resourceIds pins only those entries", async () => {
+  const ctx = await buildIoaiReferenceContext({
+    phase: "final",
+    resourceIds: ["ioai-2025-radar", "ioai-2025-chicken"],
+    limit: 4,
+  });
+  assert.ok(ctx.includes("analog"));
+  assert.ok(ctx.includes("Radar"));
+  assert.ok(ctx.includes("Chicken"));
+  assert.equal((ctx.match(/^- /gm) ?? []).length, 2);
+  assert.ok(!ctx.includes("Pixel"));
+});

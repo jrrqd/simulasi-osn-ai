@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { listAllMocks, type SharedMockExam } from "@/lib/content/shared";
-import { GenerateMockChallenge } from "@/components/generate-mock-challenge";
-import { GenerateCuratedMockChallenge } from "@/components/generate-curated-mock-challenge";
 import {
   MockProgressBadge,
   mockActionLabel,
@@ -100,10 +98,16 @@ export default async function MockListPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="display text-3xl md:text-4xl">Simulasi berwaktu</h1>
+          <h1 className="display text-3xl md:text-4xl">Bank paket</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-            Pilih paket di bank soal, atau buka generator di bawah jika ingin
-            paket baru. Tutor AI hanya setelah submit.
+            Pilih simulasi berwaktu dari bank. Buat paket baru di{" "}
+            <Link
+              href="/mock/generate"
+              className="underline underline-offset-2"
+            >
+              Generate
+            </Link>
+            . Tutor AI hanya setelah submit.
           </p>
           {mocks.length > 0 ? (
             <p className="mt-1 text-sm text-[var(--muted)]">
@@ -114,18 +118,18 @@ export default async function MockListPage() {
             </p>
           ) : null}
         </div>
-        <a
-          href="#buat-simulasi"
+        <Link
+          href="/mock/generate"
           className="btn btn-secondary !px-3 !py-1.5 text-sm"
         >
           Buat paket baru
-        </a>
+        </Link>
       </div>
 
       <section className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="display text-2xl">Bank Soal Simulasi</h2>
-          <span className="text-xs text-[var(--muted)]">bank soal</span>
+          <span className="text-xs text-[var(--muted)]">resmi</span>
         </div>
         <div className="space-y-2">
           {official.map((m) => (
@@ -164,7 +168,7 @@ export default async function MockListPage() {
           <div>
             <h2 className="display text-2xl">Simulasi AI bersama</h2>
             <p className="text-xs text-[var(--muted)]">
-              Soal baru dari LLM (10 / 20 / 40).
+              Soal baru dari LLM (10 / 20 / 40 / Kaggle).
             </p>
           </div>
           <div className="space-y-2">
@@ -179,18 +183,6 @@ export default async function MockListPage() {
           </div>
         </section>
       )}
-
-      <section id="buat-simulasi" className="space-y-2 scroll-mt-20">
-        <h2 className="display text-xl">Buat paket baru</h2>
-        <p className="text-xs text-[var(--muted)]">
-          Generator dilipat agar bank soal tetap mudah diakses. Buka hanya saat
-          perlu.
-        </p>
-        <div className="space-y-2">
-          <GenerateCuratedMockChallenge />
-          <GenerateMockChallenge />
-        </div>
-      </section>
     </div>
   );
 }

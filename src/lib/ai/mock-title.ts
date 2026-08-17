@@ -4,7 +4,7 @@ import {
 } from "@/lib/ai/difficulty";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
 
-const TITLE_MAX = 60;
+const TITLE_MAX = 72;
 
 const TRACK_SHORT: Record<TrackId, string> = {
   A: "Fondasi",
@@ -61,6 +61,8 @@ export type NaturalMockTitleInput = {
   size?: "quick" | "half" | "full" | "kaggle" | "kaggle-150" | "kaggle-300" | string;
   topicLabels?: string[];
   topicPrompt?: string;
+  /** Final IOAI year-pack analog year. */
+  ioaiYear?: number;
 };
 
 /** Short, natural Indonesian exam-style title (no soal count / duration). */
@@ -80,13 +82,25 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
   let title: string;
 
   if (input.size === "kaggle-300") {
+    const yearLabel =
+      input.ioaiYear === 2024 ||
+      input.ioaiYear === 2025 ||
+      input.ioaiYear === 2026
+        ? ` (IOAI ${input.ioaiYear})`
+        : "";
     title = trackLabel
-      ? `Tryout Final IOAI ${trackLabel} · 5 jam`
-      : "Tryout Final IOAI · 5 kompetisi · 5 jam";
+      ? `Tryout Final${yearLabel} ${trackLabel} · 5 jam`
+      : `Tryout Final${yearLabel} · 5 kompetisi · 5 jam`;
   } else if (isKaggle) {
+    const yearLabel =
+      input.ioaiYear === 2024 ||
+      input.ioaiYear === 2025 ||
+      input.ioaiYear === 2026
+        ? ` (IOAI ${input.ioaiYear})`
+        : "";
     title = trackLabel
-      ? `Tryout Kaggle/IOAI ${trackLabel} · 150 menit`
-      : "Tryout Kaggle/IOAI · 3 coding · 150 menit";
+      ? `Tryout Kaggle${yearLabel} ${trackLabel} · 150 menit`
+      : `Tryout Kaggle${yearLabel} · 3 kompetisi · 150 menit`;
   } else if (isCustom && focus) {
     title = curated ? `Paket curated: ${focus}` : `Fokus ${focus}`;
   } else if (isCustom) {

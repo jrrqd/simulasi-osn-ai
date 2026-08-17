@@ -39,6 +39,7 @@ type Result = {
 export function KaggleMockClient({
   mockId,
   title,
+  description,
   durationMinutes,
   problems,
   integrityMode = "off",
@@ -47,6 +48,7 @@ export function KaggleMockClient({
 }: {
   mockId: string;
   title: string;
+  description?: string;
   durationMinutes: number;
   problems: ExamFacingProblem[];
   integrityMode?: ExamIntegrityMode;
@@ -192,7 +194,13 @@ export function KaggleMockClient({
     return (
       <section className="panel mx-auto max-w-3xl space-y-5 rounded-3xl p-7">
         <h1 className="display text-4xl">{title}</h1>
-        <p className="text-sm text-[var(--muted)]">Laporan kompetisi Kaggle-style</p>
+        {description ? (
+          <p className="text-sm text-[var(--muted)]">{description}</p>
+        ) : (
+          <p className="text-sm text-[var(--muted)]">
+            Laporan kompetisi Kaggle-style
+          </p>
+        )}
         <p className="display text-5xl">
           {result.percentage.toFixed(1)}%
         </p>
@@ -231,6 +239,9 @@ export function KaggleMockClient({
             Simulasi Kaggle / IOAI
           </p>
           <h1 className="display text-4xl">{title}</h1>
+          {description ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">{description}</p>
+          ) : null}
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-[var(--line)] p-3">

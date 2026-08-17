@@ -8,7 +8,7 @@ import {
   parseAiMockSize,
   resolveGenerationPhase,
 } from "@/lib/ai/ai-mock-plan";
-import { isIoaiSyllabusTopic } from "@/lib/content/ioai-syllabus";
+import { getIoaiYearPack } from "@/lib/content/ioai-year-packs";
 
 test("parseAiMockSize accepts kaggle-300", () => {
   assert.equal(parseAiMockSize("kaggle-300"), "kaggle-300");
@@ -43,11 +43,56 @@ test("buildAiMockPlan kaggle-300 forces final + 5 IOAI slots", () => {
   assert.equal(meta.examFormat, "kaggle");
   assert.equal(meta.questionCount, 5);
   assert.equal(meta.durationMinutes, 300);
+  assert.equal(meta.ioaiYear, 2026);
   assert.equal(slots.length, 5);
   for (const slot of slots) {
     assert.ok(slot.difficulty === 4 || slot.difficulty === 5);
     assert.equal(slot.answerType, "notebook_submission");
-    assert.ok(isIoaiSyllabusTopic(slot.topic), slot.topic);
+    assert.ok(slot.sourceResourceId, "year pack pins sourceResourceId");
     assert.ok(slot.scoringMetric);
+  }
+});
+
+test("buildAiMockPlan kaggle-300 ioaiYear 2025 matches year pack topics", () => {
+  const pack = getIoaiYearPack(2025);
+  const { slots, meta } = buildAiMockPlan({
+    generationMode: "standard",
+    track: "B",
+    difficultyMode: "normal",
+    size: "kaggle-300",
+    ioaiYear: 2025,
+    phase: "final",
+  });
+  assert.equal(meta.ioaiYear, 2025);
+  assert.match(meta.title, /\(IOAI 2025\)/);
+  assert.ok(meta.description.includes("(IOAI 2025)"));
+  assert.equal(slots.length, 5);
+  for (let i = 0; i < 5; i++) {
+    assert.equal(slots[i]!.sourceResourceId, pack[i]!.resourceId);
+    assert.equal(slots[i]!.topic, pack[i]!.topic);
+    assert.equal(slots[i]!.track, pack[i]!.track);
+  }
+});
+
+test("buildAiMockPlan kaggle-150 year pack uses 3 papers", () => {
+  const pack = getIoaiYearPack(2025, 3);
+  const { slots, meta } = buildAiMockPlan({
+    generationMode: "standard",
+    track: "B",
+    difficultyMode: "normal",
+    size: "kaggle-150",
+    ioaiYear: 2025,
+    phase: "pre-seleksi",
+  });
+  assert.equal(meta.ioaiYear, 2025);
+  assert.equal(meta.difficultyMode, "final");
+  assert.equal(meta.examFormat, "kaggle");
+  assert.equal(meta.questionCount, 3);
+  assert.equal(meta.durationMinutes, 150);
+  assert.match(meta.title, /\(IOAI 2025\)/);
+  assert.equal(slots.length, 3);
+  for (let i = 0; i < 3; i++) {
+    assert.equal(slots[i]!.sourceResourceId, pack[i]!.resourceId);
+    assert.equal(slots[i]!.answerType, "notebook_submission");
   }
 });

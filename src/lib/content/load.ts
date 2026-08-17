@@ -9,6 +9,7 @@ import type {
   Problem,
 } from "@/lib/content/types";
 import { inferNumericPartCount } from "@/lib/content/types";
+import { getIoaiAnalogProblems } from "@/lib/content/ioai-analog-bank";
 
 function isLegacyProblem(p: Problem): boolean {
   if (p.legacy === true) return true;
@@ -139,9 +140,16 @@ export function getLessonsForTopic(track: string, topic: string): Lesson[] {
 }
 
 export function getProblems(): Problem[] {
-  return (problemsData as Problem[]).map((p) =>
+  const curated = (problemsData as Problem[]).map((p) =>
     normalizeProblem({ ...p, source: p.source ?? "curated" }),
   );
+  const analogs = getIoaiAnalogProblems().map((p) =>
+    normalizeProblem({ ...p, source: p.source ?? "curated" }),
+  );
+  const byId = new Map<string, Problem>();
+  for (const p of curated) byId.set(p.id, p);
+  for (const p of analogs) byId.set(p.id, p);
+  return Array.from(byId.values());
 }
 
 export function getProblem(id: string) {

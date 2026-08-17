@@ -255,29 +255,49 @@ export async function buildIoaiReferenceContext(params: {
   limit?: number;
   /** Prefer syllabus + task_repo entries (Final IOAI mode). */
   prioritizeSyllabus?: boolean;
+  /** Pin to specific catalog IDs (year-pack analog slots). */
+  resourceIds?: string[];
 }): Promise<string> {
   void params.forceInclude;
 
   const limit = params.limit ?? MAX_PROMPT_ENTRIES;
-  let resources = await getIoaiResourcesForTopic(params.track, params.topic, {
-    limit: params.prioritizeSyllabus ? Math.max(limit, 6) : limit,
-    includeCourses: false,
-  });
+  let resources: IoaiResource[];
 
-  if (params.prioritizeSyllabus && resources.length > 0) {
-    resources = [...resources].sort((a, b) => {
-      const boost = (r: IoaiResource) =>
-        r.category === "syllabus" ? 10 : r.category === "task_repo" ? 5 : 0;
-      return boost(b) - boost(a);
+  if (params.resourceIds && params.resourceIds.length > 0) {
+    const idSet = new Set(params.resourceIds);
+    const fromDb = await getIoaiResources();
+    const byId = new Map(fromDb.map((r) => [r.id, r]));
+    // Merge JSON fallback so newly curated pack IDs resolve even on stale DB seeds.
+    for (const r of JSON_FALLBACK) {
+      if (!byId.has(r.id)) byId.set(r.id, r);
+    }
+    resources = params.resourceIds
+      .map((id) => byId.get(id))
+      .filter((r): r is IoaiResource => r != null && idSet.has(r.id))
+      .slice(0, limit);
+  } else {
+    resources = await getIoaiResourcesForTopic(params.track, params.topic, {
+      limit: params.prioritizeSyllabus ? Math.max(limit, 6) : limit,
+      includeCourses: false,
     });
+
+    if (params.prioritizeSyllabus && resources.length > 0) {
+      resources = [...resources].sort((a, b) => {
+        const boost = (r: IoaiResource) =>
+          r.category === "syllabus" ? 10 : r.category === "task_repo" ? 5 : 0;
+        return boost(b) - boost(a);
+      });
+    }
   }
 
   if (resources.length === 0) return "";
 
   const lines: string[] = [
-    params.prioritizeSyllabus
-      ? "## Referensi silabus & kompetisi IOAI (inspirasi gaya — JANGAN salin soal atau dataset)"
-      : "## Referensi kompetisi IOAI (inspirasi gaya — JANGAN salin soal atau dataset)",
+    params.resourceIds && params.resourceIds.length > 0
+      ? "## Referensi paper IOAI (analog — JANGAN salin soal atau dataset)"
+      : params.prioritizeSyllabus
+        ? "## Referensi silabus & kompetisi IOAI (inspirasi gaya — JANGAN salin soal atau dataset)"
+        : "## Referensi kompetisi IOAI (inspirasi gaya — JANGAN salin soal atau dataset)",
   ];
 
   for (const r of resources) {

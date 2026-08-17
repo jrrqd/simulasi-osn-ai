@@ -19,13 +19,22 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "latihan-simulasi-subnav-ioai-arsip",
+    at: "2026-08-17T12:15:00+07:00",
+    tag: "Navigasi",
+    title: "Latihan & Simulasi lebih rapi + arsip IOAI",
+    story:
+      "Latihan dan Simulasi punya tab sekunder: Bank terpisah dari Generate. Di Latihan ada Arsip IOAI — kerjakan analog Kaggle-style paper resmi di platform (Notebook + Submit CSV + pembahasan). Generate Final IOAI bisa mengikuti year pack 2024–2026.",
+    href: "/practice/ioai",
+  },
+  {
     id: "final-ioai-difficulty",
     at: "2026-08-13T14:05:00+07:00",
     tag: "Simulasi",
     title: "Kesulitan Final (IOAI) & marathon 5 jam",
     story:
       "Generate simulasi AI punya mode Final (IOAI) mengikuti silabus IOAI 2025 (Python, ML, CV, NLP, etika). Pilihan Kaggle tetap 3 kompetisi · 150 menit, plus opsi baru Final IOAI · 5 kompetisi · 5 jam — satu kompetisi per pilar silabus.",
-    href: "/mock",
+    href: "/mock/generate",
   },
   {
     id: "kaggle-inplatform-notebook",
@@ -43,7 +52,7 @@ export const WHATS_NEW: WhatsNewItem[] = [
     title: "Mode Kaggle clone + referensi IOAI di semua fase",
     story:
       "Generate simulasi Kaggle kini 3 kompetisi / 150 menit: unduh starter .ipynb dan CSV, kerjakan lokal, lalu Submit untuk skor proporsional (accuracy, F1, RMSE). Referensi IOAI sekarang tampil di Belajar/Latihan untuk pre-seleksi, semifinal, dan final. Fase semifinal/final tidak lagi memaksa layar penuh browser.",
-    href: "/mock",
+    href: "/mock/generate",
   },
   {
     id: "fix-study-practice-pages",
@@ -88,7 +97,7 @@ export const WHATS_NEW: WhatsNewItem[] = [
     title: "Generate simulasi AI lebih stabil",
     story:
       "Figur geometri bisa digambar otomatis lewat MiniMax image-01. Pipeline JSON untuk generate soal diperkuat supaya hasilnya lebih konsisten.",
-    href: "/mock",
+    href: "/mock/generate",
   },
   {
     id: "semifinal-syllabus",

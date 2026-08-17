@@ -30,13 +30,20 @@ const TABS: { id: TabId; label: string }[] = [
 export function CompetitionWorkspace({
   problem,
   sessionId,
+  mode = "mock",
   logs,
   onGraded,
 }: {
   problem: ExamFacingProblem;
+  /** Required for mock mode; ignored for practice (use "practice"). */
   sessionId: string;
+  mode?: "mock" | "practice";
   logs: LogEntry[];
-  onGraded: (result: CompetitionRunResult, logs: LogEntry[]) => void;
+  onGraded: (
+    result: CompetitionRunResult,
+    logs: LogEntry[],
+    meta?: { solution?: string; attemptId?: string },
+  ) => void;
 }) {
   const [tab, setTab] = useState<TabId>("overview");
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
@@ -81,6 +88,7 @@ export function CompetitionWorkspace({
     setError("");
     try {
       const form = new FormData();
+      form.set("mode", mode);
       form.set("sessionId", sessionId);
       form.set("problemId", problem.id);
       form.set("action", "preview");
@@ -106,6 +114,7 @@ export function CompetitionWorkspace({
     setError("");
     try {
       const form = new FormData();
+      form.set("mode", mode);
       form.set("sessionId", sessionId);
       form.set("problemId", problem.id);
       form.set("action", "grade");
@@ -123,7 +132,11 @@ export function CompetitionWorkspace({
         ...result,
         at: new Date().toISOString(),
       };
-      onGraded(result, [...logs, entry]);
+      onGraded(result, [...logs, entry], {
+        solution: typeof data.solution === "string" ? data.solution : undefined,
+        attemptId:
+          typeof data.attemptId === "string" ? data.attemptId : undefined,
+      });
       setTab("submit");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Submit gagal");
@@ -137,7 +150,7 @@ export function CompetitionWorkspace({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-            Kompetisi · {metricLabel}
+            {mode === "practice" ? "Latihan Kaggle" : "Kompetisi"} · {metricLabel}
           </p>
           <h2 className="display text-2xl">{problem.title}</h2>
         </div>

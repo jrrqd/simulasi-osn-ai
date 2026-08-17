@@ -18,6 +18,12 @@ import {
   isKaggleSize,
   type AiMockSize,
 } from "@/lib/ai/ai-mock-plan";
+import {
+  DEFAULT_IOAI_PACK_YEAR,
+  getIoaiYearPack,
+  IOAI_PACK_YEARS,
+  type IoaiPackYear,
+} from "@/lib/content/ioai-year-packs";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
 import {
   INITIAL_GENERATION_PROGRESS,
@@ -50,6 +56,7 @@ export function GenerateCuratedMockChallenge() {
   const [difficultyMode, setDifficultyMode] =
     useState<DifficultyMode>("normal");
   const [size, setSize] = useState<AiMockSize>("full");
+  const [ioaiYear, setIoaiYear] = useState<IoaiPackYear>(DEFAULT_IOAI_PACK_YEAR);
   const [topicPrompt, setTopicPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -72,6 +79,9 @@ export function GenerateCuratedMockChallenge() {
 
   const isKaggle = isKaggleSize(size);
   const isFinalKaggle = isFinalKaggleSize(size);
+  const yearPackSlots = isKaggle
+    ? getIoaiYearPack(ioaiYear, sizeMeta.count)
+    : [];
   const effectiveMode: GenerationMode =
     isKaggle && generationMode === "study-case" ? "standard" : generationMode;
   const quotaExhausted =
@@ -81,7 +91,7 @@ export function GenerateCuratedMockChallenge() {
 
   function applySize(next: AiMockSize) {
     setSize(next);
-    if (isFinalKaggleSize(next)) {
+    if (isKaggleSize(next)) {
       setDifficultyMode("final");
     }
     if (isKaggleSize(next) && generationMode === "study-case") {
@@ -151,8 +161,9 @@ export function GenerateCuratedMockChallenge() {
         request: {
           generationMode: effectiveMode,
           track: effectiveMode === "custom" ? "ALL" : track,
-          difficultyMode: isFinalKaggle ? "final" : difficultyMode,
+          difficultyMode: isKaggle ? "final" : difficultyMode,
           size,
+          ioaiYear: isKaggle ? ioaiYear : undefined,
           topicPrompt:
             effectiveMode === "custom" ? topicPrompt.trim() : undefined,
         },
@@ -206,9 +217,9 @@ export function GenerateCuratedMockChallenge() {
         {sourceMode === "curated"
           ? "Memilih & mengurutkan soal dari bank curated (bukan menulis soal baru)."
           : isFinalKaggle
-            ? "Final IOAI: LLM menulis 5 kompetisi notebook · 5 jam (satu per pilar silabus IOAI)."
+            ? "Final IOAI: LLM menulis 5 kompetisi notebook · 5 jam analog paper resmi tahun yang dipilih."
             : isKaggle
-              ? "Format Kaggle/IOAI: LLM menulis 3 kompetisi notebook · 150 menit (referensi arsip IOAI)."
+              ? "Kaggle style: LLM menulis 3 kompetisi notebook · 150 menit analog paper resmi tahun yang dipilih."
               : effectiveMode === "study-case"
                 ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus PREDIKSI terkait — progress ditampilkan di bawah.`
                 : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
@@ -272,6 +283,35 @@ export function GenerateCuratedMockChallenge() {
         ) : null}
       </div>
 
+      {sourceMode === "ai" && isKaggle ? (
+        <div className="space-y-2">
+          <p className="text-xs text-[var(--muted)]">
+            {isFinalKaggle
+              ? "Pilih tahun arsip IOAI. 5 kompetisi analog paper resmi (cerita & data sintetis baru — bukan soal/dataset resmi)."
+              : "Pilih tahun arsip IOAI. 3 kompetisi analog paper resmi (cerita & data sintetis baru — bukan soal/dataset resmi)."}{" "}
+            Kerjakan di Notebook, Submit CSV.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {IOAI_PACK_YEARS.map((year) => (
+              <button
+                key={year}
+                type="button"
+                className={`btn !px-3 !py-1.5 text-sm ${ioaiYear === year ? "btn-primary" : "btn-secondary"}`}
+                onClick={() => setIoaiYear(year)}
+                disabled={loading}
+              >
+                IOAI {year}
+              </button>
+            ))}
+          </div>
+          <ul className="list-inside list-disc text-xs text-[var(--muted)]">
+            {yearPackSlots.map((slot) => (
+              <li key={slot.resourceId}>{slot.title}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {effectiveMode === "custom" ? (
         <div className="space-y-2.5">
           <textarea
@@ -304,7 +344,7 @@ export function GenerateCuratedMockChallenge() {
               onChange={(e) =>
                 setDifficultyMode(e.target.value as DifficultyMode)
               }
-              disabled={loading || isFinalKaggle}
+              disabled={loading || isKaggle}
             >
               {DIFFICULTY_MODES.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -349,7 +389,7 @@ export function GenerateCuratedMockChallenge() {
             onChange={(e) =>
               setDifficultyMode(e.target.value as DifficultyMode)
             }
-            disabled={loading || isFinalKaggle}
+            disabled={loading || isKaggle}
           >
             {DIFFICULTY_MODES.map((d) => (
               <option key={d.value} value={d.value}>
@@ -383,9 +423,9 @@ export function GenerateCuratedMockChallenge() {
             : "Menyusun…"
           : sourceMode === "ai"
             ? isFinalKaggle
-              ? "Generate Final IOAI · 5 kompetisi · 5 jam"
+              ? "Generate Final (IOAI) · 5 kompetisi · 5 jam"
               : isKaggle
-                ? "Generate simulasi Kaggle · 3 kompetisi · 150 menit"
+                ? "Generate Kaggle (IOAI) · 3 kompetisi · 150 menit"
                 : effectiveMode === "study-case"
                   ? `Generate ${sizeMeta.count} soal studi kasus`
                   : `Generate ${sizeMeta.count} soal AI`

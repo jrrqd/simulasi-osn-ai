@@ -18,6 +18,8 @@ export type AiMockPlanRequest = {
   difficultyMode: string;
   topicPrompt?: string;
   size?: AiMockSize;
+  /** IOAI year pack for kaggle-150 / kaggle-300. */
+  ioaiYear?: number;
 };
 
 /**
