@@ -1,15 +1,13 @@
 import { AdminProblemManager } from "@/components/admin-problem-manager";
+import { PageHeader } from "@/components/page-header";
 
 export default function AdminProblemsPage() {
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="display text-4xl">Bank soal</h1>
-        <p className="text-[var(--muted)]">
-          Kelola semua soal latihan — curated dan bank AI bersama (buat, edit,
-          sembunyikan/hapus).
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Bank soal"
+        description="Kelola semua soal latihan — curated dan bank AI bersama (buat, edit, sembunyikan/hapus)."
+      />
       <AdminProblemManager />
     </div>
   );

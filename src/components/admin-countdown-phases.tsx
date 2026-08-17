@@ -191,7 +191,7 @@ export function AdminCountdownPhases() {
       ) : (
         <div className="overflow-x-auto rounded-3xl border border-[var(--line)]">
           <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="bg-[var(--panel)] text-[var(--muted)]">
+            <thead className="bg-white/40 text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Urutan</th>
                 <th className="px-4 py-3 font-medium">Label</th>

@@ -5,6 +5,7 @@ import {
   IOAI_DOMAINS,
 } from "@/lib/content/resource-types";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
+import { PageHeader } from "@/components/page-header";
 import { buildIoaiReferenceContext } from "@/lib/content/ioai-resources";
 
 export default async function AdminResourcesPage() {
@@ -22,16 +23,11 @@ export default async function AdminResourcesPage() {
   });
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="display text-4xl">Referensi IOAI</h1>
-        <p className="text-[var(--muted)]">
-          Knowledge base tautan Education Hub &amp; olimpiade nasional. Edit live
-          untuk panel siswa (fase semifinal/final) dan blok inspirasi LLM —
-          tanpa redeploy. Seed awal dari katalog JSON; baris admin baru bisa
-          dihapus permanen, curated hanya di-hide.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Referensi IOAI"
+        description="Knowledge base tautan Education Hub & olimpiade nasional. Edit live untuk panel siswa (fase semifinal/final) dan blok inspirasi LLM — tanpa redeploy. Seed awal dari katalog JSON; baris admin baru bisa dihapus permanen, curated hanya di-hide."
+      />
       <AdminResourceManager
         initialResources={resources}
         initialCategories={[...IOAI_CATEGORIES]}

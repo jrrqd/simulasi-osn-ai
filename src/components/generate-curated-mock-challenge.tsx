@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TOPIC_LABELS, TRACKS } from "@/lib/content/types";
 import {
@@ -12,25 +12,8 @@ import {
   TOPIC_PROMPT_MAX_LEN,
   type CuratedMockSize,
 } from "@/lib/ai/curated-mock-size";
-import {
-  AI_MOCK_SIZES,
-  isFinalKaggleSize,
-  isKaggleSize,
-  type AiMockSize,
-} from "@/lib/ai/ai-mock-plan";
-import {
-  DEFAULT_IOAI_PACK_YEAR,
-  getIoaiYearPack,
-  IOAI_PACK_YEARS,
-  type IoaiPackYear,
-} from "@/lib/content/ioai-year-packs";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
-import {
-  INITIAL_GENERATION_PROGRESS,
-  GenerationProgressPanel,
-  type GenerationProgressState,
-} from "@/components/generation-progress";
-import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
+import { ChoiceChip } from "@/components/choice-chip";
 import { PhaseHintBanner } from "@/components/phase-hint-banner";
 import {
   formatQuotaError,
@@ -38,8 +21,7 @@ import {
   useSimulasiQuota,
 } from "@/components/simulasi-quota-banner";
 
-type GenerationMode = "standard" | "custom" | "study-case";
-type SourceMode = "curated" | "ai";
+type GenerationMode = "standard" | "custom";
 
 const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
   id,
@@ -49,55 +31,23 @@ const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
 export function GenerateCuratedMockChallenge() {
   const router = useRouter();
   const { quota } = useSimulasiQuota();
-  const [sourceMode, setSourceMode] = useState<SourceMode>("curated");
   const [generationMode, setGenerationMode] =
     useState<GenerationMode>("standard");
   const [track, setTrack] = useState<"ALL" | "A" | "B" | "C" | "D">("ALL");
   const [difficultyMode, setDifficultyMode] =
     useState<DifficultyMode>("normal");
-  const [size, setSize] = useState<AiMockSize>("full");
-  const [ioaiYear, setIoaiYear] = useState<IoaiPackYear>(DEFAULT_IOAI_PACK_YEAR);
+  const [size, setSize] = useState<CuratedMockSize>("full");
   const [topicPrompt, setTopicPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [progressText, setProgressText] = useState("");
-  const [progress, setProgress] = useState<GenerationProgressState>(
-    INITIAL_GENERATION_PROGRESS,
-  );
-
-  const sizeOptions = useMemo(
-    () =>
-      sourceMode === "ai"
-        ? AI_MOCK_SIZES.filter((s) => s.value !== "kaggle")
-        : CURATED_MOCK_SIZES,
-    [sourceMode],
-  );
 
   const sizeMeta =
-    sizeOptions.find((s) => s.value === size) ??
-    (sourceMode === "ai" ? AI_MOCK_SIZES[0]! : CURATED_MOCK_SIZES[1]!);
-
-  const isKaggle = isKaggleSize(size);
-  const isFinalKaggle = isFinalKaggleSize(size);
-  const yearPackSlots = isKaggle
-    ? getIoaiYearPack(ioaiYear, sizeMeta.count)
-    : [];
-  const effectiveMode: GenerationMode =
-    isKaggle && generationMode === "study-case" ? "standard" : generationMode;
+    CURATED_MOCK_SIZES.find((s) => s.value === size) ?? CURATED_MOCK_SIZES[1]!;
   const quotaExhausted =
     quota?.simulasi.gated === true &&
     quota.simulasi.remaining != null &&
     quota.simulasi.remaining <= 0;
-
-  function applySize(next: AiMockSize) {
-    setSize(next);
-    if (isKaggleSize(next)) {
-      setDifficultyMode("final");
-    }
-    if (isKaggleSize(next) && generationMode === "study-case") {
-      setGenerationMode("standard");
-    }
-  }
 
   function appendTopicHint(label: string) {
     setTopicPrompt((prev) => {
@@ -108,36 +58,25 @@ export function GenerateCuratedMockChallenge() {
     });
   }
 
-  function switchSource(next: SourceMode) {
-    setSourceMode(next);
-    if (next === "curated") {
-      if (generationMode === "study-case") setGenerationMode("standard");
-      if (isKaggle || size === "quick") setSize("full");
-    }
-  }
-
-  async function generateCurated() {
+  async function generate() {
     setLoading(true);
     setError("");
     setProgressText(
-      effectiveMode === "custom"
+      generationMode === "custom"
         ? "LLM sedang menyusun paket sesuai preferensi topik…"
         : "LLM sedang menyusun paket dari bank curated…",
     );
     try {
-      const curatedSize: CuratedMockSize =
-        size === "half" ? "half" : "full";
       const res = await fetch("/api/ai/generate-curated-mock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          generationMode:
-            effectiveMode === "study-case" ? "standard" : effectiveMode,
-          track: effectiveMode === "custom" ? "ALL" : track,
+          generationMode,
+          track: generationMode === "custom" ? "ALL" : track,
           difficultyMode,
-          size: curatedSize,
+          size,
           topicPrompt:
-            effectiveMode === "custom" ? topicPrompt.trim() : undefined,
+            generationMode === "custom" ? topicPrompt.trim() : undefined,
         }),
       });
       const data = await res.json();
@@ -152,167 +91,33 @@ export function GenerateCuratedMockChallenge() {
     }
   }
 
-  async function generateAiFull() {
-    setLoading(true);
-    setError("");
-    setProgress(INITIAL_GENERATION_PROGRESS);
-    try {
-      const { mockId } = await runAiMockGeneration({
-        request: {
-          generationMode: effectiveMode,
-          track: effectiveMode === "custom" ? "ALL" : track,
-          difficultyMode: isKaggle ? "final" : difficultyMode,
-          size,
-          ioaiYear: isKaggle ? ioaiYear : undefined,
-          topicPrompt:
-            effectiveMode === "custom" ? topicPrompt.trim() : undefined,
-        },
-        onProgress: setProgress,
-      });
-      router.push(`/mock/${mockId}`);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function generate() {
-    if (sourceMode === "ai") {
-      await generateAiFull();
-    } else {
-      await generateCurated();
-    }
-  }
-
   return (
     <CollapsiblePanel
-      title="Susun simulasi curated / AI penuh"
-      summary={`Bank curated atau generate ${sizeMeta.count} soal AI baru (${sizeMeta.durationMinutes} mnt), termasuk Kaggle 3·150 menit, Final IOAI 5·5 jam, dan studi kasus PREDIKSI.`}
+      title="Susun simulasi curated"
+      summary={`Memilih & mengurutkan ${sizeMeta.count} soal dari bank curated (${sizeMeta.durationMinutes} mnt) — bukan menulis soal baru.`}
       accent="primary"
     >
       <PhaseHintBanner />
       <SimulasiQuotaBanner quota={quota} />
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${sourceMode === "curated" ? "btn-primary" : "btn-secondary"}`}
-          onClick={() => switchSource("curated")}
-          disabled={loading}
-        >
-          Bank curated
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${sourceMode === "ai" ? "btn-primary" : "btn-secondary"}`}
-          onClick={() => switchSource("ai")}
-          disabled={loading}
-        >
-          Generate AI penuh
-        </button>
-      </div>
-
-      <p className="text-xs text-[var(--muted)]">
-        {sourceMode === "curated"
-          ? "Memilih & mengurutkan soal dari bank curated (bukan menulis soal baru)."
-          : isFinalKaggle
-            ? "Final IOAI: LLM menulis 5 kompetisi notebook · 5 jam analog paper resmi tahun yang dipilih."
-            : isKaggle
-              ? "Kaggle style: LLM menulis 3 kompetisi notebook · 150 menit analog paper resmi tahun yang dipilih."
-              : effectiveMode === "study-case"
-                ? `LLM menulis ${sizeMeta.count} soal sebagai paket studi kasus PREDIKSI terkait — progress ditampilkan di bawah.`
-                : `LLM menulis ${sizeMeta.count} soal baru satu per satu — progress & thinking ditampilkan di bawah. Bisa memakan waktu lama.`}
-      </p>
 
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "standard" ? "btn-primary" : "btn-secondary"}`}
-          onClick={() => {
-            setGenerationMode("standard");
-            if (isKaggle) setSize("full");
-          }}
+        <ChoiceChip
+          active={generationMode === "standard"}
+          onClick={() => setGenerationMode("standard")}
           disabled={loading}
         >
           Standar
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "custom" ? "btn-primary" : "btn-secondary"}`}
-          onClick={() => {
-            setGenerationMode("custom");
-            if (isKaggle) setSize("full");
-          }}
+        </ChoiceChip>
+        <ChoiceChip
+          active={generationMode === "custom"}
+          onClick={() => setGenerationMode("custom")}
           disabled={loading}
         >
           Custom topik
-        </button>
-        {sourceMode === "ai" ? (
-          <button
-            type="button"
-            className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && generationMode === "study-case" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => {
-              setGenerationMode("study-case");
-              if (isKaggle) setSize("full");
-            }}
-            disabled={loading}
-          >
-            Studi kasus PREDIKSI
-          </button>
-        ) : null}
-        {sourceMode === "ai" ? (
-          <>
-            <button
-              type="button"
-              className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-150" ? "btn-primary" : "btn-secondary"}`}
-              onClick={() => applySize("kaggle-150")}
-              disabled={loading}
-            >
-              Kaggle style · 3 kompetisi · 150 menit
-            </button>
-            <button
-              type="button"
-              className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-300" ? "btn-primary" : "btn-secondary"}`}
-              onClick={() => applySize("kaggle-300")}
-              disabled={loading}
-            >
-              Final IOAI · 5 kompetisi · 5 jam
-            </button>
-          </>
-        ) : null}
+        </ChoiceChip>
       </div>
 
-      {sourceMode === "ai" && isKaggle ? (
-        <div className="space-y-2">
-          <p className="text-xs text-[var(--muted)]">
-            {isFinalKaggle
-              ? "Pilih tahun arsip IOAI. 5 kompetisi analog paper resmi (cerita & data sintetis baru — bukan soal/dataset resmi)."
-              : "Pilih tahun arsip IOAI. 3 kompetisi analog paper resmi (cerita & data sintetis baru — bukan soal/dataset resmi)."}{" "}
-            Kerjakan di Notebook, Submit CSV.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {IOAI_PACK_YEARS.map((year) => (
-              <button
-                key={year}
-                type="button"
-                className={`btn !px-3 !py-1.5 text-sm ${ioaiYear === year ? "btn-primary" : "btn-secondary"}`}
-                onClick={() => setIoaiYear(year)}
-                disabled={loading}
-              >
-                IOAI {year}
-              </button>
-            ))}
-          </div>
-          <ul className="list-inside list-disc text-xs text-[var(--muted)]">
-            {yearPackSlots.map((slot) => (
-              <li key={slot.resourceId}>{slot.title}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {effectiveMode === "custom" ? (
+      {generationMode === "custom" ? (
         <div className="space-y-2.5">
           <textarea
             className="textarea !min-h-[88px]"
@@ -344,7 +149,7 @@ export function GenerateCuratedMockChallenge() {
               onChange={(e) =>
                 setDifficultyMode(e.target.value as DifficultyMode)
               }
-              disabled={loading || isKaggle}
+              disabled={loading}
             >
               {DIFFICULTY_MODES.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -355,10 +160,10 @@ export function GenerateCuratedMockChallenge() {
             <select
               className="select"
               value={size}
-              onChange={(e) => applySize(e.target.value as AiMockSize)}
+              onChange={(e) => setSize(e.target.value as CuratedMockSize)}
               disabled={loading}
             >
-              {sizeOptions.map((s) => (
+              {CURATED_MOCK_SIZES.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
@@ -374,7 +179,7 @@ export function GenerateCuratedMockChallenge() {
             onChange={(e) =>
               setTrack(e.target.value as "ALL" | "A" | "B" | "C" | "D")
             }
-            disabled={loading || isKaggle}
+            disabled={loading}
           >
             <option value="ALL">Semua track (A–D)</option>
             {Object.entries(TRACKS).map(([id, meta]) => (
@@ -389,7 +194,7 @@ export function GenerateCuratedMockChallenge() {
             onChange={(e) =>
               setDifficultyMode(e.target.value as DifficultyMode)
             }
-            disabled={loading || isKaggle}
+            disabled={loading}
           >
             {DIFFICULTY_MODES.map((d) => (
               <option key={d.value} value={d.value}>
@@ -400,10 +205,10 @@ export function GenerateCuratedMockChallenge() {
           <select
             className="select"
             value={size}
-            onChange={(e) => applySize(e.target.value as AiMockSize)}
+            onChange={(e) => setSize(e.target.value as CuratedMockSize)}
             disabled={loading}
           >
-            {sizeOptions.map((s) => (
+            {CURATED_MOCK_SIZES.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
               </option>
@@ -413,30 +218,17 @@ export function GenerateCuratedMockChallenge() {
       )}
 
       <button
-        className="btn btn-primary !px-4 !py-2 text-sm"
+        className="btn btn-primary"
         onClick={generate}
         disabled={loading || quotaExhausted}
       >
         {loading
-          ? sourceMode === "ai"
-            ? "Menghasilkan…"
-            : "Menyusun…"
-          : sourceMode === "ai"
-            ? isFinalKaggle
-              ? "Generate Final (IOAI) · 5 kompetisi · 5 jam"
-              : isKaggle
-                ? "Generate Kaggle (IOAI) · 3 kompetisi · 150 menit"
-                : effectiveMode === "study-case"
-                  ? `Generate ${sizeMeta.count} soal studi kasus`
-                  : `Generate ${sizeMeta.count} soal AI`
-            : effectiveMode === "custom"
-              ? "Susun dari preferensi topik"
-              : "Susun simulasi curated"}
+          ? "Menyusun…"
+          : generationMode === "custom"
+            ? "Susun dari preferensi topik"
+            : "Susun simulasi curated"}
       </button>
-      {sourceMode === "ai" && (loading || (error && progress.message)) ? (
-        <GenerationProgressPanel state={progress} />
-      ) : null}
-      {sourceMode === "curated" && progressText ? (
+      {progressText ? (
         <p className="text-xs text-[var(--muted)]">{progressText}</p>
       ) : null}
       {error && <p className="text-sm text-[var(--bad)]">{error}</p>}

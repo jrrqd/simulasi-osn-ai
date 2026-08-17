@@ -523,7 +523,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
             <dt className="text-xs text-[var(--muted)]">Tahap OSN AI</dt>
             <dd className="mt-2 flex flex-wrap items-center gap-3">
               <select
-                className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-sm"
+                className="select max-w-xs"
                 value={data.user.phase ?? "pre-seleksi"}
                 disabled={phaseSaving}
                 onChange={(e) => savePhase(e.target.value)}

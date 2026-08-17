@@ -83,8 +83,8 @@ export function AiSettingsForm() {
   }
 
   return (
-    <form onSubmit={save} className="panel max-w-xl space-y-4 rounded-3xl p-6">
-      <h1 className="display text-3xl">Pengaturan AI</h1>
+    <form onSubmit={save} className="panel max-w-xl space-y-4 rounded-3xl p-5">
+      <h2 className="display text-2xl">Pengaturan AI</h2>
       <p className="text-sm text-[var(--muted)]">
         {info?.sharedAvailable
           ? "Admin menyediakan LLM bersama. Kamu dapat langsung memakai AI, atau memasang BYOK untuk menggunakan providermu sendiri."

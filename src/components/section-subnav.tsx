@@ -1,63 +1,79 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export type SectionSubnavLink = {
   href: string;
   label: string;
-  /** Exact match only (default: href is prefix, except bare section root). */
+  /** Exact match only (default: href is prefix, except section homes). */
   exact?: boolean;
 };
 
+const PRACTICE_LINKS: SectionSubnavLink[] = [
+  { href: "/practice", label: "Bank soal" },
+  { href: "/practice/generate", label: "Generate" },
+  { href: "/practice/ioai", label: "Arsip IOAI" },
+];
+
+const MOCK_LINKS: SectionSubnavLink[] = [
+  { href: "/mock", label: "Bank paket" },
+  { href: "/mock/generate", label: "Generate" },
+];
+
 /**
- * Student secondary nav under SiteHeader — same structure as admin bar,
- * brand-accent tone (not dark admin console).
- * Full viewport width (breaks out of main.max-w-6xl).
+ * Student/admin secondary nav under SiteHeader — full viewport width,
+ * sibling of main (same structure as the admin console bar).
  */
 export function SectionSubnav({
   title,
   links,
   hidden,
+  variant = "student",
+  icon,
 }: {
   title: string;
   links: SectionSubnavLink[];
-  /** Hide entirely (e.g. active timed mock). */
   hidden?: boolean;
+  variant?: "student" | "admin";
+  icon?: ReactNode;
 }) {
   const pathname = usePathname();
   if (hidden) return null;
 
   function isActive(link: SectionSubnavLink) {
-    if (link.exact || link.href === "/practice" || link.href === "/mock") {
-      // Section home: active for bank root and detail pages under it,
-      // but not for sibling tabs like /practice/generate.
-      if (link.href === "/practice") {
-        return (
-          pathname === "/practice" ||
-          (pathname.startsWith("/practice/") &&
-            !pathname.startsWith("/practice/generate") &&
-            !pathname.startsWith("/practice/ioai"))
-        );
-      }
-      if (link.href === "/mock") {
-        return (
-          pathname === "/mock" ||
-          (pathname.startsWith("/mock/") &&
-            !pathname.startsWith("/mock/generate"))
-        );
-      }
+    if (link.href === "/practice") {
+      return (
+        pathname === "/practice" ||
+        (pathname.startsWith("/practice/") &&
+          !pathname.startsWith("/practice/generate") &&
+          !pathname.startsWith("/practice/ioai"))
+      );
+    }
+    if (link.href === "/mock") {
+      return (
+        pathname === "/mock" ||
+        (pathname.startsWith("/mock/") &&
+          !pathname.startsWith("/mock/generate"))
+      );
+    }
+    if (link.exact) {
       return pathname === link.href;
     }
-    return (
-      pathname === link.href || pathname.startsWith(`${link.href}/`)
-    );
+    return pathname === link.href || pathname.startsWith(`${link.href}/`);
   }
 
+  const bar =
+    variant === "admin"
+      ? "border-b border-[var(--line)] bg-[#173d34] text-white"
+      : "border-b border-[var(--line)] bg-[var(--accent)] text-white";
+
   return (
-    <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mb-6 w-screen -mt-8 border-b border-[var(--line)] bg-[var(--accent)]">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1.5 px-4 py-1.5">
-        <span className="mr-1.5 text-sm font-semibold tracking-wide text-white">
+    <div className={bar}>
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
+        <span className="mr-3 flex items-center gap-2 font-semibold">
+          {icon}
           {title}
         </span>
         <nav className="flex flex-wrap items-center gap-1">
@@ -67,11 +83,12 @@ export function SectionSubnav({
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-full px-3 py-1 text-sm transition ${
+                className={`rounded-full px-3 py-1.5 text-sm transition ${
                   active
                     ? "bg-white font-medium text-[var(--ink)]"
-                    : "text-white/85 hover:bg-white/15 hover:text-white"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
                 }`}
+                aria-current={active ? "page" : undefined}
               >
                 {link.label}
               </Link>
@@ -81,4 +98,22 @@ export function SectionSubnav({
       </div>
     </div>
   );
+}
+
+export function AppSectionSubnav() {
+  const pathname = usePathname();
+
+  if (pathname.startsWith("/practice")) {
+    return <SectionSubnav title="Latihan" links={PRACTICE_LINKS} />;
+  }
+
+  if (pathname.startsWith("/mock")) {
+    const onExam =
+      pathname.startsWith("/mock/") && !pathname.startsWith("/mock/generate");
+    return (
+      <SectionSubnav title="Simulasi" links={MOCK_LINKS} hidden={onExam} />
+    );
+  }
+
+  return null;
 }

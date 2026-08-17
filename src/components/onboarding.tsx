@@ -78,7 +78,7 @@ export function OnboardingClient() {
               className={`rounded-3xl border px-5 py-4 text-left transition ${
                 phase === value
                   ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                  : "border-[var(--border)] bg-[var(--panel)]"
+                  : "border-[var(--line)] bg-white/50"
               }`}
               onClick={() => setPhase(value)}
               disabled={loading}

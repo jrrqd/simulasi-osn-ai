@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "ui-consistency-nav-headers",
+    at: "2026-08-17T12:49:00+07:00",
+    tag: "Navigasi",
+    title: "Navigasi & halaman lebih selaras",
+    story:
+      "Tab Latihan/Simulasi kini setara dengan bar Admin (full-width di bawah header). Menu atas, tab sekunder, dan chip filter menandai halaman aktif. Judul halaman seragam; Generate Simulasi memisahkan susun curated vs generate AI.",
+    href: "/practice",
+  },
+  {
     id: "section-subnav-fullwidth",
     at: "2026-08-17T12:35:00+07:00",
     tag: "Navigasi",

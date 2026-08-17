@@ -27,6 +27,7 @@ import {
   type GenerationProgressState,
 } from "@/components/generation-progress";
 import { runAiMockGeneration } from "@/components/run-ai-mock-generation";
+import { ChoiceChip } from "@/components/choice-chip";
 import { PhaseHintBanner } from "@/components/phase-hint-banner";
 import {
   SimulasiQuotaBanner,
@@ -147,9 +148,8 @@ export function GenerateMockChallenge() {
       <PhaseHintBanner />
       <SimulasiQuotaBanner quota={quota} />
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "standard" ? "btn-accent" : "btn-secondary"}`}
+        <ChoiceChip
+          active={!isKaggle && effectiveMode === "standard"}
           onClick={() => {
             setGenerationMode("standard");
             if (isKaggle) setSize("quick");
@@ -157,10 +157,9 @@ export function GenerateMockChallenge() {
           disabled={loading}
         >
           Standar
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && effectiveMode === "custom" ? "btn-accent" : "btn-secondary"}`}
+        </ChoiceChip>
+        <ChoiceChip
+          active={!isKaggle && effectiveMode === "custom"}
           onClick={() => {
             setGenerationMode("custom");
             if (isKaggle) setSize("quick");
@@ -168,10 +167,9 @@ export function GenerateMockChallenge() {
           disabled={loading}
         >
           Custom topik
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${!isKaggle && generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
+        </ChoiceChip>
+        <ChoiceChip
+          active={!isKaggle && generationMode === "study-case"}
           onClick={() => {
             setGenerationMode("study-case");
             if (isKaggle) setSize("quick");
@@ -179,23 +177,21 @@ export function GenerateMockChallenge() {
           disabled={loading}
         >
           Studi kasus PREDIKSI
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-150" ? "btn-accent" : "btn-secondary"}`}
+        </ChoiceChip>
+        <ChoiceChip
+          active={size === "kaggle-150"}
           onClick={() => applySize("kaggle-150")}
           disabled={loading}
         >
           Kaggle style · 3 kompetisi · 150 menit
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${size === "kaggle-300" ? "btn-accent" : "btn-secondary"}`}
+        </ChoiceChip>
+        <ChoiceChip
+          active={size === "kaggle-300"}
           onClick={() => applySize("kaggle-300")}
           disabled={loading}
         >
           Final IOAI · 5 kompetisi · 5 jam
-        </button>
+        </ChoiceChip>
       </div>
 
       {isKaggle ? (
@@ -207,15 +203,14 @@ export function GenerateMockChallenge() {
           </p>
           <div className="flex flex-wrap gap-2">
             {IOAI_PACK_YEARS.map((year) => (
-              <button
+              <ChoiceChip
                 key={year}
-                type="button"
-                className={`btn !px-3 !py-1.5 text-sm ${ioaiYear === year ? "btn-accent" : "btn-secondary"}`}
+                active={ioaiYear === year}
                 onClick={() => setIoaiYear(year)}
                 disabled={loading}
               >
                 IOAI {year}
-              </button>
+              </ChoiceChip>
             ))}
           </div>
           <ul className="list-inside list-disc text-xs text-[var(--muted)]">
@@ -329,7 +324,7 @@ export function GenerateMockChallenge() {
       )}
 
       <button
-        className="btn btn-accent !px-4 !py-2 text-sm"
+        className="btn btn-accent"
         onClick={generate}
         disabled={loading || quotaExhausted}
       >

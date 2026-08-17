@@ -6,6 +6,7 @@ import {
   mockActionLabel,
 } from "@/components/mock-progress-badge";
 import { getUserMockProgress, type MockProgress } from "@/lib/mock-progress";
+import { PageHeader } from "@/components/page-header";
 import { displayMockTitle } from "@/lib/ai/mock-title";
 import {
   difficultyModeTextClass,
@@ -30,8 +31,9 @@ function MockRow({
     : null;
 
   return (
-    <div
-      className={`panel flex flex-col gap-2 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
+    <Link
+      href={`/mock/${mock.id}`}
+      className={`panel flex flex-col gap-2 rounded-2xl p-4 hover:bg-white/90 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
         done ? "border-[rgba(15,110,86,0.28)]" : ""
       }`}
     >
@@ -60,13 +62,10 @@ function MockRow({
           {metaExtra ? ` · ${metaExtra}` : ""}
         </p>
       </div>
-      <Link
-        href={`/mock/${mock.id}`}
-        className="btn btn-primary shrink-0 !px-4 !py-2 text-sm"
-      >
+      <span className="btn btn-primary shrink-0 pointer-events-none !px-4 !py-2 text-sm">
         {mockActionLabel(progress)}
-      </Link>
-    </div>
+      </span>
+    </Link>
   );
 }
 
@@ -95,35 +94,20 @@ export default async function MockListPage() {
   ).length;
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="display text-3xl md:text-4xl">Bank paket</h1>
-          <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-            Pilih simulasi berwaktu dari bank. Buat paket baru di{" "}
-            <Link
-              href="/mock/generate"
-              className="underline underline-offset-2"
-            >
-              Generate
-            </Link>
-            . Tutor AI hanya setelah submit.
+    <div className="space-y-6">
+      <div>
+        <PageHeader
+          title="Bank paket"
+          description="Pilih simulasi berwaktu dari bank. Tutor AI hanya setelah submit."
+        />
+        {mocks.length > 0 ? (
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Progressmu: {doneCount}/{mocks.length} selesai
+            {inProgressCount > 0
+              ? ` · ${inProgressCount} sedang dikerjakan`
+              : ""}
           </p>
-          {mocks.length > 0 ? (
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Progressmu: {doneCount}/{mocks.length} selesai
-              {inProgressCount > 0
-                ? ` · ${inProgressCount} sedang dikerjakan`
-                : ""}
-            </p>
-          ) : null}
-        </div>
-        <Link
-          href="/mock/generate"
-          className="btn btn-secondary !px-3 !py-1.5 text-sm"
-        >
-          Buat paket baru
-        </Link>
+        ) : null}
       </div>
 
       <section className="space-y-3">

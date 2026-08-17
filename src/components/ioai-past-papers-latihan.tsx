@@ -8,6 +8,7 @@ import {
   type IoaiYearPackSlot,
   parseIoaiPackYear,
 } from "@/lib/content/ioai-year-packs";
+import { FilterChip } from "@/components/choice-chip";
 import { TOPIC_LABELS } from "@/lib/content/types";
 import type { ProblemProgress } from "@/lib/attempts";
 import {
@@ -64,22 +65,18 @@ export function IoaiPastPapersLatihan({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 text-sm">
+      <div className="flex flex-wrap gap-2">
         {IOAI_PACK_YEARS.map((y) => {
           const q = new URLSearchParams(queryBase);
           q.set("ioaiYear", String(y));
           return (
-            <Link
+            <FilterChip
               key={y}
               href={`${basePath}?${q.toString()}`}
-              className={`rounded-full px-3 py-1 ${
-                y === year
-                  ? "bg-[var(--accent)] text-white"
-                  : "bg-white/70 text-[var(--ink)]"
-              }`}
+              active={y === year}
             >
               IOAI {y}
-            </Link>
+            </FilterChip>
           );
         })}
       </div>
@@ -127,7 +124,7 @@ function IoaiPastPaperCard({
       </p>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <h3 className="font-semibold">{slot.title}</h3>
+          <h3 className="display text-xl leading-snug">{slot.title}</h3>
           <p className="text-xs text-[var(--muted)]">
             Track {slot.track} · {TOPIC_LABELS[slot.topic] ?? slot.topic}
             {" · "}

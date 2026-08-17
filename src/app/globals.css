@@ -10,6 +10,8 @@
   --accent-2: #c45c26;
   --card: rgba(255, 252, 246, 0.82);
   --line: rgba(28, 36, 48, 0.12);
+  --border: var(--line);
+  --panel: var(--card);
   --ok: #1f7a4c;
   --bad: #b42318;
   --warn: #a15c07;

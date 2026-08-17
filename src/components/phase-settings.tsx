@@ -74,7 +74,7 @@ export function PhaseSettings() {
               className={`rounded-2xl border px-4 py-3 text-left transition ${
                 phase === value
                   ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                  : "border-[var(--border)]"
+                  : "border-[var(--line)] bg-white/50 hover:bg-white/80"
               }`}
               disabled={saving}
               onClick={() => save(value)}

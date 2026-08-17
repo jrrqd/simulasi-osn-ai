@@ -3,6 +3,7 @@ import { getIoaiYearPack, parseIoaiPackYear } from "@/lib/content/ioai-year-pack
 import { getUserProblemProgress } from "@/lib/attempts";
 import { IoaiPastPapersLatihan } from "@/components/ioai-past-papers-latihan";
 import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
+import { PageHeader } from "@/components/page-header";
 import { loadUserPhase } from "@/lib/user/load-phase";
 
 export default async function PracticeIoaiPage({
@@ -25,13 +26,10 @@ export default async function PracticeIoaiPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="display text-4xl">Arsip IOAI</h1>
-        <p className="text-[var(--muted)]">
-          Latihan Kaggle-style analog paper resmi di platform, plus tautan
-          referensi terbuka.
-        </p>
-      </div>
+      <PageHeader
+        title="Arsip IOAI"
+        description="Latihan Kaggle-style analog paper resmi di platform, plus tautan referensi terbuka."
+      />
 
       <IoaiPastPapersLatihan
         yearParam={sp.ioaiYear}

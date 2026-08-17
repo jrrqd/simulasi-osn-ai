@@ -5,6 +5,8 @@ import { listSharedProblems } from "@/lib/content/shared";
 import { listVisibleCuratedProblems } from "@/lib/content/problem-library";
 import { TOPIC_LABELS } from "@/lib/content/types";
 import { getUserProblemProgress } from "@/lib/attempts";
+import { FilterChip } from "@/components/choice-chip";
+import { PageHeader } from "@/components/page-header";
 import { PracticeProblemCard } from "@/components/practice-problem-card";
 
 export default async function PracticeBankPage({
@@ -60,21 +62,10 @@ export default async function PracticeBankPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="display text-4xl">Bank soal</h1>
-        <p className="text-[var(--muted)]">
-          Side quests curated dan bank AI bersama. Buat soal baru di{" "}
-          <Link
-            href="/practice/generate"
-            className="underline underline-offset-2"
-          >
-            Generate
-          </Link>
-          ; arsip Kaggle IOAI di{" "}
-          <Link href="/practice/ioai" className="underline underline-offset-2">
-            Arsip IOAI
-          </Link>
-          .
-        </p>
+        <PageHeader
+          title="Bank soal"
+          description="Side quests curated dan bank AI bersama."
+        />
         {problemIds.length > 0 ? (
           <p className="mt-1 text-sm text-[var(--muted)]">
             Progressmu: {doneCount}/{problemIds.length} quest dikerjakan
@@ -106,9 +97,9 @@ export default async function PracticeBankPage({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2 text-sm">
+      <div className="flex flex-wrap gap-2">
         {["", "A", "B", "C", "D"].map((t) => (
-          <Link
+          <FilterChip
             key={t || "all"}
             href={
               t
@@ -117,10 +108,10 @@ export default async function PracticeBankPage({
                   ? `/practice?topic=${encodeURIComponent(sp.topic)}`
                   : "/practice"
             }
-            className="rounded-full bg-white/70 px-3 py-1"
+            active={(sp.track ?? "") === t}
           >
             {t || "Semua"}
-          </Link>
+          </FilterChip>
         ))}
       </div>
 

@@ -9,6 +9,7 @@ import {
 } from "@/lib/ai/difficulty";
 import { defaultIncludeFigures } from "@/lib/ai/diagrams";
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
+import { ChoiceChip } from "@/components/choice-chip";
 import type { GenerationProgressEvent } from "@/lib/ai/generation-progress";
 import { problemCacheKey } from "@/lib/content/problem-cache";
 import {
@@ -195,8 +196,7 @@ export function GenerateChallenge() {
 
   return (
     <div className="panel space-y-3 rounded-3xl p-5">
-      <h2 className="display text-2xl">Generate tantangan AI</h2>
-      <p className="text-sm text-[var(--muted)]">
+      <p className="text-[var(--muted)]">
         Soal masuk bank AI bersama dan bisa dikerjakan siswa lain. Mode{" "}
         <strong>Studi kasus</strong> membuat 3–5 soal terkait bergaya PREDIKSI.
         Aktifkan <strong>Sertakan gambar</strong> untuk scatter/grid/kernel/dll
@@ -205,30 +205,27 @@ export function GenerateChallenge() {
       </p>
 
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${generationMode === "standard" ? "btn-accent" : "btn-secondary"}`}
+        <ChoiceChip
+          active={generationMode === "standard"}
           onClick={() => setGenerationMode("standard")}
           disabled={loading}
         >
           Standar
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${generationMode === "custom" ? "btn-accent" : "btn-secondary"}`}
+        </ChoiceChip>
+        <ChoiceChip
+          active={generationMode === "custom"}
           onClick={() => setGenerationMode("custom")}
           disabled={loading}
         >
           Custom topik
-        </button>
-        <button
-          type="button"
-          className={`btn !px-3 !py-1.5 text-sm ${generationMode === "study-case" ? "btn-accent" : "btn-secondary"}`}
+        </ChoiceChip>
+        <ChoiceChip
+          active={generationMode === "study-case"}
           onClick={() => setGenerationMode("study-case")}
           disabled={loading}
         >
           Studi kasus PREDIKSI
-        </button>
+        </ChoiceChip>
       </div>
 
       {generationMode === "custom" ? (

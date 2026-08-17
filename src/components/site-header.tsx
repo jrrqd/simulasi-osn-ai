@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BrainCircuit } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
@@ -13,6 +13,10 @@ const links = [
   { href: "/settings", label: "Pengaturan" },
 ];
 
+function isNavActive(href: string, pathname: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function SiteHeader({
   userName,
   userRole,
@@ -21,6 +25,8 @@ export function SiteHeader({
   userRole?: string | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const adminActive = pathname.startsWith("/admin");
 
   async function signOut() {
     await authClient.signOut();
@@ -38,19 +44,32 @@ export function SiteHeader({
           <span className="display text-lg">Simulasi OSN AI</span>
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="rounded-full px-3 py-1.5 text-sm text-[var(--muted)] hover:bg-white/70 hover:text-[var(--ink)]"
-            >
-              {l.label}
-            </Link>
-          ))}
+          {links.map((l) => {
+            const active = isNavActive(l.href, pathname);
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`rounded-full px-3 py-1.5 text-sm transition ${
+                  active
+                    ? "bg-white font-medium text-[var(--ink)]"
+                    : "text-[var(--muted)] hover:bg-white/70 hover:text-[var(--ink)]"
+                }`}
+                aria-current={active ? "page" : undefined}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
           {userRole === "admin" && (
             <Link
               href="/admin"
-              className="rounded-full bg-[var(--accent-2)] px-3 py-1.5 text-sm text-white"
+              className={`rounded-full px-3 py-1.5 text-sm transition ${
+                adminActive
+                  ? "bg-[var(--accent-2)] font-medium text-white"
+                  : "bg-[var(--accent-2)]/85 text-white hover:bg-[var(--accent-2)]"
+              }`}
+              aria-current={adminActive ? "page" : undefined}
             >
               Admin
             </Link>
@@ -76,19 +95,30 @@ export function SiteHeader({
         </div>
       </div>
       <div className="flex gap-1 overflow-x-auto px-4 pb-2 md:hidden">
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className="whitespace-nowrap rounded-full bg-white/60 px-3 py-1 text-xs text-[var(--muted)]"
-          >
-            {l.label}
-          </Link>
-        ))}
+        {links.map((l) => {
+          const active = isNavActive(l.href, pathname);
+          return (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={`whitespace-nowrap rounded-full px-3 py-1 text-sm transition ${
+                active
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-white/60 text-[var(--muted)] hover:bg-white"
+              }`}
+              aria-current={active ? "page" : undefined}
+            >
+              {l.label}
+            </Link>
+          );
+        })}
         {userRole === "admin" && (
           <Link
             href="/admin"
-            className="whitespace-nowrap rounded-full bg-[var(--accent-2)] px-3 py-1 text-xs text-white"
+            className={`whitespace-nowrap rounded-full px-3 py-1 text-sm text-white ${
+              adminActive ? "bg-[var(--accent-2)] font-medium" : "bg-[var(--accent-2)]/85"
+            }`}
+            aria-current={adminActive ? "page" : undefined}
           >
             Admin
           </Link>

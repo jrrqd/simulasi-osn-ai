@@ -5,6 +5,7 @@ import { getLessons } from "@/lib/content/load";
 import { TRACKS } from "@/lib/content/types";
 import { getUserLessonProgress } from "@/lib/lesson-progress";
 import { IoaiResourcesPanel } from "@/components/ioai-resources-panel";
+import { PageHeader } from "@/components/page-header";
 import { loadUserPhase } from "@/lib/user/load-phase";
 
 export default async function StudyPage() {
@@ -23,12 +24,10 @@ export default async function StudyPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="display text-4xl">Belajar</h1>
-        <p className="text-[var(--muted)]">
-          Tutorial EKKA 2026 — selesaikan level per track. Tiap modul punya cek
-          konsep multi-format (numeric / singkat / MCQ) + spaced repetition.
-          Latihan soal jadi side quest setelah tiap modul.
-        </p>
+        <PageHeader
+          title="Belajar"
+          description="Tutorial EKKA 2026 — selesaikan level per track. Tiap modul punya cek konsep multi-format (numeric / singkat / MCQ) + spaced repetition. Latihan soal jadi side quest setelah tiap modul."
+        />
         <div className="mt-4 max-w-md">
           <div className="flex items-baseline justify-between gap-3 text-sm">
             <span className="font-medium">
