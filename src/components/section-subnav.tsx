@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -39,7 +39,13 @@ export function SectionSubnav({
   variant?: "student" | "admin";
   icon?: ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathnameFromHook = usePathname() ?? "";
+  const [pathname, setPathname] = useState("");
+
+  useEffect(() => {
+    setPathname(pathnameFromHook);
+  }, [pathnameFromHook]);
+
   if (hidden) return null;
 
   function isActive(link: SectionSubnavLink) {
@@ -101,7 +107,12 @@ export function SectionSubnav({
 }
 
 export function AppSectionSubnav() {
-  const pathname = usePathname();
+  const pathnameFromHook = usePathname() ?? "";
+  const [pathname, setPathname] = useState("");
+
+  useEffect(() => {
+    setPathname(pathnameFromHook);
+  }, [pathnameFromHook]);
 
   if (pathname.startsWith("/practice")) {
     return <SectionSubnav title="Latihan" links={PRACTICE_LINKS} />;

@@ -35,32 +35,34 @@ export function PracticeCompetitionClient({
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-            Latihan · tanpa batas waktu
-          </p>
-          <p className="text-sm text-[var(--muted)]">
-            Submit CSV untuk dinilai. Pembahasan terbuka setelah submit.
-          </p>
+      <section className="panel space-y-5 rounded-3xl p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+              Latihan · tanpa batas waktu
+            </p>
+            <p className="text-sm text-[var(--muted)]">
+              Submit CSV untuk dinilai. Pembahasan terbuka setelah submit.
+            </p>
+          </div>
+          <Link href="/practice" className="btn btn-secondary !px-3 !py-1.5 text-sm">
+            Kembali ke Latihan
+          </Link>
         </div>
-        <Link href="/practice" className="btn btn-secondary !px-3 !py-1.5 text-sm">
-          Kembali ke Latihan
-        </Link>
-      </div>
 
-      <CompetitionWorkspace
-        problem={problem}
-        sessionId="practice"
-        mode="practice"
-        logs={logs}
-        onGraded={(result, nextLogs, meta) => {
-          setLastResult(result);
-          setLogs(nextLogs);
-          if (meta?.solution) setSolution(meta.solution);
-          if (meta?.attemptId) setAttemptId(meta.attemptId);
-        }}
-      />
+        <CompetitionWorkspace
+          problem={problem}
+          sessionId="practice"
+          mode="practice"
+          logs={logs}
+          onGraded={(result, nextLogs, meta) => {
+            setLastResult(result);
+            setLogs(nextLogs);
+            if (meta?.solution) setSolution(meta.solution);
+            if (meta?.attemptId) setAttemptId(meta.attemptId);
+          }}
+        />
+      </section>
 
       {lastResult ? (
         <section className="panel space-y-3 rounded-3xl p-5">

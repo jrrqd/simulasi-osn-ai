@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "ui-latihan-ioai-panel-hydration",
+    at: "2026-08-17T13:37:00+07:00",
+    tag: "Latihan",
+    title: "Panel latihan IOAI & perbaikan hydration nav",
+    story:
+      "Halaman detail latihan Kaggle-style IOAI kini dibungkus panel seperti Simulasi. Perbaikan hydration pada menu atas dan tab Latihan/Simulasi.",
+    href: "/practice/ioai",
+  },
+  {
     id: "ui-section-subnav-outline",
     at: "2026-08-17T13:02:00+07:00",
     tag: "Navigasi",
