@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "section-subnav-fullwidth",
+    at: "2026-08-17T12:35:00+07:00",
+    tag: "Navigasi",
+    title: "Tab Latihan & Simulasi full-width",
+    story:
+      "Bar tab sekunder Latihan/Simulasi sekarang selebar layar, lebih ringkas, dan tab aktif terbaca jelas (teks gelap di pill putih).",
+    href: "/practice",
+  },
+  {
     id: "latihan-simulasi-subnav-ioai-arsip",
     at: "2026-08-17T12:15:00+07:00",
     tag: "Navigasi",

@@ -13,6 +13,7 @@ export type SectionSubnavLink = {
 /**
  * Student secondary nav under SiteHeader — same structure as admin bar,
  * brand-accent tone (not dark admin console).
+ * Full viewport width (breaks out of main.max-w-6xl).
  */
 export function SectionSubnav({
   title,
@@ -54,9 +55,9 @@ export function SectionSubnav({
   }
 
   return (
-    <div className="-mx-4 -mt-8 mb-8 border-b border-[var(--line)] bg-[var(--accent)] text-white">
-      <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-        <span className="mr-2 text-sm font-semibold tracking-wide">
+    <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mb-6 w-screen -mt-8 border-b border-[var(--line)] bg-[var(--accent)]">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1.5 px-4 py-1.5">
+        <span className="mr-1.5 text-sm font-semibold tracking-wide text-white">
           {title}
         </span>
         <nav className="flex flex-wrap items-center gap-1">
@@ -66,10 +67,10 @@ export function SectionSubnav({
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-full px-3 py-1.5 text-sm transition ${
+                className={`rounded-full px-3 py-1 text-sm transition ${
                   active
-                    ? "bg-white font-medium text-[var(--accent)]"
-                    : "text-white/80 hover:bg-white/15 hover:text-white"
+                    ? "bg-white font-medium text-[var(--ink)]"
+                    : "text-white/85 hover:bg-white/15 hover:text-white"
                 }`}
               >
                 {link.label}
