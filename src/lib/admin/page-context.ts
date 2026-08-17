@@ -32,7 +32,7 @@ function routeLabel(pathname: string): string {
   if (pathname === "/practice/generate") return "Latihan · Generate";
   if (pathname === "/practice/ioai") return "Latihan · Arsip IOAI";
   if (pathname.startsWith("/practice/")) return "Latihan · Soal";
-  if (pathname === "/mock") return "Simulasi · Bank paket";
+  if (pathname === "/mock") return "Simulasi · Bank Soal";
   if (pathname === "/mock/generate") return "Simulasi · Generate";
   if (pathname.startsWith("/mock/")) return "Simulasi · Sesi";
   if (pathname === "/performance") return "Performa siswa";

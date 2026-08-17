@@ -13,12 +13,12 @@ export type SectionSubnavLink = {
 
 const PRACTICE_LINKS: SectionSubnavLink[] = [
   { href: "/practice", label: "Bank soal" },
-  { href: "/practice/generate", label: "Generate" },
   { href: "/practice/ioai", label: "Arsip IOAI" },
+  { href: "/practice/generate", label: "Generate" },
 ];
 
 const MOCK_LINKS: SectionSubnavLink[] = [
-  { href: "/mock", label: "Bank paket" },
+  { href: "/mock", label: "Bank Soal" },
   { href: "/mock/generate", label: "Generate" },
 ];
 

@@ -10,7 +10,7 @@ export default async function MockGeneratePage() {
     <div className="space-y-6">
       <PageHeader
         title="Generate simulasi"
-        description="Susun paket dari bank curated atau generate soal AI baru (termasuk Kaggle / Final IOAI). Hasil muncul di Bank paket."
+        description="Susun paket dari bank curated atau generate soal AI baru (termasuk Kaggle / Final IOAI). Hasil muncul di Bank Soal."
       />
       <div className="space-y-3">
         <GenerateCuratedMockChallenge />

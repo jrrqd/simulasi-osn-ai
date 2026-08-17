@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "ui-bank-soal-label-generate-order",
+    at: "2026-08-17T17:43:00+07:00",
+    tag: "Navigasi",
+    title: "Bank Soal di Simulasi, Generate di kanan",
+    story:
+      "Tab Simulasi sekarang berjudul Bank Soal. Di Latihan, Generate pindah ke kanan Arsip IOAI.",
+    href: "/mock",
+  },
+  {
     id: "ui-latihan-ioai-panel-hydration",
     at: "2026-08-17T13:37:00+07:00",
     tag: "Latihan",

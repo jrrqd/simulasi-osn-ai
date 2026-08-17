@@ -97,7 +97,7 @@ export default async function MockListPage() {
     <div className="space-y-6">
       <div>
         <PageHeader
-          title="Bank paket"
+          title="Bank Soal"
           description="Pilih simulasi berwaktu dari bank. Tutor AI hanya setelah submit."
         />
         {mocks.length > 0 ? (
