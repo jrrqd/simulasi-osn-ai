@@ -11,6 +11,11 @@ export type SectionSubnavLink = {
   exact?: boolean;
 };
 
+const STUDY_LINKS: SectionSubnavLink[] = [
+  { href: "/study", label: "Tutorial", exact: true },
+  { href: "/study/resources", label: "Knowledge Hub" },
+];
+
 const PRACTICE_LINKS: SectionSubnavLink[] = [
   { href: "/practice", label: "Bank soal" },
   { href: "/practice/ioai", label: "Arsip IOAI" },
@@ -49,6 +54,13 @@ export function SectionSubnav({
   if (hidden) return null;
 
   function isActive(link: SectionSubnavLink) {
+    if (link.href === "/study") {
+      return (
+        pathname === "/study" ||
+        (pathname.startsWith("/study/") &&
+          !pathname.startsWith("/study/resources"))
+      );
+    }
     if (link.href === "/practice") {
       return (
         pathname === "/practice" ||
@@ -113,6 +125,10 @@ export function AppSectionSubnav() {
   useEffect(() => {
     setPathname(pathnameFromHook);
   }, [pathnameFromHook]);
+
+  if (pathname.startsWith("/study")) {
+    return <SectionSubnav title="Belajar" links={STUDY_LINKS} />;
+  }
 
   if (pathname.startsWith("/practice")) {
     return <SectionSubnav title="Latihan" links={PRACTICE_LINKS} />;
