@@ -60,7 +60,7 @@ export function SimulasiQuotaBanner({
       {exhausted ? (
         <p>
           Kuota simulasi hari ini sudah habis ({used}/{limit}).{" "}
-          <Link href="/settings" className="font-semibold underline">
+          <Link href="/settings/byok" className="font-semibold underline">
             Pasang API key sendiri
           </Link>{" "}
           untuk generate tanpa batas, atau coba lagi besok.
@@ -69,7 +69,7 @@ export function SimulasiQuotaBanner({
         <p>
           Akun gratis · simulasi hari ini: {used}/{limit} · sisa{" "}
           {remaining}. Unlimited jika{" "}
-          <Link href="/settings" className="font-semibold underline">
+          <Link href="/settings/byok" className="font-semibold underline">
             pakai API key sendiri
           </Link>
           .
@@ -87,7 +87,7 @@ export function formatQuotaError(data: {
   if (data.code === "SIMULASI_QUOTA_EXCEEDED") {
     return (
       data.error ||
-      "Kuota simulasi hari ini sudah habis. Pasang API key di Pengaturan atau coba lagi besok."
+      "Kuota simulasi hari ini sudah habis. Pasang API key di Pengaturan → BYOK atau coba lagi besok."
     );
   }
   return data.error || "Gagal";

@@ -36,7 +36,10 @@ function routeLabel(pathname: string): string {
   if (pathname === "/mock/generate") return "Simulasi · Generate";
   if (pathname.startsWith("/mock/")) return "Simulasi · Sesi";
   if (pathname === "/performance") return "Performa siswa";
+  if (pathname === "/performance/history") return "Performa · Riwayat";
   if (pathname === "/settings") return "Pengaturan";
+  if (pathname === "/settings/pet") return "Pengaturan · Pet";
+  if (pathname === "/settings/byok") return "Pengaturan · BYOK";
   if (pathname.startsWith("/review/")) return "Review soal + tutor";
   if (pathname === "/onboarding") return "Onboarding";
   if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
@@ -147,6 +150,12 @@ export async function buildAdminPageContext(
     );
   }
 
+  if (pathname === "/performance/history") {
+    lines.push(
+      "Halaman riwayat performa siswa (hasil latihan dan simulasi yang sudah dikerjakan).",
+    );
+  }
+
   if (pathname === "/admin" || pathname === "/admin/users") {
     lines.push(
       "Fokus: analisis agregat platform / daftar siswa. Gunakan snapshot database.",
@@ -178,7 +187,19 @@ export async function buildAdminPageContext(
 
   if (pathname === "/settings") {
     lines.push(
-      "Pengaturan akun/API key pribadi siswa. Admin boleh menjelaskan opsi, jangan minta password.",
+      "Pengaturan akun dan tahap kompetisi siswa. Admin boleh menjelaskan opsi, jangan minta password.",
+    );
+  }
+
+  if (pathname === "/settings/pet") {
+    lines.push(
+      "Pengaturan pet asisten (Jacky/Ichi) untuk tombol chat mengambang.",
+    );
+  }
+
+  if (pathname === "/settings/byok") {
+    lines.push(
+      "Pengaturan API key pribadi (BYOK) siswa. Admin boleh menjelaskan opsi, jangan minta secret/password.",
     );
   }
 

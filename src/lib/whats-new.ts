@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "ui-performa-pengaturan-subpages",
+    at: "2026-08-19T12:15:00+07:00",
+    tag: "Navigasi",
+    title: "Tab Riwayat, Pet, dan BYOK",
+    story:
+      "Performa punya tab Ringkasan dan Riwayat. Pengaturan dipecah jadi Umum, Pet, dan BYOK supaya masing-masing punya halaman sendiri.",
+    href: "/settings",
+  },
+  {
     id: "ui-section-bar-performa-pengaturan",
     at: "2026-08-19T12:00:00+07:00",
     tag: "Navigasi",

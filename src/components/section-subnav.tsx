@@ -28,11 +28,14 @@ const MOCK_LINKS: SectionSubnavLink[] = [
 ];
 
 const PERFORMANCE_LINKS: SectionSubnavLink[] = [
-  { href: "/performance", label: "Performa", exact: true },
+  { href: "/performance", label: "Ringkasan", exact: true },
+  { href: "/performance/history", label: "Riwayat" },
 ];
 
 const SETTINGS_LINKS: SectionSubnavLink[] = [
-  { href: "/settings", label: "Pengaturan", exact: true },
+  { href: "/settings", label: "Umum", exact: true },
+  { href: "/settings/pet", label: "Pet" },
+  { href: "/settings/byok", label: "BYOK" },
 ];
 
 /**

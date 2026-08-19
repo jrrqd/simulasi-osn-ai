@@ -95,7 +95,7 @@ export function simulasiQuotaExceededResponse(quota: SimulasiQuota) {
   return Response.json(
     {
       error:
-        "Kuota simulasi hari ini sudah habis (1×/hari untuk akun gratis). Coba lagi besok, upgrade ke VIP, atau pasang API key sendiri di Pengaturan.",
+        "Kuota simulasi hari ini sudah habis (1×/hari untuk akun gratis). Coba lagi besok, upgrade ke VIP, atau pasang API key sendiri di Pengaturan → BYOK.",
       code: "SIMULASI_QUOTA_EXCEEDED",
       quota: {
         used: quota.used,
