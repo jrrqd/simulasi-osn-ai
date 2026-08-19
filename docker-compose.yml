@@ -4,10 +4,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: osnai
-      POSTGRES_PASSWORD: osnai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Docker}
       POSTGRES_DB: osnai
     ports:
-      - "5432:5432"
+      # Loopback only — never expose PostgreSQL publicly. The app reaches it
+      # via the internal Docker network; this mapping is for local tooling.
+      - "127.0.0.1:5432:5432"
     volumes:
       - osnai_pg:/var/lib/postgresql/data
     healthcheck:
@@ -23,11 +25,13 @@ services:
       - "3000:3000"
     environment:
       USE_PGLITE: "false"
-      DATABASE_URL: postgresql://osnai:osnai@db:5432/osnai
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-to-a-long-random-secret}
+      DATABASE_URL: postgresql://osnai:${POSTGRES_PASSWORD}@db:5432/osnai
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET (openssl rand -hex 32)}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-      CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:?Set CREDENTIALS_ENCRYPTION_KEY (openssl rand -hex 32)}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      # http://localhost default → cookies are non-Secure unless BETTER_AUTH_URL is https.
+      AUTH_INSECURE_COOKIES: ${AUTH_INSECURE_COOKIES:-false}
       ALLOW_LOCAL_AI_PROVIDER: ${ALLOW_LOCAL_AI_PROVIDER:-false}
       MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
       MINIMAX_BASE_URL: ${MINIMAX_BASE_URL:-https://api.minimax.io/v1}
@@ -35,7 +39,6 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD before starting Docker}
       ADMIN_NAME: ${ADMIN_NAME:-Administrator}
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@example.com}
     depends_on:
       db:
         condition: service_healthy

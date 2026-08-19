@@ -17,8 +17,14 @@ const globalForDb = globalThis as typeof globalThis & {
   __osnaiDbInit?: Promise<AppDb>;
 };
 
-async function migratePglite(client: PGlite) {
-  await client.exec(`
+/**
+ * Idempotent schema bootstrap shared by PGlite (dev/cloud) and Postgres
+ * (production). Every statement is CREATE ... IF NOT EXISTS or an additive
+ * ALTER, so it is safe on both a completely empty database and an existing
+ * one. This is what makes a fresh production deployment work without
+ * manually running the Drizzle migration chain first.
+ */
+const SCHEMA_DDL = `
     CREATE TABLE IF NOT EXISTS "user" (
       id text PRIMARY KEY,
       name text NOT NULL,
@@ -304,8 +310,11 @@ async function migratePglite(client: PGlite) {
     );
     CREATE INDEX IF NOT EXISTS ioai_resources_category_idx ON ioai_resources(category);
     CREATE INDEX IF NOT EXISTS ioai_resources_hidden_idx ON ioai_resources(hidden);
-  `);
-}
+    ALTER TABLE generated_mocks ALTER COLUMN penalty_minutes_per_wrong SET DEFAULT 1;
+    UPDATE generated_mocks
+      SET penalty_minutes_per_wrong = 1
+      WHERE penalty_minutes_per_wrong = 20;
+`;
 
 async function createDb(): Promise<AppDb> {
   const usePglite =
@@ -322,113 +331,15 @@ async function createDb(): Promise<AppDb> {
     }
     const client = dataDir ? new PGlite(dataDir) : new PGlite();
     await client.waitReady;
-    await migratePglite(client);
+    await client.exec(SCHEMA_DDL);
     return drizzlePglite(client, { schema });
   }
 
   const url = process.env.DATABASE_URL!;
   const client = postgres(url, { max: 10 });
-  // Soft-migrate additive columns/tables (Postgres prod does not run PGlite migrate).
-  await client.unsafe(`
-    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'pre-seleksi';
-    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS user_type text NOT NULL DEFAULT 'free';
-    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS score_summary jsonb;
-    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS total_attempts integer NOT NULL DEFAULT 0;
-    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_minutes integer NOT NULL DEFAULT 0;
-    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS last_submit_at timestamptz;
-    ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_state jsonb NOT NULL DEFAULT '{}';
-    CREATE TABLE IF NOT EXISTS submission_events (
-      id text PRIMARY KEY,
-      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-      mock_session_id text NOT NULL REFERENCES mock_sessions(id) ON DELETE CASCADE,
-      problem_id text NOT NULL,
-      kind text NOT NULL,
-      correct boolean,
-      created_at timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS submission_events_session_idx ON submission_events(mock_session_id);
-    CREATE INDEX IF NOT EXISTS submission_events_user_idx ON submission_events(user_id);
-    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_enabled boolean NOT NULL DEFAULT true;
-    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS penalty_minutes_per_wrong integer NOT NULL DEFAULT 1;
-    ALTER TABLE generated_mocks ADD COLUMN IF NOT EXISTS exam_format text NOT NULL DEFAULT 'standard';
-    ALTER TABLE generated_mocks ALTER COLUMN penalty_minutes_per_wrong SET DEFAULT 1;
-    UPDATE generated_mocks
-      SET penalty_minutes_per_wrong = 1
-      WHERE penalty_minutes_per_wrong = 20;
-    CREATE TABLE IF NOT EXISTS check_attempts (
-      id text PRIMARY KEY,
-      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-      lesson_id text NOT NULL,
-      question_id text NOT NULL,
-      last_seen_at timestamptz NOT NULL DEFAULT now(),
-      correct_count integer NOT NULL DEFAULT 0,
-      wrong_streak integer NOT NULL DEFAULT 0,
-      ease double precision NOT NULL DEFAULT 2.5,
-      interval_days double precision NOT NULL DEFAULT 0,
-      due_at timestamptz NOT NULL DEFAULT now(),
-      updated_at timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE UNIQUE INDEX IF NOT EXISTS check_attempts_user_lesson_q_uidx
-      ON check_attempts(user_id, lesson_id, question_id);
-    CREATE INDEX IF NOT EXISTS check_attempts_user_due_idx
-      ON check_attempts(user_id, due_at);
-    CREATE TABLE IF NOT EXISTS generated_lesson_checks (
-      id text PRIMARY KEY,
-      lesson_id text NOT NULL,
-      payload jsonb NOT NULL,
-      hidden boolean NOT NULL DEFAULT false,
-      created_by text REFERENCES "user"(id) ON DELETE SET NULL,
-      created_at timestamptz NOT NULL DEFAULT now(),
-      updated_at timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS generated_lesson_checks_lesson_idx
-      ON generated_lesson_checks(lesson_id);
-    CREATE TABLE IF NOT EXISTS problem_overrides (
-      id text PRIMARY KEY,
-      payload jsonb,
-      hidden boolean NOT NULL DEFAULT false,
-      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE TABLE IF NOT EXISTS mock_overrides (
-      id text PRIMARY KEY,
-      payload jsonb,
-      hidden boolean NOT NULL DEFAULT false,
-      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE TABLE IF NOT EXISTS countdown_phases (
-      id text PRIMARY KEY,
-      label text NOT NULL,
-      date_label text NOT NULL,
-      at text NOT NULL,
-      ends_at text,
-      sort_order integer NOT NULL DEFAULT 0,
-      enabled boolean NOT NULL DEFAULT true,
-      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
-      updated_at timestamptz NOT NULL DEFAULT now(),
-      created_at timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS countdown_phases_sort_idx ON countdown_phases(sort_order, at);
-    CREATE TABLE IF NOT EXISTS ioai_resources (
-      id text PRIMARY KEY,
-      category text NOT NULL,
-      title text NOT NULL,
-      url text NOT NULL,
-      summary text NOT NULL,
-      region text,
-      year integer,
-      domains jsonb NOT NULL DEFAULT '[]',
-      topics jsonb NOT NULL DEFAULT '[]',
-      prompt_hint text,
-      source text NOT NULL DEFAULT 'curated',
-      hidden boolean NOT NULL DEFAULT false,
-      updated_by text REFERENCES "user"(id) ON DELETE SET NULL,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS ioai_resources_category_idx ON ioai_resources(category);
-    CREATE INDEX IF NOT EXISTS ioai_resources_hidden_idx ON ioai_resources(hidden);
-  `);
+  // Full idempotent bootstrap: works on both a fresh, empty database and an
+  // existing production one (every statement is IF NOT EXISTS / additive).
+  await client.unsafe(SCHEMA_DDL);
   return drizzlePg(client, { schema });
 }
 

@@ -525,6 +525,9 @@ export function createUserProvider(params: {
    */
   disableThinking?: boolean;
 }) {
+  // Re-validate at use time so settings persisted before the allowlist was
+  // introduced (or edited directly in the DB) cannot trigger outbound SSRF.
+  assertSafeProviderUrl(params.baseUrl);
   // MiniMax interleaves reasoning into `content` with <think> tags unless
   // reasoning_split is set, which cleanly separates it into reasoning_content.
   let isMiniMax = false;
@@ -582,6 +585,78 @@ export function createUserProvider(params: {
   });
 }
 
+/**
+ * Known OpenAI-compatible provider hosts. A leading dot allows subdomains
+ * (".example.com" matches "api.example.com" but not "example.com.evil.io").
+ * Extend via AI_PROVIDER_HOST_ALLOWLIST (comma-separated hosts).
+ */
+const DEFAULT_PROVIDER_HOST_ALLOWLIST = [
+  "api.minimax.io",
+  "api.minimaxi.com",
+  "api.openai.com",
+  "api.anthropic.com",
+  "openrouter.ai",
+  "api.groq.com",
+  "api.deepseek.com",
+  "api.mistral.ai",
+  "api.together.xyz",
+  "api.fireworks.ai",
+  "api.cerebras.ai",
+  "generativelanguage.googleapis.com",
+];
+
+function isAllowedProviderHost(host: string, allowlist: string[]) {
+  return allowlist.some((entry) =>
+    entry.startsWith(".")
+      ? host.endsWith(entry) || host === entry.slice(1)
+      : host === entry,
+  );
+}
+
+function isLocalOrPrivateHost(host: string) {
+  // Strip IPv6 brackets for comparison.
+  const h = host.replace(/^\[|\]$/g, "");
+  if (
+    h === "localhost" ||
+    h.endsWith(".local") ||
+    h.endsWith(".localhost") ||
+    h.endsWith(".internal")
+  ) {
+    return true;
+  }
+  // IPv6 loopback / link-local / unique-local / IPv4-mapped.
+  if (h.includes(":")) {
+    const v6 = h.toLowerCase();
+    if (
+      v6 === "::" ||
+      v6 === "::1" ||
+      v6.startsWith("fe8") ||
+      v6.startsWith("fe9") ||
+      v6.startsWith("fea") ||
+      v6.startsWith("feb") ||
+      v6.startsWith("fc") ||
+      v6.startsWith("fd") ||
+      v6.startsWith("::ffff:")
+    ) {
+      return true;
+    }
+  }
+  // IPv4 loopback / RFC1918 / link-local & metadata / unspecified / CGNAT.
+  if (
+    /^127\./.test(h) ||
+    /^10\./.test(h) ||
+    /^192\.168\./.test(h) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(h) ||
+    /^169\.254\./.test(h) ||
+    /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(h) ||
+    /^0\./.test(h) ||
+    h === "0.0.0.0"
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function assertSafeProviderUrl(baseUrl: string) {
   let url: URL;
   try {
@@ -590,26 +665,38 @@ export function assertSafeProviderUrl(baseUrl: string) {
     throw new Error("Base URL tidak valid");
   }
 
-  const allowLocal = process.env.ALLOW_LOCAL_AI_PROVIDER === "true";
-  const host = url.hostname.toLowerCase();
-  const isLocal =
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    host === "::1" ||
-    host.endsWith(".local");
-  const isPrivate =
-    /^10\./.test(host) ||
-    /^192\.168\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
-
-  if (process.env.NODE_ENV === "production" && url.protocol !== "https:") {
-    if (!(allowLocal && isLocal)) {
-      throw new Error("Di production, base URL harus HTTPS");
-    }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("Base URL harus http(s)");
   }
 
-  if ((isLocal || isPrivate) && !allowLocal) {
-    throw new Error("URL lokal/private tidak diizinkan");
+  const allowLocal = process.env.ALLOW_LOCAL_AI_PROVIDER === "true";
+  const host = url.hostname.toLowerCase();
+
+  // Local/self-hosted models (Ollama, LM Studio, …) only with explicit opt-in.
+  if (allowLocal && isLocalOrPrivateHost(host)) {
+    return url.toString().replace(/\/$/, "");
+  }
+
+  // Everything else must be a known provider domain over HTTPS. An exact-host
+  // allowlist neutralizes SSRF vectors the old blocklist missed: metadata /
+  // link-local ranges, alternate IP encodings, IPv6 forms, DNS rebinding, and
+  // redirects to private addresses (we only ever talk to trusted providers).
+  const allowlist = [
+    ...DEFAULT_PROVIDER_HOST_ALLOWLIST,
+    ...(process.env.AI_PROVIDER_HOST_ALLOWLIST ?? "")
+      .split(",")
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
+  ];
+  if (!isAllowedProviderHost(host, allowlist)) {
+    throw new Error(
+      "Base URL harus berasal dari provider yang diizinkan " +
+        "(mis. api.minimax.io, api.openai.com, openrouter.ai). " +
+        "Admin dapat menambah domain via AI_PROVIDER_HOST_ALLOWLIST.",
+    );
+  }
+  if (url.protocol !== "https:") {
+    throw new Error("Base URL provider harus HTTPS");
   }
 
   return url.toString().replace(/\/$/, "");

@@ -21,13 +21,19 @@ export async function getAuth() {
 
   globalForAuth.__osnaiAuthInit = (async () => {
     const db = await getDb();
-    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean);
+    const baseURL =
+      process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+    // Secure cookies whenever the app is served over HTTPS. The only
+    // sanctioned exception is explicit opt-out for HTTP-only access
+    // (e.g. Tailscale/LAN dev) via AUTH_INSECURE_COOKIES=true.
+    const useSecureCookies =
+      process.env.AUTH_INSECURE_COOKIES === "true"
+        ? false
+        : (baseURL?.startsWith("https://") ??
+          process.env.NODE_ENV === "production");
 
     const auth = betterAuth({
-      baseURL: process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL,
+      baseURL,
       secret: process.env.BETTER_AUTH_SECRET,
       database: drizzleAdapter(db, {
         provider: "pg",
@@ -47,8 +53,7 @@ export async function getAuth() {
         updateAge: 60 * 60 * 24,
       },
       advanced: {
-        // HTTP over Tailscale/LAN — Secure cookies would never stick.
-        useSecureCookies: false,
+        useSecureCookies,
       },
       trustedOrigins: [
         ...new Set(
@@ -63,20 +68,9 @@ export async function getAuth() {
             .map((origin) => origin!.trim().replace(/\/$/, "")),
         ),
       ],
-      databaseHooks: {
-        user: {
-          create: {
-            before: async (newUser) => ({
-              data: {
-                ...newUser,
-                role: adminEmails.includes(newUser.email.toLowerCase())
-                  ? "admin"
-                  : "student",
-              },
-            }),
-          },
-        },
-      },
+      // SECURITY: roles are never granted based on the self-registered email.
+      // Admins are provisioned via the ADMIN_EMAIL bootstrap below or promoted
+      // by an existing admin through the admin users API.
       plugins: [
         admin({
           defaultRole: "student",

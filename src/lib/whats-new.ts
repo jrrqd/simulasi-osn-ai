@@ -19,6 +19,23 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "security-hardening-audit-p0",
+    at: "2026-08-19T11:25:00+07:00",
+    tag: "Keamanan",
+    title: "Hardening keamanan menyeluruh",
+    story:
+      "Perbaikan hasil audit keamanan: provisioning admin kini hanya lewat bootstrap/promosi admin, URL provider AI dibatasi allowlist domain terpercaya, cookie sesi Secure di HTTPS, bootstrap database production diperbaiki, dan upgrade Next.js 16.3.1.",
+  },
+  {
+    id: "study-knowledge-hub-tab",
+    at: "2026-08-19T11:20:00+07:00",
+    tag: "Belajar",
+    title: "Knowledge Hub di menu Belajar",
+    story:
+      "Tab baru Knowledge Hub di bagian Belajar berisi kumpulan sumber belajar IOAI/OSN AI, di samping Tutorial.",
+    href: "/study/resources",
+  },
+  {
     id: "ui-bank-soal-label-generate-order",
     at: "2026-08-17T17:43:00+07:00",
     tag: "Navigasi",

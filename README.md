@@ -117,8 +117,9 @@ Salin `.env.example` → `.env.local`. Ringkasan:
 | `CREDENTIALS_ENCRYPTION_KEY` | ✓ | 64 hex chars (`openssl rand -hex 32`) untuk enkripsi BYOK |
 | `BETTER_AUTH_URL` | ✓ | URL publik app (mis. `http://localhost:3000`) |
 | `NEXT_PUBLIC_APP_URL` | ✓ | Sama, untuk link client |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | dev | Seed admin pertama |
-| `ADMIN_EMAILS` | prod | Daftar email admin (comma-separated) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | ✓ | Seed admin pertama; admin lain dipromosikan lewat Admin → Users |
+| `AUTH_INSECURE_COOKIES` | opsional | `true` hanya untuk akses HTTP lokal/Tailscale (cookie non-Secure) |
+| `AI_PROVIDER_HOST_ALLOWLIST` | opsional | Host provider AI tambahan di luar allowlist bawaan |
 | `MINIMAX_API_KEY` | opsional | Default LLM untuk semua fitur AI |
 | `MINIMAX_BASE_URL` / `MINIMAX_MODEL_ID` | opsional | Override endpoint/model |
 | `JUDGE0_BASE_URL` | coding | Wajib untuk penilaian `codeSpec` di latihan & simulasi |
@@ -230,15 +231,13 @@ Dokumentasi lengkap: **[`docs/mock-exam.md`](docs/mock-exam.md)**
 ### Docker Compose (app + Postgres)
 
 ```bash
-export USE_PGLITE=false
-export DATABASE_URL=postgresql://osnai:osnai@db:5432/osnai
-export BETTER_AUTH_SECRET='long-random-secret'
-export CREDENTIALS_ENCRYPTION_KEY='64-hex-chars...'
+export POSTGRES_PASSWORD='use-a-strong-db-password'
+export BETTER_AUTH_SECRET="$(openssl rand -hex 32)"
+export CREDENTIALS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
 export BETTER_AUTH_URL='https://your.domain'
 export NEXT_PUBLIC_APP_URL='https://your.domain'
 export ADMIN_EMAIL='admin@your.domain'
 export ADMIN_PASSWORD='use-a-strong-unique-password'
-export ADMIN_EMAILS='admin@your.domain'
 export MINIMAX_API_KEY='your-minimax-api-key'
 
 docker compose up -d --build

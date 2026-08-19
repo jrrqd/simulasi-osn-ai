@@ -3,6 +3,8 @@
  * Shares BYOK / admin / env credentials with the chat provider via callers.
  */
 
+import { assertSafeProviderUrl } from "@/lib/ai/provider";
+
 export const DEFAULT_IMAGE_MODEL_ID = "image-01";
 
 export type ImageAspectRatio =
@@ -72,7 +74,8 @@ export async function generateImage(
     throw new Error("Prompt gambar terlalu pendek");
   }
 
-  const baseUrl = resolveImageBaseUrl(params.baseUrl);
+  // Same SSRF guard as chat: only allowlisted provider hosts may be fetched.
+  const baseUrl = assertSafeProviderUrl(resolveImageBaseUrl(params.baseUrl));
   const model = resolveImageModelId(params.modelId);
   const responseFormat = params.responseFormat ?? "base64";
   const n = Math.min(9, Math.max(1, params.n ?? 1));
