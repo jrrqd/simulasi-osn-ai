@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "ui-section-bar-performa-pengaturan",
+    at: "2026-08-19T12:00:00+07:00",
+    tag: "Navigasi",
+    title: "Bar hijau di Performa & Pengaturan",
+    story:
+      "Bar bagian hijau sekarang juga muncul di Performa dan Pengaturan, dengan bayangan di bawahnya — sama seperti Belajar, Latihan, dan Simulasi.",
+    href: "/performance",
+  },
+  {
     id: "security-hardening-audit-p0",
     at: "2026-08-19T11:25:00+07:00",
     tag: "Keamanan",

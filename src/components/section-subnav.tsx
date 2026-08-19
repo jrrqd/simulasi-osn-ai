@@ -27,6 +27,14 @@ const MOCK_LINKS: SectionSubnavLink[] = [
   { href: "/mock/generate", label: "Generate" },
 ];
 
+const PERFORMANCE_LINKS: SectionSubnavLink[] = [
+  { href: "/performance", label: "Performa", exact: true },
+];
+
+const SETTINGS_LINKS: SectionSubnavLink[] = [
+  { href: "/settings", label: "Pengaturan", exact: true },
+];
+
 /**
  * Student/admin secondary nav under SiteHeader — full viewport width,
  * sibling of main (same structure as the admin console bar).
@@ -84,8 +92,8 @@ export function SectionSubnav({
 
   const bar =
     variant === "admin"
-      ? "border-b border-[var(--line)] bg-[#173d34] text-white"
-      : "border-b border-[var(--line)] bg-[var(--accent)] text-white";
+      ? "border-b border-[var(--line)] bg-[#173d34] text-white shadow-[0_4px_12px_rgba(23,61,52,0.22)]"
+      : "border-b border-[var(--line)] bg-[var(--accent)] text-white shadow-[0_4px_12px_rgba(15,110,86,0.18)]";
 
   return (
     <div className={bar}>
@@ -140,6 +148,14 @@ export function AppSectionSubnav() {
     return (
       <SectionSubnav title="Simulasi" links={MOCK_LINKS} hidden={onExam} />
     );
+  }
+
+  if (pathname.startsWith("/performance")) {
+    return <SectionSubnav title="Performa" links={PERFORMANCE_LINKS} />;
+  }
+
+  if (pathname.startsWith("/settings")) {
+    return <SectionSubnav title="Pengaturan" links={SETTINGS_LINKS} />;
   }
 
   return null;
