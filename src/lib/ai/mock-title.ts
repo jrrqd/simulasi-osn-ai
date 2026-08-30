@@ -58,7 +58,16 @@ export type NaturalMockTitleInput = {
   track?: TrackId | "ALL" | string;
   difficultyMode?: DifficultyMode | string;
   count?: number;
-  size?: "quick" | "half" | "full" | "kaggle" | "kaggle-150" | "kaggle-300" | string;
+  size?:
+    | "quick"
+    | "half"
+    | "full"
+    | "kaggle"
+    | "kaggle-150"
+    | "kaggle-300"
+    | "final-day-1"
+    | "final-day-2"
+    | string;
   topicLabels?: string[];
   topicPrompt?: string;
   /** Final IOAI year-pack analog year. */
@@ -81,7 +90,11 @@ export function buildNaturalMockTitle(input: NaturalMockTitleInput): string {
 
   let title: string;
 
-  if (input.size === "kaggle-300") {
+  if (input.size === "final-day-1") {
+    title = "Final EKKA · Hari 1 · Problem Solving · 5 jam";
+  } else if (input.size === "final-day-2") {
+    title = "Final EKKA · Hari 2 · Programming · 5 jam";
+  } else if (input.size === "kaggle-300") {
     const yearLabel =
       input.ioaiYear === 2024 ||
       input.ioaiYear === 2025 ||

@@ -18,12 +18,15 @@ import {
 import {
   buildAiMockPlan,
   isAiMockSlot,
-  isKaggleSize,
   MOCK_QUESTION_COUNT,
   parseAiMockSize,
-  type AiMockAnswerType,
   type AiMockSlot,
 } from "@/lib/ai/ai-mock-plan";
+import {
+  slotAnswerTypeRotation,
+  slotNeedsLongFormCoding,
+} from "@/lib/ai/final-ekka-generation";
+import type { FinalEkkaGenerationProfile } from "@/lib/ai/final-ekka-presets";
 import {
   consumeAiMockSession,
   createAiMockSession,
@@ -66,6 +69,7 @@ async function generateSlotProblem(params: {
   focusPrompt?: string;
   difficultyMode: ReturnType<typeof parseDifficultyMode>;
   longFormCoding?: boolean;
+  finalEkkaProfile?: FinalEkkaGenerationProfile;
   phase?: Awaited<ReturnType<typeof loadUserPhase>>;
   baseUrl: string;
   apiKey: string;
@@ -74,15 +78,13 @@ async function generateSlotProblem(params: {
   progressTotal?: number;
   onProgress?: GenerationProgressHandler;
 }) {
-  const answerRotation: AiMockAnswerType[] = params.longFormCoding
-    ? ["notebook_submission", "notebook_submission", "notebook_submission"]
-    : [
-        params.slot.answerType,
-        "numeric",
-        "mcq",
-        "short_string",
-        "codeSpec",
-      ];
+  const longForm =
+    params.longFormCoding ??
+    slotNeedsLongFormCoding(params.slot.answerType);
+  const answerRotation = slotAnswerTypeRotation(
+    params.slot.answerType,
+    longForm,
+  );
   let lastSlotError: unknown;
   let problem: Awaited<ReturnType<typeof generateAndStoreProblem>> | null =
     null;
@@ -131,9 +133,10 @@ async function generateSlotProblem(params: {
         focusPrompt,
         answerType: answerRotation[slotAttempt % answerRotation.length],
         weight: params.slot.weight,
-        longFormCoding: params.longFormCoding,
+        longFormCoding: longForm,
         preferredScoringMetric: params.slot.scoringMetric,
         sourceResourceId: params.slot.sourceResourceId,
+        finalEkkaProfile: params.finalEkkaProfile,
         phase: params.phase,
         baseUrl: params.baseUrl,
         apiKey: params.apiKey,
@@ -356,7 +359,8 @@ export async function POST(req: NextRequest) {
             ? session.meta.topicPrompt
             : undefined,
         difficultyMode: session.meta.difficultyMode,
-        longFormCoding: isKaggleSize(session.meta.size),
+        longFormCoding: slotNeedsLongFormCoding(slot.answerType),
+        finalEkkaProfile: session.meta.finalEkkaProfile,
         phase: session.meta.generationPhase ?? userPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,
@@ -728,7 +732,8 @@ export async function POST(req: NextRequest) {
         focusPrompt:
           generationMode === "custom" ? topicPrompt : undefined,
         difficultyMode,
-        longFormCoding: isKaggleSize(size),
+        longFormCoding: slotNeedsLongFormCoding(slot.answerType),
+        finalEkkaProfile: meta.finalEkkaProfile,
         phase: meta.generationPhase,
         baseUrl: settings.baseUrl,
         apiKey: settings.apiKey,

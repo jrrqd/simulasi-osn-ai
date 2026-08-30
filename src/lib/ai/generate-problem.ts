@@ -35,6 +35,8 @@ import {
   type SubmissionScoringMode,
 } from "@/lib/content/types";
 import type { Phase } from "@/lib/user/phase";
+import { buildFinalEkkaPromptBlock } from "@/lib/ai/final-ekka-generation";
+import type { FinalEkkaGenerationProfile } from "@/lib/ai/final-ekka-presets";
 
 // Keep wall-clock per request under nginx /api/ai/ proxy_read_timeout (300s).
 // Thinking models may spend many tokens on reasoning before the JSON answer,
@@ -146,6 +148,8 @@ export async function generateAndStoreProblem(params: {
   sourceResourceId?: string;
   /** User prep phase — IOAI refs injected for semifinal/final. */
   phase?: Phase;
+  /** Final EKKA day profile for prompt policy (Hari 1 / Hari 2). */
+  finalEkkaProfile?: FinalEkkaGenerationProfile;
   baseUrl: string;
   apiKey: string;
   modelId: string;
@@ -252,6 +256,12 @@ Gambar:
   const effectiveAnswerType = isCompetition
     ? "notebook_submission"
     : answerType;
+  const finalEkkaBlock = params.finalEkkaProfile
+    ? buildFinalEkkaPromptBlock({
+        profile: params.finalEkkaProfile,
+        answerType: effectiveAnswerType,
+      })
+    : "";
 
   const basePrompt = `Buat SATU soal baru yang SELARAS SILABUS${
     isCompetition
@@ -265,7 +275,7 @@ Difficulty: ${difficulty} (1 mudah .. 5 sulit)
 AnswerType: ${effectiveAnswerType}
 ${isCompetition ? `Scoring metric WAJIB: ${scoringMetric}\n` : ""}
 ${syllabus}
-${ioaiStandardsBlock}${ioaiBlock ? `\n${ioaiBlock}\n` : ""}${analogBrief}
+${ioaiStandardsBlock}${finalEkkaBlock}${ioaiBlock ? `\n${ioaiBlock}\n` : ""}${analogBrief}
 ${focusBlock}
 ${isCompetition ? "" : figureBlock}
 ${

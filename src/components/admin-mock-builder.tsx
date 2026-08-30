@@ -54,6 +54,12 @@ export function AdminMockCompositionPreview() {
           {preview.codingWeightEach} = {preview.codingCount * preview.codingWeightEach}{" "}
           poin
         </li>
+        {(preview.notebookCount ?? 0) > 0 ? (
+          <li className="rounded-2xl bg-white/60 px-3 py-2">
+            Notebook: {preview.notebookCount} kompetisi × 5 ={" "}
+            {(preview.notebookCount ?? 0) * 5} poin
+          </li>
+        ) : null}
       </ul>
       <p className="text-xs text-[var(--muted)]">
         Generate simulasi AI memakai mix ini otomatis (codeSpec + numericFormat

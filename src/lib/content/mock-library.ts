@@ -214,7 +214,7 @@ export async function resolvePracticeMock(
         row.penaltyMinutesPerWrong ??
         1,
       examFormat:
-        (row.examFormat as "standard" | "kaggle" | undefined) ?? "standard",
+        (row.examFormat as "standard" | "kaggle" | "hybrid" | undefined) ?? "standard",
     };
   }
 
@@ -233,7 +233,7 @@ export async function resolvePracticeMock(
     penaltyEnabled: row.penaltyEnabled ?? true,
     penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 1,
     examFormat:
-      (row.examFormat as "standard" | "kaggle" | undefined) ?? "standard",
+      (row.examFormat as "standard" | "kaggle" | "hybrid" | undefined) ?? "standard",
   };
 }
 
@@ -303,7 +303,7 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
           row.penaltyMinutesPerWrong ??
           1,
         examFormat:
-          (row.examFormat as "standard" | "kaggle" | undefined) ?? "standard",
+          (row.examFormat as "standard" | "kaggle" | "hybrid" | undefined) ?? "standard",
       };
     }
     return {
@@ -321,7 +321,7 @@ export async function listVisibleMocks(): Promise<SharedMockExam[]> {
       penaltyEnabled: row.penaltyEnabled ?? true,
       penaltyMinutesPerWrong: row.penaltyMinutesPerWrong ?? 1,
       examFormat:
-        (row.examFormat as "standard" | "kaggle" | undefined) ?? "standard",
+        (row.examFormat as "standard" | "kaggle" | "hybrid" | undefined) ?? "standard",
     };
   });
 

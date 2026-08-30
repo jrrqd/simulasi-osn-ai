@@ -8,9 +8,11 @@ import {
 } from "@/components/generation-progress";
 import {
   aiMockSizeMeta,
+  isFinalEkkaSize,
   isKaggleSize,
   type AiMockSize,
 } from "@/lib/ai/ai-mock-plan";
+import { FINAL_EKKA_PRESETS } from "@/lib/ai/final-ekka-presets";
 
 export type AiMockPlanRequest = {
   generationMode: "standard" | "custom" | "study-case";
@@ -18,13 +20,13 @@ export type AiMockPlanRequest = {
   difficultyMode: string;
   topicPrompt?: string;
   size?: AiMockSize;
-  /** IOAI year pack for kaggle-150 / kaggle-300. */
+  /** IOAI year pack for kaggle-150 / kaggle-300 / final-day-2 notebooks. */
   ioaiYear?: number;
 };
 
 /**
  * Client-side plan → per-slot/case stream → commit flow for AI mock generation.
- * Shared by the quick (10), full (20/40), kaggle (3 · 150 min), and Final IOAI (5 · 5 jam) generators.
+ * Shared by quick/full, kaggle, Final IOAI, and Final EKKA Day 1/Day 2 generators.
  */
 export async function runAiMockGeneration(params: {
   request: AiMockPlanRequest;
@@ -34,20 +36,25 @@ export async function runAiMockGeneration(params: {
 }): Promise<{ mockId: string }> {
   const { request, onProgress } = params;
   const isStudyCase = request.generationMode === "study-case";
-  const sizeMeta = aiMockSizeMeta(request.size ?? "quick");
+  const size = request.size ?? "quick";
+  const sizeMeta = aiMockSizeMeta(size);
   const sizeLabel = String(sizeMeta.count);
   const sizeTotal = sizeMeta.count;
-  const isKaggle = isKaggleSize(request.size ?? "quick");
+  const isKaggle = isKaggleSize(size);
+  const isFinalEkka = isFinalEkkaSize(size);
+  const finalPreset = isFinalEkka ? FINAL_EKKA_PRESETS[size] : null;
 
   onProgress(() => ({
     ...INITIAL_GENERATION_PROGRESS,
-    message: isStudyCase
-      ? `Menyusun rencana studi kasus PREDIKSI (${sizeLabel} soal)…`
-      : isKaggle
-        ? `Menyusun rencana Kaggle style (${sizeLabel} coding · ${sizeMeta.durationMinutes} menit)…`
-        : request.generationMode === "custom"
-          ? `Menyusun rencana ${sizeLabel} soal dari brief topik…`
-          : `Menyusun rencana ${sizeLabel} soal AI…`,
+    message: finalPreset
+      ? `Menyusun rencana ${finalPreset.shortLabel} (${sizeLabel} slot · ${sizeMeta.durationMinutes} menit)…`
+      : isStudyCase
+        ? `Menyusun rencana studi kasus PREDIKSI (${sizeLabel} soal)…`
+        : isKaggle
+          ? `Menyusun rencana Kaggle style (${sizeLabel} coding · ${sizeMeta.durationMinutes} menit)…`
+          : request.generationMode === "custom"
+            ? `Menyusun rencana ${sizeLabel} soal dari brief topik…`
+            : `Menyusun rencana ${sizeLabel} soal AI…`,
     phase: "planning",
     total: sizeTotal,
   }));
@@ -58,6 +65,7 @@ export async function runAiMockGeneration(params: {
     body: JSON.stringify({
       phase: "plan",
       ...request,
+      track: isFinalEkka ? "ALL" : request.track,
     }),
   });
   const planData = await planRes.json();
@@ -151,19 +159,33 @@ export async function runAiMockGeneration(params: {
       ...prev,
       total,
       phase: "generating",
-      message:
-        request.generationMode === "custom"
+      message: finalPreset
+        ? `Rencana ${finalPreset.shortLabel} siap. Menghasilkan slot 1/${total}…`
+        : request.generationMode === "custom"
           ? `Rencana siap. LLM menulis soal 1/${total} sesuai brief…`
           : `Rencana siap. Menghasilkan soal 1/${total}…`,
     }));
 
     for (let index = 0; index < total; index++) {
       const planned = planSlots[index] as
-        | { topic?: string; track?: string; difficulty?: number }
+        | {
+            topic?: string;
+            track?: string;
+            difficulty?: number;
+            answerType?: string;
+          }
         | undefined;
       const topicLabel =
         (planned?.topic && (TOPIC_LABELS[planned.topic] ?? planned.topic)) ||
         "";
+      const kindLabel =
+        planned?.answerType === "notebook_submission"
+          ? "notebook"
+          : planned?.answerType === "codeSpec"
+            ? "coding"
+            : planned?.answerType === "python_output"
+              ? "python"
+              : "isian";
       onProgress((prev) => ({
         ...prev,
         index: index + 1,
@@ -172,8 +194,9 @@ export async function runAiMockGeneration(params: {
         thinking: "",
         attempt: 0,
         phase: "generating",
-        message:
-          request.generationMode === "custom"
+        message: finalPreset
+          ? `${finalPreset.shortLabel}: slot ${index + 1}/${total} (${kindLabel})${topicLabel ? `: ${topicLabel}` : ""}…`
+          : request.generationMode === "custom"
             ? `LLM menulis soal ${index + 1}/${total}${topicLabel ? `: ${topicLabel}` : ""}…`
             : `Menghasilkan soal ${index + 1}/${total}${topicLabel ? `: ${topicLabel}` : ""}…`,
       }));

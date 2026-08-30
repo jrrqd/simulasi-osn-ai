@@ -374,6 +374,13 @@ export function GenerateChallenge() {
           </span>
         </span>
       </label>
+      {difficultyMode === "final" ? (
+        <p className="text-xs text-[var(--muted)]">
+          Mode Final memakai standar silabus IOAI + gaya Tes Problem Solving AI
+          Final EKKA 2026 (komposisi resmi menunggu technical meeting). Untuk
+          paket 5 jam, gunakan Generate simulasi → Final EKKA Hari 1 / Hari 2.
+        </p>
+      ) : null}
 
       <button className="btn btn-accent" onClick={generate} disabled={loading}>
         {loading

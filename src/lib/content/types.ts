@@ -68,7 +68,7 @@ export type ClientCompetitionSpec = {
   };
 };
 
-export type ExamFormat = "standard" | "kaggle";
+export type ExamFormat = "standard" | "kaggle" | "hybrid";
 
 export type CodeSpecTestCase = {
   input: string;

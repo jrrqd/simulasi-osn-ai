@@ -8,8 +8,15 @@ import { toExamFacingProblem } from "@/lib/content/exam-facing-problem";
 import { displayMockTitle } from "@/lib/ai/mock-title";
 import { MockExamClient } from "@/components/mock-exam-client";
 import { KaggleMockClient } from "@/components/kaggle-mock-client";
+import { HybridFinalMockClient } from "@/components/hybrid-final-mock-client";
 import { resolveExamIntegrityMode } from "@/lib/exam-integrity-policy";
 import { loadUserPhase } from "@/lib/user/load-phase";
+import type { ExamFormat } from "@/lib/content/types";
+
+function parseExamFormat(raw: unknown): ExamFormat {
+  if (raw === "kaggle" || raw === "hybrid") return raw;
+  return "standard";
+}
 
 export default async function MockPage({
   params,
@@ -24,7 +31,7 @@ export default async function MockPage({
   if (problems.length === 0) notFound();
 
   const userPhase = await loadUserPhase(user.id);
-  const examFormat = mock.examFormat === "kaggle" ? "kaggle" : "standard";
+  const examFormat = parseExamFormat(mock.examFormat);
   const integrityMode = resolveExamIntegrityMode({
     userPhase,
     examFormat,
@@ -36,6 +43,21 @@ export default async function MockPage({
   if (examFormat === "kaggle") {
     return (
       <KaggleMockClient
+        mockId={mock.id}
+        title={title}
+        description={mock.description}
+        durationMinutes={mock.durationMinutes}
+        problems={examFacing}
+        integrityMode={integrityMode}
+        penaltyEnabled={mock.penaltyEnabled !== false}
+        penaltyMinutesPerWrong={mock.penaltyMinutesPerWrong ?? 1}
+      />
+    );
+  }
+
+  if (examFormat === "hybrid") {
+    return (
+      <HybridFinalMockClient
         mockId={mock.id}
         title={title}
         description={mock.description}

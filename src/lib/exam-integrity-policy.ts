@@ -12,7 +12,9 @@ export function resolveExamIntegrityMode(params: {
   userPhase: Phase;
   examFormat?: ExamFormat | string | null;
 }): ExamIntegrityMode {
-  if (params.examFormat === "kaggle") return "off";
+  if (params.examFormat === "kaggle" || params.examFormat === "hybrid") {
+    return "off";
+  }
   if (params.userPhase === "semifinal" || params.userPhase === "final") {
     return "off";
   }

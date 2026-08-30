@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "final-ekka-2026-day-presets",
+    at: "2026-08-30T18:20:00+07:00",
+    tag: "Simulasi",
+    title: "Final EKKA: Hari 1 & Hari 2",
+    story:
+      "Generate simulasi sekarang punya preset Final EKKA 2026 — Hari 1 Problem Solving AI dan Hari 2 Programming (coding + notebook), masing-masing 5 jam. Komposisi sementara menunggu juknis technical meeting.",
+    href: "/mock/generate",
+  },
+  {
     id: "ui-performa-pengaturan-subpages",
     at: "2026-08-19T12:15:00+07:00",
     tag: "Navigasi",

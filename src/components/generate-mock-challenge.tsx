@@ -10,10 +10,15 @@ import {
 import { TOPIC_PROMPT_MAX_LEN } from "@/lib/ai/curated-mock-size";
 import {
   AI_MOCK_SIZES,
+  isFinalEkkaSize,
   isFinalKaggleSize,
   isKaggleSize,
   type AiMockSize,
 } from "@/lib/ai/ai-mock-plan";
+import {
+  FINAL_EKKA_PRESETS,
+  type FinalEkkaPresetId,
+} from "@/lib/ai/final-ekka-presets";
 import {
   DEFAULT_IOAI_PACK_YEAR,
   getIoaiYearPack,
@@ -42,8 +47,10 @@ const TOPIC_HINTS = Object.entries(TOPIC_LABELS).map(([id, label]) => ({
   label,
 }));
 
-/** Prefer canonical size keys in the dropdown (hide legacy `kaggle` alias). */
-const SIZE_OPTIONS = AI_MOCK_SIZES.filter((s) => s.value !== "kaggle");
+/** Prefer canonical size keys in the dropdown (hide legacy `kaggle` alias + Final EKKA chips). */
+const SIZE_OPTIONS = AI_MOCK_SIZES.filter(
+  (s) => s.value !== "kaggle" && !isFinalEkkaSize(s.value),
+);
 
 export function GenerateMockChallenge() {
   const router = useRouter();
@@ -84,22 +91,37 @@ export function GenerateMockChallenge() {
     AI_MOCK_SIZES.find((s) => s.value === size) ?? AI_MOCK_SIZES[0]!;
   const isKaggle = isKaggleSize(size);
   const isFinalKaggle = isFinalKaggleSize(size);
-  const yearPackSlots = isKaggle
-    ? getIoaiYearPack(ioaiYear, sizeMeta.count)
-    : [];
+  const isFinalEkka = isFinalEkkaSize(size);
+  const finalPreset = isFinalEkka
+    ? FINAL_EKKA_PRESETS[size as FinalEkkaPresetId]
+    : null;
+  const yearPackSlots =
+    isKaggle || size === "final-day-2"
+      ? getIoaiYearPack(
+          ioaiYear,
+          isKaggle ? sizeMeta.count : undefined,
+        )
+      : [];
   const effectiveMode: GenerationMode =
-    isKaggle && generationMode === "study-case" ? "standard" : generationMode;
+    (isKaggle || isFinalEkka) && generationMode === "study-case"
+      ? "standard"
+      : generationMode;
   const quotaExhausted =
     quota?.simulasi.gated === true &&
     quota.simulasi.remaining != null &&
     quota.simulasi.remaining <= 0;
+  const locksDifficulty = isKaggle || isFinalEkka;
+  const locksTrack = isKaggle || isFinalEkka;
 
   function applySize(next: AiMockSize) {
     setSize(next);
-    if (isKaggleSize(next)) {
+    if (isKaggleSize(next) || isFinalEkkaSize(next)) {
       setDifficultyMode("final");
     }
-    if (isKaggleSize(next) && generationMode === "study-case") {
+    if (
+      (isKaggleSize(next) || isFinalEkkaSize(next)) &&
+      generationMode === "study-case"
+    ) {
       setGenerationMode("standard");
     }
   }
@@ -121,10 +143,11 @@ export function GenerateMockChallenge() {
       const { mockId } = await runAiMockGeneration({
         request: {
           generationMode: effectiveMode,
-          track: effectiveMode === "custom" ? undefined : track,
-          difficultyMode: isKaggle ? "final" : difficultyMode,
+          track: effectiveMode === "custom" || isFinalEkka ? undefined : track,
+          difficultyMode: locksDifficulty ? "final" : difficultyMode,
           size,
-          ioaiYear: isKaggle ? ioaiYear : undefined,
+          ioaiYear:
+            isKaggle || size === "final-day-2" ? ioaiYear : undefined,
           topicPrompt:
             effectiveMode === "custom" ? topicPrompt.trim() : undefined,
         },
@@ -142,37 +165,74 @@ export function GenerateMockChallenge() {
   return (
     <CollapsiblePanel
       title="Generate simulasi AI"
-      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Kaggle: 3 kompetisi · 150 menit, atau Final IOAI: 5 kompetisi · 5 jam analog paper 2024–2026.`}
+      summary={`Buat ${sizeMeta.count} soal / ${sizeMeta.durationMinutes} menit (batas 2× per jam). Mode studi kasus PREDIKSI mengelompokkan soal terkait. Final EKKA: Hari 1 Problem Solving & Hari 2 Programming · 5 jam (komposisi sementara). Kaggle: 3·150 mnt atau Final IOAI 5·5 jam.`}
       accent="accent"
     >
       <PhaseHintBanner />
       <SimulasiQuotaBanner quota={quota} />
+
+      <div className="space-y-2 rounded-2xl border border-[var(--line)] bg-white/50 p-3">
+        <p className="text-sm font-semibold text-[var(--ink)]">
+          Final EKKA 2026
+        </p>
+        <p className="text-xs text-[var(--muted)]">
+          Booklet peserta: 16 Sep Tes Problem Solving AI · 17 Sep Tes
+          Programming · masing-masing 08.00–13.00 WIB (5 jam) di UMM. Detail
+          jumlah soal &amp; format menunggu technical meeting — komposisi di
+          bawah bersifat sementara.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <ChoiceChip
+            active={size === "final-day-1"}
+            onClick={() => applySize("final-day-1")}
+            disabled={loading}
+          >
+            {FINAL_EKKA_PRESETS["final-day-1"].shortLabel} · 5 jam
+          </ChoiceChip>
+          <ChoiceChip
+            active={size === "final-day-2"}
+            onClick={() => applySize("final-day-2")}
+            disabled={loading}
+          >
+            {FINAL_EKKA_PRESETS["final-day-2"].shortLabel} · 5 jam
+          </ChoiceChip>
+        </div>
+        {finalPreset ? (
+          <p className="text-xs text-[var(--muted)]">
+            {finalPreset.dayLabel} · {finalPreset.testName} (
+            {finalPreset.dateLabel}). {finalPreset.count} slot ·{" "}
+            {finalPreset.durationMinutes} menit.{" "}
+            {finalPreset.provisionalNote}
+          </p>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <ChoiceChip
-          active={!isKaggle && effectiveMode === "standard"}
+          active={!isKaggle && !isFinalEkka && effectiveMode === "standard"}
           onClick={() => {
             setGenerationMode("standard");
-            if (isKaggle) setSize("quick");
+            if (isKaggle || isFinalEkka) setSize("quick");
           }}
           disabled={loading}
         >
           Standar
         </ChoiceChip>
         <ChoiceChip
-          active={!isKaggle && effectiveMode === "custom"}
+          active={!isKaggle && !isFinalEkka && effectiveMode === "custom"}
           onClick={() => {
             setGenerationMode("custom");
-            if (isKaggle) setSize("quick");
+            if (isKaggle || isFinalEkka) setSize("quick");
           }}
           disabled={loading}
         >
           Custom topik
         </ChoiceChip>
         <ChoiceChip
-          active={!isKaggle && generationMode === "study-case"}
+          active={!isKaggle && !isFinalEkka && generationMode === "study-case"}
           onClick={() => {
             setGenerationMode("study-case");
-            if (isKaggle) setSize("quick");
+            if (isKaggle || isFinalEkka) setSize("quick");
           }}
           disabled={loading}
         >
@@ -219,6 +279,26 @@ export function GenerateMockChallenge() {
             ))}
           </ul>
         </div>
+      ) : size === "final-day-2" ? (
+        <div className="space-y-2">
+          <p className="text-xs text-[var(--muted)]">
+            Mix sementara: 3 coding (codeSpec) + 2 kompetisi notebook. Tahun
+            IOAI di bawah hanya menginspirasi analog notebook (bukan soal
+            resmi).
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {IOAI_PACK_YEARS.map((year) => (
+              <ChoiceChip
+                key={year}
+                active={ioaiYear === year}
+                onClick={() => setIoaiYear(year)}
+                disabled={loading}
+              >
+                IOAI {year}
+              </ChoiceChip>
+            ))}
+          </div>
+        </div>
       ) : effectiveMode === "study-case" ? (
         <p className="text-xs text-[var(--muted)]">
           Soal disusun dari beberapa studi kasus terkait (text-only, gaya
@@ -226,7 +306,7 @@ export function GenerateMockChallenge() {
         </p>
       ) : null}
 
-      {effectiveMode === "custom" ? (
+      {effectiveMode === "custom" && !isFinalEkka ? (
         <div className="space-y-2.5">
           <textarea
             className="textarea !min-h-[88px]"
@@ -258,7 +338,7 @@ export function GenerateMockChallenge() {
               onChange={(e) =>
                 setDifficultyMode(e.target.value as DifficultyMode)
               }
-              disabled={loading || isKaggle}
+              disabled={loading || locksDifficulty}
             >
               {DIFFICULTY_MODES.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -268,7 +348,7 @@ export function GenerateMockChallenge() {
             </select>
             <select
               className="select"
-              value={size}
+              value={isFinalEkka ? "quick" : size}
               onChange={(e) => applySize(e.target.value as AiMockSize)}
               disabled={loading}
             >
@@ -280,13 +360,13 @@ export function GenerateMockChallenge() {
             </select>
           </div>
         </div>
-      ) : (
+      ) : !isFinalEkka ? (
         <div className="grid gap-2 sm:grid-cols-3">
           <select
             className="select"
             value={track}
             onChange={(e) => setTrack(e.target.value as "A" | "B" | "C" | "D")}
-            disabled={loading || isKaggle}
+            disabled={loading || locksTrack}
           >
             {Object.entries(TRACKS).map(([id, meta]) => (
               <option key={id} value={id}>
@@ -300,7 +380,7 @@ export function GenerateMockChallenge() {
             onChange={(e) =>
               setDifficultyMode(e.target.value as DifficultyMode)
             }
-            disabled={loading || isKaggle}
+            disabled={loading || locksDifficulty}
           >
             {DIFFICULTY_MODES.map((d) => (
               <option key={d.value} value={d.value}>
@@ -321,7 +401,7 @@ export function GenerateMockChallenge() {
             ))}
           </select>
         </div>
-      )}
+      ) : null}
 
       <button
         className="btn btn-accent"

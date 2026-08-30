@@ -11,6 +11,13 @@ import {
   type CuratedMockSize,
 } from "@/lib/ai/curated-mock-size";
 import {
+  FINAL_EKKA_PRESETS,
+  finalEkkaCodingCounts,
+  getFinalEkkaPreset,
+  isFinalEkkaPresetId,
+  type FinalEkkaPresetId,
+} from "@/lib/ai/final-ekka-presets";
+import {
   matchTopicsFromPrompt,
   topicPairsFromPrompt,
 } from "@/lib/ai/topic-prompt";
@@ -27,7 +34,7 @@ import {
   type IoaiPackYear,
 } from "@/lib/content/ioai-year-packs";
 import { TOPIC_LABELS, TRACKS, type TrackId } from "@/lib/content/types";
-import type { SubmissionScoringMode } from "@/lib/content/types";
+import type { ExamFormat, SubmissionScoringMode } from "@/lib/content/types";
 import {
   SEMIFINAL_TOPICS,
   type Phase,
@@ -155,7 +162,16 @@ export function isFinalKaggleSize(size: AiMockSize): boolean {
   return size === "kaggle-300";
 }
 
-export type AiMockSize = "quick" | CuratedMockSize | KaggleSize;
+/** Dedicated Final EKKA 2026 Day 1 / Day 2 presets. */
+export function isFinalEkkaSize(size: AiMockSize): size is FinalEkkaPresetId {
+  return isFinalEkkaPresetId(size);
+}
+
+export type AiMockSize =
+  | "quick"
+  | CuratedMockSize
+  | KaggleSize
+  | FinalEkkaPresetId;
 
 export const AI_MOCK_SIZES: {
   value: AiMockSize;
@@ -187,6 +203,20 @@ export const AI_MOCK_SIZES: {
     codingRatio: 1,
   },
   {
+    value: "final-day-1",
+    label: FINAL_EKKA_PRESETS["final-day-1"].label,
+    count: FINAL_EKKA_PRESETS["final-day-1"].count,
+    durationMinutes: FINAL_EKKA_PRESETS["final-day-1"].durationMinutes,
+    codingRatio: 0,
+  },
+  {
+    value: "final-day-2",
+    label: FINAL_EKKA_PRESETS["final-day-2"].label,
+    count: FINAL_EKKA_PRESETS["final-day-2"].count,
+    durationMinutes: FINAL_EKKA_PRESETS["final-day-2"].durationMinutes,
+    codingRatio: 1,
+  },
+  {
     value: "kaggle",
     label: "Kaggle style · 3 kompetisi · 150 menit",
     count: 3,
@@ -202,7 +232,9 @@ export function parseAiMockSize(raw: unknown): AiMockSize {
     raw === "quick" ||
     raw === "kaggle" ||
     raw === "kaggle-150" ||
-    raw === "kaggle-300"
+    raw === "kaggle-300" ||
+    raw === "final-day-1" ||
+    raw === "final-day-2"
   ) {
     return raw;
   }
@@ -264,10 +296,12 @@ export type AiMockPlanMeta = {
   phase: Phase;
   /** Phase for IOAI refs + topic weighting during LLM generation. */
   generationPhase: Phase;
-  /** standard exam vs kaggle competition workspace. */
-  examFormat: "standard" | "kaggle";
-  /** Year-pack source year (kaggle-150 / kaggle-300). */
+  /** standard exam vs kaggle competition vs hybrid Final Day 2. */
+  examFormat: ExamFormat;
+  /** Year-pack source year (kaggle-150 / kaggle-300 / final-day-2 notebooks). */
   ioaiYear?: IoaiPackYear;
+  /** Explicit Final EKKA day profile when size is final-day-*. */
+  finalEkkaProfile?: FinalEkkaPresetId;
 };
 
 /** IOAI reference context is skipped for pre-seleksi unless kaggle or phase difficulty. */
@@ -390,27 +424,36 @@ export function buildAiMockPlan(params: {
   preferredTopic?: string;
   size?: AiMockSize;
   phase?: Phase;
-  /** IOAI year pack (kaggle-150 / kaggle-300). */
+  /** IOAI year pack (kaggle-150 / kaggle-300 / final-day-2 notebooks). */
   ioaiYear?: IoaiPackYear | number | string;
 }): { slots: AiMockSlot[]; cases: AiMockCaseSlot[]; meta: AiMockPlanMeta } {
   const phase = params.phase ?? "pre-seleksi";
   const size = params.size ?? "quick";
   const sizeMeta = aiMockSizeMeta(size);
-  const count = sizeMeta.count;
-  const durationMinutes = sizeMeta.durationMinutes;
   const isKaggle = isKaggleSize(size);
   const isFinalKaggle = isFinalKaggleSize(size);
-  // Year pack for any Kaggle size when year is supplied (UI always sends one).
-  const ioaiYear: IoaiPackYear | undefined = isKaggle
+  const finalPreset = isFinalEkkaSize(size) ? getFinalEkkaPreset(size) : null;
+  const isFinalEkka = Boolean(finalPreset);
+  const count = finalPreset?.count ?? sizeMeta.count;
+  const durationMinutes =
+    finalPreset?.durationMinutes ?? sizeMeta.durationMinutes;
+  // Year pack for Kaggle sizes, and for Final Day 2 notebook analog inspiration.
+  const wantsYearPack =
+    isKaggle || (finalPreset?.id === "final-day-2");
+  const ioaiYear: IoaiPackYear | undefined = wantsYearPack
     ? parseIoaiPackYear(params.ioaiYear ?? DEFAULT_IOAI_PACK_YEAR)
     : undefined;
-  const yearPack = ioaiYear ? getIoaiYearPack(ioaiYear, count) : null;
-  // Past-paper analogs use Final difficulty (3- and 5-comp packs).
+  const yearPack = ioaiYear
+    ? getIoaiYearPack(ioaiYear, isKaggle ? count : undefined)
+    : null;
+  // Past-paper analogs and Final EKKA presets use Final difficulty.
   const difficultyMode: DifficultyMode =
-    isFinalKaggle || yearPack ? "final" : params.difficultyMode;
-  // Kaggle is coding-only; study-case numeric packs do not apply.
+    isFinalKaggle || yearPack || isFinalEkka
+      ? "final"
+      : params.difficultyMode;
+  // Kaggle / Final EKKA: study-case numeric packs do not apply.
   const generationMode: AiMockGenerationMode =
-    isKaggle && params.generationMode === "study-case"
+    (isKaggle || isFinalEkka) && params.generationMode === "study-case"
       ? "standard"
       : params.generationMode;
   const isStudyCase = generationMode === "study-case";
@@ -431,34 +474,52 @@ export function buildAiMockPlan(params: {
     track = topicPairs[0]!.track;
   }
 
-  // Kaggle: notebook competitions weight 5. Study-case: numeric-adjacent. Else ~70:30 mix.
-  const mix = isKaggle
-    ? Array.from({ length: count }, () => ({
-        answerType: "notebook_submission" as const,
-        weight: KAGGLE_CODING_WEIGHT,
+  // Final EKKA: fixed provisional slot mix. Kaggle: all notebooks.
+  // Study-case: numeric-adjacent. Else ~70:30 mix.
+  const mix = finalPreset
+    ? finalPreset.slots.map((s) => ({
+        answerType: s.answerType as AiMockAnswerType,
+        weight: s.weight,
       }))
-    : isStudyCase
-      ? Array.from({ length: count }, (_, i) => ({
-          answerType: NUMERIC_ADJACENT[i % NUMERIC_ADJACENT.length]!,
-          weight: DEFAULT_NUMERIC_WEIGHT,
+    : isKaggle
+      ? Array.from({ length: count }, () => ({
+          answerType: "notebook_submission" as const,
+          weight: KAGGLE_CODING_WEIGHT,
         }))
-      : planMockMix(count, {
-          codingRatio: sizeMeta.codingRatio,
-        });
+      : isStudyCase
+        ? Array.from({ length: count }, (_, i) => ({
+            answerType: NUMERIC_ADJACENT[i % NUMERIC_ADJACENT.length]!,
+            weight: DEFAULT_NUMERIC_WEIGHT,
+          }))
+        : planMockMix(count, {
+            codingRatio: sizeMeta.codingRatio,
+          });
 
-  const { codingCount, numericCount } = isKaggle
-    ? { codingCount: count, numericCount: 0 }
-    : codingCountForTotal(count, sizeMeta.codingRatio);
+  const codingCounts = finalPreset
+    ? finalEkkaCodingCounts(finalPreset)
+    : isKaggle
+      ? { codingCount: count, numericCount: 0, notebookCount: count }
+      : {
+          ...codingCountForTotal(count, sizeMeta.codingRatio),
+          notebookCount: 0,
+        };
+  const { codingCount, numericCount } = codingCounts;
 
   const generationPhase = resolveGenerationPhase(
     phase,
     difficultyMode,
-    isKaggle,
+    isKaggle || isFinalEkka,
   );
 
   const allTopics = (Object.keys(TRACKS) as TrackId[]).flatMap(
     (t) => TRACKS[t].topics,
   );
+
+  // For Final Day 2, map notebook slots onto year-pack papers (if available).
+  const notebookSlotIndexes = mix
+    .map((m, i) => (m.answerType === "notebook_submission" ? i : -1))
+    .filter((i) => i >= 0);
+  let notebookPackCursor = 0;
 
   const slots: AiMockSlot[] = [];
   for (let i = 0; i < count; i++) {
@@ -467,8 +528,23 @@ export function buildAiMockPlan(params: {
     let topic: string;
     let sourceResourceId: string | undefined;
 
-    if (yearPack && yearPack[i]) {
+    const slotMix = mix[i]!;
+    const isNotebookSlot = slotMix.answerType === "notebook_submission";
+
+    if (isKaggle && yearPack && yearPack[i]) {
       const packSlot = yearPack[i]!;
+      questionTrack = packSlot.track;
+      topic = packSlot.topic;
+      sourceResourceId = packSlot.resourceId;
+    } else if (
+      isFinalEkka &&
+      isNotebookSlot &&
+      yearPack &&
+      yearPack.length > 0
+    ) {
+      const packSlot =
+        yearPack[notebookPackCursor % yearPack.length]!;
+      notebookPackCursor += 1;
       questionTrack = packSlot.track;
       topic = packSlot.topic;
       sourceResourceId = packSlot.resourceId;
@@ -476,10 +552,14 @@ export function buildAiMockPlan(params: {
       const pair = topicPairs[i % topicPairs.length]!;
       questionTrack = pair.track;
       topic = pair.topic;
-    } else if (restrictToIoaiSyllabus && (isFinalKaggle || params.track === "ALL")) {
-      // Final IOAI: rotate domains across full syllabus (cross-track).
+    } else if (
+      restrictToIoaiSyllabus &&
+      (isFinalKaggle || isFinalEkka || params.track === "ALL")
+    ) {
+      // Final IOAI / Final EKKA: rotate domains across full syllabus.
       topic = pickIoaiSyllabusTopic(allTopics, i, params.preferredTopic);
-      questionTrack = trackForIoaiTopic(topic) ?? TRACK_CYCLE[i % TRACK_CYCLE.length]!;
+      questionTrack =
+        trackForIoaiTopic(topic) ?? TRACK_CYCLE[i % TRACK_CYCLE.length]!;
     } else if (
       params.track === "ALL" &&
       (generationMode === "standard" || isStudyCase)
@@ -503,7 +583,6 @@ export function buildAiMockPlan(params: {
       });
     }
 
-    const slotMix = mix[i]!;
     slots.push({
       index: i,
       track: questionTrack,
@@ -511,9 +590,13 @@ export function buildAiMockPlan(params: {
       difficulty,
       answerType: slotMix.answerType,
       weight: slotMix.weight,
-      scoringMetric: isKaggle
-        ? KAGGLE_SLOT_METRICS[i % KAGGLE_SLOT_METRICS.length]
-        : undefined,
+      scoringMetric:
+        isNotebookSlot
+          ? KAGGLE_SLOT_METRICS[
+              (isKaggle ? i : notebookSlotIndexes.indexOf(i)) %
+                KAGGLE_SLOT_METRICS.length
+            ]
+          : undefined,
       sourceResourceId,
     });
   }
@@ -544,7 +627,8 @@ export function buildAiMockPlan(params: {
   const resolvedMockTrack: TrackId | "ALL" =
     generationMode === "custom" ||
     params.track === "ALL" ||
-    Boolean(yearPack) ||
+    Boolean(yearPack && isKaggle) ||
+    isFinalEkka ||
     (restrictToIoaiSyllabus && isFinalKaggle)
       ? "ALL"
       : track;
@@ -567,8 +651,9 @@ export function buildAiMockPlan(params: {
       ? "Studi kasus PREDIKSI"
       : params.topicPrompt,
   });
-  const description =
-    yearPack && ioaiYear
+  const description = finalPreset
+    ? finalPreset.description
+    : yearPack && ioaiYear
       ? `Analog paper resmi (IOAI ${ioaiYear}). ${count} kompetisi notebook · ${durationMinutes} menit${isFinalKaggle ? " / 5 jam" : ""}. Inspirasi: ${packTaskNames.join("; ")}. Orisinal (bukan soal/dataset resmi). Kerjakan di tab Notebook, Submit CSV.`
       : isFinalKaggle
         ? `${count} kompetisi notebook gaya Kaggle/IOAI (${durationMinutes} menit / 5 jam). Satu kompetisi per pilar silabus IOAI. Kerjakan di tab Notebook platform, Submit CSV untuk dinilai.`
@@ -593,12 +678,19 @@ export function buildAiMockPlan(params: {
       questionCount: count,
       durationMinutes,
       size,
-      codingCount: isStudyCase ? 0 : codingCount,
+      codingCount: isStudyCase
+        ? 0
+        : codingCount + (codingCounts.notebookCount ?? 0),
       numericCount: isStudyCase ? count : numericCount,
       phase,
       generationPhase,
-      examFormat: isKaggle ? "kaggle" : "standard",
+      examFormat: finalPreset
+        ? finalPreset.examFormat
+        : isKaggle
+          ? "kaggle"
+          : "standard",
       ioaiYear,
+      finalEkkaProfile: finalPreset?.id,
     },
   };
 }

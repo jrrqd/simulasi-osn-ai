@@ -126,6 +126,12 @@ export async function POST(req: NextRequest) {
       focusPrompt,
       includeFigures,
       phase: userPhase,
+      finalEkkaProfile:
+        resolvedDifficultyMode === "final"
+          ? answerType === "codeSpec" || answerType === "notebook_submission"
+            ? "final-day-2"
+            : "final-day-1"
+          : undefined,
       baseUrl: settings.baseUrl,
       apiKey: settings.apiKey,
       modelId: settings.modelId,
