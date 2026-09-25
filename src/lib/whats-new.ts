@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "admin-access-matrix-ai-assistant",
+    at: "2026-09-25T18:05:00+07:00",
+    tag: "Admin",
+    title: "Matriks akses per tipe akun",
+    story:
+      "Admin bisa mengatur fasilitas Gratis / VIP / Test / Admin — termasuk Belajar, Latihan, Simulasi, generate AI, asisten AI, kuota, dan rate limit. Upgrade ke VIP nanti cukup mengubah tipe user.",
+    href: "/admin/access",
+  },
+  {
     id: "final-ekka-2026-day-presets",
     at: "2026-08-30T18:20:00+07:00",
     tag: "Simulasi",
