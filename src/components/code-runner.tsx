@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useMemo, useState } from "react";
 import type { ClientCodeSpec } from "@/lib/content/types";
 import {
@@ -66,7 +67,7 @@ export function CodeRunner({
     setFeedback("Menjalankan tes tersembunyi…");
     const userCode = buildUserCode(editable);
     try {
-      const response = await fetch("/api/code/grade", {
+      const response = await fetch(appPath("/api/code/grade"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ problemId, userCode }),

@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import {
   PHASE_HINTS,
@@ -13,7 +14,7 @@ export function PhaseHintBanner() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/profile")
+    fetch(appPath("/api/profile"))
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) setPhase(parsePhase(data.phase));

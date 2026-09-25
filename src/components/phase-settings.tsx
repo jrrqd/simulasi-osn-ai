@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import {
   PHASE_HINTS,
@@ -18,7 +19,7 @@ export function PhaseSettings() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/profile")
+    fetch(appPath("/api/profile"))
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -41,7 +42,7 @@ export function PhaseSettings() {
     setSaved(false);
     setPhase(next);
     try {
-      const res = await fetch("/api/profile", {
+      const res = await fetch(appPath("/api/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phase: next }),

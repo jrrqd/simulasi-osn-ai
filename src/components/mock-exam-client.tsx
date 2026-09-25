@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Countdown } from "@/components/countdown";
@@ -183,7 +184,7 @@ export function MockExamClient({
   const persistIntegrity = (state: IntegrityState) => {
     const id = sessionIdRef.current;
     if (!id) return;
-    void fetch("/api/mocks", {
+    void fetch(appPath("/api/mocks"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -206,7 +207,7 @@ export function MockExamClient({
 
     setGradingProblemId(problemId);
     setError("");
-    const response = await fetch("/api/mocks", {
+    const response = await fetch(appPath("/api/mocks"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -264,7 +265,7 @@ export function MockExamClient({
     setSubmitting(true);
     setSubmitConfirmOpen(false);
     setError("");
-    const response = await fetch("/api/mocks", {
+    const response = await fetch(appPath("/api/mocks"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -328,7 +329,7 @@ export function MockExamClient({
   useEffect(() => {
     if (!sessionId) return;
     const timer = window.setTimeout(() => {
-      fetch("/api/mocks", {
+      fetch(appPath("/api/mocks"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, answers }),
@@ -355,7 +356,7 @@ export function MockExamClient({
     if (integrityMode === "strict") {
       void requestFullscreen();
     }
-    const response = await fetch("/api/mocks", {
+    const response = await fetch(appPath("/api/mocks"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mockId }),

@@ -422,3 +422,32 @@ export const reviewMessages = pgTable("review_messages", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+/** Public news hub snippets (RSS titles + short summaries; full article stays at source URL). */
+export const newsItems = pgTable(
+  "news_items",
+  {
+    id: text("id").primaryKey(),
+    canonicalUrl: text("canonical_url").notNull().unique(),
+    title: text("title").notNull(),
+    sourceName: text("source_name").notNull(),
+    sourceHost: text("source_host").notNull(),
+    summary: text("summary").notNull(),
+    keyword: text("keyword").notNull(),
+    publishedAt: timestamp("published_at"),
+    fetchedAt: timestamp("fetched_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("news_items_published_idx").on(t.publishedAt),
+    index("news_items_host_title_idx").on(t.sourceHost, t.title),
+  ],
+);
+
+/** Per-tier facility flags (free | vip | test | admin). JSON: Record<featureId, boolean>. */
+export const accessPolicies = pgTable("access_policies", {
+  tier: text("tier").primaryKey(),
+  features: jsonb("features")
+    .$type<Record<string, boolean>>()
+    .notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

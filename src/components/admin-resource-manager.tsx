@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { FormEvent, useMemo, useState } from "react";
 import {
   Eye,
@@ -150,7 +151,7 @@ export function AdminResourceManager({
   );
 
   async function reload() {
-    const response = await fetch("/api/admin/resources");
+    const response = await fetch(appPath("/api/admin/resources"));
     const data = await response.json();
     if (!response.ok) {
       setMessage(data.error || "Gagal memuat referensi IOAI");
@@ -165,7 +166,7 @@ export function AdminResourceManager({
       previewTopic: topic,
       phase: "final",
     });
-    const response = await fetch(`/api/admin/resources?${params}`);
+    const response = await fetch(appPath(`/api/admin/resources?${params}`));
     const data = await response.json();
     setPreviewLoading(false);
     if (response.ok) setPreview(data.preview ?? "");
@@ -209,12 +210,12 @@ export function AdminResourceManager({
     };
 
     const response = editingId
-      ? await fetch("/api/admin/resources", {
+      ? await fetch(appPath("/api/admin/resources"), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...payload, id: editingId }),
         })
-      : await fetch("/api/admin/resources", {
+      : await fetch(appPath("/api/admin/resources"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -234,7 +235,7 @@ export function AdminResourceManager({
 
   async function toggleHidden(row: IoaiResourceRecord) {
     setLoading(true);
-    const response = await fetch("/api/admin/resources", {
+    const response = await fetch(appPath("/api/admin/resources"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: row.id, hidden: !row.hidden }),
@@ -259,7 +260,7 @@ export function AdminResourceManager({
 
     setLoading(true);
     const response = await fetch(
-      `/api/admin/resources?id=${encodeURIComponent(row.id)}`,
+      appPath(`/api/admin/resources?id=${encodeURIComponent(row.id)}`),
       { method: "DELETE" },
     );
     const data = await response.json();

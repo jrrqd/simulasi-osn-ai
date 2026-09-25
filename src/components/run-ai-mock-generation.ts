@@ -1,5 +1,6 @@
 import { TOPIC_LABELS } from "@/lib/content/types";
 import type { GenerationProgressEvent } from "@/lib/ai/generation-progress";
+import { appPath } from "@/lib/app-path";
 import {
   applyGenerationProgressEvent,
   INITIAL_GENERATION_PROGRESS,
@@ -59,7 +60,7 @@ export async function runAiMockGeneration(params: {
     total: sizeTotal,
   }));
 
-  const planRes = await fetch("/api/ai/generate-mock", {
+  const planRes = await fetch(appPath("/api/ai/generate-mock"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -119,7 +120,7 @@ export async function runAiMockGeneration(params: {
       let lastError = "Gagal generate studi kasus";
       let ok = false;
       for (let attempt = 0; attempt < 2 && !ok; attempt++) {
-        const caseRes = await fetch("/api/ai/generate-mock", {
+        const caseRes = await fetch(appPath("/api/ai/generate-mock"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -204,7 +205,7 @@ export async function runAiMockGeneration(params: {
       let lastError = "Gagal generate soal";
       let ok = false;
       for (let attempt = 0; attempt < 2 && !ok; attempt++) {
-        const slotRes = await fetch("/api/ai/generate-mock", {
+        const slotRes = await fetch(appPath("/api/ai/generate-mock"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -247,7 +248,7 @@ export async function runAiMockGeneration(params: {
     thinking: "",
   }));
 
-  const commitRes = await fetch("/api/ai/generate-mock", {
+  const commitRes = await fetch(appPath("/api/ai/generate-mock"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

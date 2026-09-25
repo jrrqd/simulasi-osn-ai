@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 
@@ -54,7 +55,7 @@ export function AdminCountdownPhases() {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
-    const response = await fetch("/api/admin/countdown-phases");
+    const response = await fetch(appPath("/api/admin/countdown-phases"));
     const data = await response.json();
     if (!response.ok) {
       setMessage(data.error || "Gagal memuat fase");
@@ -96,12 +97,12 @@ export function AdminCountdownPhases() {
     };
 
     const response = editingId
-      ? await fetch(`/api/admin/countdown-phases/${editingId}`, {
+      ? await fetch(appPath(`/api/admin/countdown-phases/${editingId}`), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
-      : await fetch("/api/admin/countdown-phases", {
+      : await fetch(appPath("/api/admin/countdown-phases"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -122,7 +123,7 @@ export function AdminCountdownPhases() {
     if (!window.confirm("Hapus fase countdown ini?")) return;
     setLoading(true);
     setMessage("");
-    const response = await fetch(`/api/admin/countdown-phases/${id}`, {
+    const response = await fetch(appPath(`/api/admin/countdown-phases/${id}`), {
       method: "DELETE",
     });
     const data = await response.json();
@@ -146,7 +147,7 @@ export function AdminCountdownPhases() {
     }
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/admin/countdown-phases", {
+    const response = await fetch(appPath("/api/admin/countdown-phases"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ seedDefaults: true }),

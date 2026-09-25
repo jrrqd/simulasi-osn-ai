@@ -426,8 +426,12 @@ export function renderDiagram(spec: DiagramSpec): string {
   }
 }
 
+import { appPath } from "@/lib/app-path";
+
 export function figureUrl(problemId: string, figureId: string) {
-  return `/api/problems/figures/${encodeURIComponent(problemId)}/${encodeURIComponent(figureId)}`;
+  return appPath(
+    `/api/problems/figures/${encodeURIComponent(problemId)}/${encodeURIComponent(figureId)}`,
+  );
 }
 
 export function parseFigureInputs(raw: unknown): FigureInput[] {

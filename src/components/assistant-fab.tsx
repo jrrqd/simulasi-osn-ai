@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import { MessageCircle, X } from "lucide-react";
 import {
@@ -13,7 +14,7 @@ export function useAssistantPet() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/profile")
+    fetch(appPath("/api/profile"))
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok || cancelled) return;

@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { FormEvent, useEffect, useState } from "react";
 
 type SettingsState = {
@@ -21,7 +22,7 @@ export function AiSettingsForm() {
   const [loading, setLoading] = useState(false);
 
   async function load() {
-    const res = await fetch("/api/settings/ai");
+    const res = await fetch(appPath("/api/settings/ai"));
     const data = await res.json();
     setInfo(data);
     if (data.baseUrl) setBaseUrl(data.baseUrl);
@@ -37,7 +38,7 @@ export function AiSettingsForm() {
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch("/api/settings/ai", {
+      const res = await fetch(appPath("/api/settings/ai"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -62,7 +63,7 @@ export function AiSettingsForm() {
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch("/api/settings/ai", { method: "POST" });
+      const res = await fetch(appPath("/api/settings/ai"), { method: "POST" });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "Tes gagal");
       setMessage("Koneksi berhasil.");
@@ -76,7 +77,7 @@ export function AiSettingsForm() {
 
   async function remove() {
     setLoading(true);
-    await fetch("/api/settings/ai", { method: "DELETE" });
+    await fetch(appPath("/api/settings/ai"), { method: "DELETE" });
     setMessage("Kredensial dihapus.");
     await load();
     setLoading(false);

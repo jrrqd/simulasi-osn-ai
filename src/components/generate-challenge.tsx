@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TRACKS, TOPIC_LABELS } from "@/lib/content/types";
@@ -77,9 +78,9 @@ export function GenerateChallenge() {
           : "Menyiapkan generate soal AI…",
     });
     try {
-      const endpoint = isCase
-        ? "/api/ai/generate-study-case"
-        : "/api/ai/generate";
+      const endpoint = appPath(
+        isCase ? "/api/ai/generate-study-case" : "/api/ai/generate",
+      );
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,7 +156,7 @@ export function GenerateChallenge() {
           : 1,
       }));
 
-      const problemRes = await fetch(`/api/problems/${problemId}`);
+      const problemRes = await fetch(appPath(`/api/problems/${problemId}`));
       const problemData = await problemRes.json().catch(() => ({}));
       if (!problemRes.ok || !(problemData as { problem?: unknown }).problem) {
         throw new Error(

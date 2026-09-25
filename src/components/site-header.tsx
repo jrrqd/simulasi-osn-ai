@@ -7,6 +7,7 @@ import { BrainCircuit } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
 const links = [
+  { href: "/berita", label: "Berita" },
   { href: "/study", label: "Belajar" },
   { href: "/practice", label: "Latihan" },
   { href: "/mock", label: "Simulasi" },

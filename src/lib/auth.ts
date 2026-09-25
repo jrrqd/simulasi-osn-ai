@@ -21,19 +21,24 @@ export async function getAuth() {
 
   globalForAuth.__osnaiAuthInit = (async () => {
     const db = await getDb();
-    const baseURL =
+    // Next strips basePath (/simosnai) before this route runs, so Better Auth
+    // must mount at /api/auth. A path on BETTER_AUTH_URL replaces that mount
+    // and sign-in returns 404. Keep only the origin.
+    const configuredUrl =
       process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+    const baseURL = configuredUrl ? new URL(configuredUrl).origin : undefined;
     // Secure cookies whenever the app is served over HTTPS. The only
     // sanctioned exception is explicit opt-out for HTTP-only access
     // (e.g. Tailscale/LAN dev) via AUTH_INSECURE_COOKIES=true.
     const useSecureCookies =
       process.env.AUTH_INSECURE_COOKIES === "true"
         ? false
-        : (baseURL?.startsWith("https://") ??
+        : (configuredUrl?.startsWith("https://") ??
           process.env.NODE_ENV === "production");
 
     const auth = betterAuth({
       baseURL,
+      basePath: "/api/auth",
       secret: process.env.BETTER_AUTH_SECRET,
       database: drizzleAdapter(db, {
         provider: "pg",

@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
@@ -19,7 +20,7 @@ async function saveProgress(body: {
   complete?: boolean;
   checkResult?: { questionId: string; correct: boolean };
 }) {
-  const res = await fetch("/api/lesson-progress", {
+  const res = await fetch(appPath("/api/lesson-progress"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

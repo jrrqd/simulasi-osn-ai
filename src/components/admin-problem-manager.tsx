@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
@@ -131,7 +132,7 @@ export function AdminProblemManager() {
     if (source !== "all") params.set("source", source);
     if (includeHidden) params.set("includeHidden", "1");
     params.set("limit", "120");
-    const res = await fetch(`/api/admin/problems?${params}`);
+    const res = await fetch(appPath(`/api/admin/problems?${params}`));
     const data = await res.json();
     setItems(data.items ?? []);
     setTotal(data.total ?? 0);
@@ -150,7 +151,7 @@ export function AdminProblemManager() {
   async function openEdit(item: ListItem) {
     setMessage("");
     const res = await fetch(
-      `/api/admin/problems?id=${encodeURIComponent(item.id)}`,
+      appPath(`/api/admin/problems?id=${encodeURIComponent(item.id)}`),
     );
     const data = await res.json();
     if (!res.ok || !data.problem) {
@@ -190,7 +191,7 @@ export function AdminProblemManager() {
         throw new Error("MCQ butuh minimal 2 pilihan (satu baris per pilihan)");
       }
 
-      const res = await fetch("/api/admin/problems", {
+      const res = await fetch(appPath("/api/admin/problems"), {
         method: creating ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
@@ -219,7 +220,7 @@ export function AdminProblemManager() {
       return;
     }
     const res = await fetch(
-      `/api/admin/problems?id=${encodeURIComponent(item.id)}`,
+      appPath(`/api/admin/problems?id=${encodeURIComponent(item.id)}`),
       { method: "DELETE" },
     );
     const data = await res.json();
@@ -232,7 +233,7 @@ export function AdminProblemManager() {
   }
 
   async function unhideItem(item: ListItem) {
-    const res = await fetch("/api/admin/problems", {
+    const res = await fetch(appPath("/api/admin/problems"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: item.id, restore: true }),
@@ -256,7 +257,9 @@ export function AdminProblemManager() {
       return;
     }
     const res = await fetch(
-      `/api/admin/problems?id=${encodeURIComponent(item.id)}&permanent=1`,
+      appPath(
+        `/api/admin/problems?id=${encodeURIComponent(item.id)}&permanent=1`,
+      ),
       { method: "DELETE" },
     );
     const data = await res.json();

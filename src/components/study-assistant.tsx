@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { X } from "lucide-react";
+import { appPath } from "@/lib/app-path";
 import { AssistantMessageBubble } from "@/components/assistant-message";
 import {
   AssistantTypingIndicator,
@@ -30,7 +31,7 @@ export function StudyAssistant() {
   const { messages, sendMessage, status, error, setMessages } = useChat({
     id: `study-assistant:${lessonId || "index"}`,
     transport: new DefaultChatTransport({
-      api: "/api/ai/study-assistant",
+      api: appPath("/api/ai/study-assistant"),
       body: { lessonId: lessonId || undefined },
     }),
   });

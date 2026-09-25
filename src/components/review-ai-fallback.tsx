@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import { Markdown } from "@/components/markdown";
 import { ReviewChat } from "@/components/review-chat";
@@ -23,7 +24,7 @@ export function ReviewAiFallback({ id }: { id: string }) {
         }
       }
       try {
-        const res = await fetch(`/api/problems/${encodeURIComponent(id)}`);
+        const res = await fetch(appPath(`/api/problems/${encodeURIComponent(id)}`));
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Soal tidak ditemukan");
         if (!cancelled) setProblem(data.problem);

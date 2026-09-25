@@ -20,6 +20,7 @@ function routeLabel(pathname: string): string {
   if (pathname === "/admin") return "Admin · Ringkasan";
   if (pathname === "/admin/users") return "Admin · Daftar pengguna";
   if (pathname.startsWith("/admin/users/")) return "Admin · Laporan pengguna";
+  if (pathname === "/admin/access") return "Admin · Akses per tipe akun";
   if (pathname === "/admin/ai") return "Admin · LLM Bersama";
   if (pathname === "/admin/countdown") return "Admin · Countdown seleksi";
   if (pathname === "/admin/problems") return "Admin · Bank soal";
@@ -165,6 +166,13 @@ export async function buildAdminPageContext(
   if (pathname === "/admin/ai") {
     lines.push(
       "Halaman konfigurasi LLM bersama (API key platform). Jangan mengulang secret; bantu hanya soal status/kegunaan fitur.",
+    );
+  }
+
+  if (pathname === "/admin/access") {
+    lines.push(
+      "Matriks akses per tipe akun (Gratis/VIP/Test/Admin). Perubahan langsung mengatur fasilitas Belajar, Latihan, Simulasi, asisten AI, kuota, dan rate limit.",
+      "Panel admin terkunci hanya untuk Admin. Pembayaran VIP nanti cukup mengubah user_type menjadi vip.",
     );
   }
 

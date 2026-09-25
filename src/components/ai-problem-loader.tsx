@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import { ProblemSolver } from "@/components/problem-solver";
 import type { ExamFacingProblem } from "@/lib/content/exam-facing-problem";
@@ -25,7 +26,7 @@ export function AiProblemLoader({ id }: { id: string }) {
       }
 
       try {
-        const res = await fetch(`/api/problems/${encodeURIComponent(id)}`);
+        const res = await fetch(appPath(`/api/problems/${encodeURIComponent(id)}`));
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Soal tidak ditemukan");
         if (!cancelled) {

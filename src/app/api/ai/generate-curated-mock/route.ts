@@ -6,6 +6,7 @@ import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
 import { assertSimulasiAllowed } from "@/lib/ai/simulasi-quota";
 import { loadUserAccess } from "@/lib/user/load-user-access";
+import { assertApiFeature } from "@/lib/access/assert";
 import { parseDifficultyMode } from "@/lib/ai/difficulty";
 import {
   assembleCuratedMockWithLlm,
@@ -24,6 +25,12 @@ function parseSize(raw: unknown): CuratedMockSize {
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+
+  const featureDenied = await assertApiFeature(
+    authResult.user.id,
+    "generate_simulasi",
+  );
+  if (featureDenied) return featureDenied;
 
   const access = await loadUserAccess(authResult.user.id);
   if (

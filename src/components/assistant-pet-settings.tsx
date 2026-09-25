@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import {
   ASSISTANT_PETS,
@@ -14,7 +15,7 @@ export function AssistantPetSettings() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch("/api/profile")
+    fetch(appPath("/api/profile"))
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Gagal memuat");
@@ -32,7 +33,7 @@ export function AssistantPetSettings() {
     const previous = pet;
     setPet(next);
     try {
-      const res = await fetch("/api/profile", {
+      const res = await fetch(appPath("/api/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assistantPet: next }),

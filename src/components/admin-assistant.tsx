@@ -5,13 +5,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { X } from "lucide-react";
+import { appPath } from "@/lib/app-path";
 import { AssistantMessageBubble } from "@/components/assistant-message";
 import {
   AssistantTypingIndicator,
   shouldShowAssistantTyping,
 } from "@/components/assistant-typing";
 
-const ADMIN_ASSISTANT_ICON = "/pets/matrix.gif";
+const ADMIN_ASSISTANT_ICON = appPath("/pets/matrix.gif?v=2");
 
 function AdminAssistantAvatar({
   size = "fab",
@@ -80,7 +81,7 @@ function AdminAssistantInner() {
   const { messages, sendMessage, status, error, setMessages } = useChat({
     id: chatId,
     transport: new DefaultChatTransport({
-      api: "/api/ai/admin-assistant",
+      api: appPath("/api/ai/admin-assistant"),
       body: {
         focusUserId: focusUserId || undefined,
         pathname,

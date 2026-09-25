@@ -1,0 +1,19 @@
+[Unit]
+Description=Simulasi OSN AI — refresh public news hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=osnai
+Group=osnai
+WorkingDirectory=/opt/osnai-build
+EnvironmentFile=/etc/osnai/env
+Environment=NODE_ENV=production
+# Prefer local node_modules (postgres) from the build tree.
+ExecStart=/usr/bin/node /opt/osnai-build/scripts/refresh-news.mjs
+Nice=10
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

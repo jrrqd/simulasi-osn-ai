@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -23,7 +24,7 @@ export function useSimulasiQuota() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/ai/quota")
+    fetch(appPath("/api/ai/quota"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!cancelled && data) setQuota(data as SimulasiQuotaInfo);

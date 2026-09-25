@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import { DIFFICULTY_MODES, parseDifficultyMode, type DifficultyMode } from "@/lib/ai/difficulty";
@@ -108,7 +109,7 @@ export function AdminMockManager() {
     if (source !== "all") params.set("source", source);
     if (includeHidden) params.set("includeHidden", "1");
     params.set("limit", "120");
-    const res = await fetch(`/api/admin/mocks?${params}`);
+    const res = await fetch(appPath(`/api/admin/mocks?${params}`));
     const data = await res.json();
     setItems(data.items ?? []);
     setTotal(data.total ?? 0);
@@ -122,7 +123,7 @@ export function AdminMockManager() {
   async function openEdit(item: ListItem) {
     setMessage("");
     const res = await fetch(
-      `/api/admin/mocks?id=${encodeURIComponent(item.id)}`,
+      appPath(`/api/admin/mocks?id=${encodeURIComponent(item.id)}`),
     );
     const data = await res.json();
     if (!res.ok || !data.mock) {
@@ -152,7 +153,7 @@ export function AdminMockManager() {
       if (payload.problemIds.length < 1) {
         throw new Error("Minimal 1 problemId (satu baris per id)");
       }
-      const res = await fetch("/api/admin/mocks", {
+      const res = await fetch(appPath("/api/admin/mocks"), {
         method: creating ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
@@ -181,7 +182,7 @@ export function AdminMockManager() {
       return;
     }
     const res = await fetch(
-      `/api/admin/mocks?id=${encodeURIComponent(item.id)}`,
+      appPath(`/api/admin/mocks?id=${encodeURIComponent(item.id)}`),
       { method: "DELETE" },
     );
     const data = await res.json();
@@ -194,7 +195,7 @@ export function AdminMockManager() {
   }
 
   async function unhideItem(item: ListItem) {
-    const res = await fetch("/api/admin/mocks", {
+    const res = await fetch(appPath("/api/admin/mocks"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: item.id, restore: true }),
@@ -218,7 +219,9 @@ export function AdminMockManager() {
       return;
     }
     const res = await fetch(
-      `/api/admin/mocks?id=${encodeURIComponent(item.id)}&permanent=1`,
+      appPath(
+        `/api/admin/mocks?id=${encodeURIComponent(item.id)}&permanent=1`,
+      ),
       { method: "DELETE" },
     );
     const data = await res.json();

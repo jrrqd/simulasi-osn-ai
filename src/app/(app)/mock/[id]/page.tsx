@@ -12,6 +12,7 @@ import { HybridFinalMockClient } from "@/components/hybrid-final-mock-client";
 import { resolveExamIntegrityMode } from "@/lib/exam-integrity-policy";
 import { loadUserPhase } from "@/lib/user/load-phase";
 import type { ExamFormat } from "@/lib/content/types";
+import { gateFeature } from "@/components/feature-gate";
 
 function parseExamFormat(raw: unknown): ExamFormat {
   if (raw === "kaggle" || raw === "hybrid") return raw;
@@ -23,6 +24,9 @@ export default async function MockPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await gateFeature("mock_curated");
+  if (denied) return denied;
+
   const user = await requireUser();
   const { id } = await params;
   const mock = await resolveMock(id);

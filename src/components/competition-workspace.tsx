@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useMemo, useState } from "react";
 import { CompetitionNotebookRunner } from "@/components/competition-notebook-runner";
 import { Markdown } from "@/components/markdown";
@@ -94,7 +95,7 @@ export function CompetitionWorkspace({
       form.set("action", "preview");
       if (effectiveSubmission) form.set("submission", effectiveSubmission);
       if (notebookFile) form.set("notebook", notebookFile);
-      const res = await fetch("/api/competition/submit", {
+      const res = await fetch(appPath("/api/competition/submit"), {
         method: "POST",
         body: form,
       });
@@ -120,7 +121,7 @@ export function CompetitionWorkspace({
       form.set("action", "grade");
       if (effectiveSubmission) form.set("submission", effectiveSubmission);
       if (notebookFile) form.set("notebook", notebookFile);
-      const res = await fetch("/api/competition/submit", {
+      const res = await fetch(appPath("/api/competition/submit"), {
         method: "POST",
         body: form,
       });
@@ -207,7 +208,9 @@ export function CompetitionWorkspace({
                 </div>
                 <a
                   className="btn btn-secondary !px-3 !py-1.5 text-sm"
-                  href={`/api/competition/${problem.id}/files/${encodeURIComponent(file.name)}`}
+                  href={appPath(
+                    `/api/competition/${problem.id}/files/${encodeURIComponent(file.name)}`,
+                  )}
                 >
                   Download
                 </a>

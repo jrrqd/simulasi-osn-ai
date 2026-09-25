@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 type SharedSettings = {
@@ -21,7 +22,7 @@ export function AdminAiSettings() {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
-    const response = await fetch("/api/admin/settings/ai");
+    const response = await fetch(appPath("/api/admin/settings/ai"));
     const data = await response.json();
     setSettings(data);
     if (data.baseUrl) setBaseUrl(data.baseUrl);
@@ -30,7 +31,7 @@ export function AdminAiSettings() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/admin/settings/ai")
+    fetch(appPath("/api/admin/settings/ai"))
       .then((response) => response.json())
       .then((data) => {
         setSettings(data);
@@ -44,7 +45,7 @@ export function AdminAiSettings() {
     event.preventDefault();
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/admin/settings/ai", {
+    const response = await fetch(appPath("/api/admin/settings/ai"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -68,7 +69,7 @@ export function AdminAiSettings() {
   async function test() {
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/admin/settings/ai", { method: "POST" });
+    const response = await fetch(appPath("/api/admin/settings/ai"), { method: "POST" });
     const data = await response.json();
     setLoading(false);
     setMessage(
@@ -80,7 +81,7 @@ export function AdminAiSettings() {
   async function remove() {
     if (!window.confirm("Hapus API key bersama?")) return;
     setLoading(true);
-    await fetch("/api/admin/settings/ai", { method: "DELETE" });
+    await fetch(appPath("/api/admin/settings/ai"), { method: "DELETE" });
     setLoading(false);
     setMessage("Konfigurasi dihapus.");
     await load();

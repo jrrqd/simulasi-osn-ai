@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TOPIC_LABELS, TRACKS } from "@/lib/content/types";
@@ -71,7 +72,7 @@ export function GenerateMockChallenge() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/profile")
+    fetch(appPath("/api/profile"))
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;

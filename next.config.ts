@@ -23,7 +23,13 @@ const BASE_HEADERS = [
   { key: "X-Build-Id", value: BUILD_ID },
 ];
 
+// Production VPS only: set NEXT_PUBLIC_BASE_PATH=/simosnai at build time.
+// Leave unset locally so dev stays at http://localhost:3000/.
+const basePath =
+  process.env.NEXT_PUBLIC_BASE_PATH?.replace(/\/$/, "") || undefined;
+
 const nextConfig: NextConfig = {
+  ...(basePath ? { basePath } : {}),
   output: "standalone",
   compress: true,
   poweredByHeader: false,

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { X } from "lucide-react";
+import { appPath } from "@/lib/app-path";
 import { AssistantMessageBubble } from "@/components/assistant-message";
 import {
   AssistantTypingIndicator,
@@ -23,7 +24,7 @@ export function PerformanceAssistant() {
   const { messages, sendMessage, status, error, setMessages } = useChat({
     id: "performance-assistant",
     transport: new DefaultChatTransport({
-      api: "/api/ai/performance-assistant",
+      api: appPath("/api/ai/performance-assistant"),
     }),
   });
 

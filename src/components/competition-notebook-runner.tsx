@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { appPath } from "@/lib/app-path";
 import type { ClientCompetitionSpec } from "@/lib/content/types";
 import { buildCompetitionStarterCode } from "@/lib/notebook/build-starter-notebook";
 import {
@@ -78,7 +79,9 @@ export function CompetitionNotebookRunner({
       const files: Record<string, string> = {};
       for (const file of competition.files) {
         const res = await fetch(
-          `/api/competition/${problemId}/files/${encodeURIComponent(file.name)}`,
+          appPath(
+            `/api/competition/${problemId}/files/${encodeURIComponent(file.name)}`,
+          ),
         );
         if (!res.ok) {
           throw new Error(`Gagal memuat ${file.name}`);
@@ -121,7 +124,9 @@ export function CompetitionNotebookRunner({
       const files: Record<string, string> = {};
       for (const file of competition.files) {
         const res = await fetch(
-          `/api/competition/${problemId}/files/${encodeURIComponent(file.name)}`,
+          appPath(
+            `/api/competition/${problemId}/files/${encodeURIComponent(file.name)}`,
+          ),
         );
         if (!res.ok) throw new Error(`Gagal memuat ${file.name}`);
         files[file.name] = await res.text();
@@ -262,7 +267,7 @@ export function CompetitionNotebookRunner({
           </p>
           <a
             className="btn btn-secondary !inline-flex !px-3 !py-1.5 text-sm"
-            href={`/api/competition/${problemId}/notebook`}
+            href={appPath(`/api/competition/${problemId}/notebook`)}
           >
             Download starter notebook
           </a>
@@ -271,7 +276,9 @@ export function CompetitionNotebookRunner({
               <li key={f.name}>
                 <a
                   className="text-[var(--accent)] underline"
-                  href={`/api/competition/${problemId}/files/${encodeURIComponent(f.name)}`}
+                  href={appPath(
+                    `/api/competition/${problemId}/files/${encodeURIComponent(f.name)}`,
+                  )}
                 >
                   {f.name}
                 </a>

@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff, Sparkles } from "lucide-react";
 
@@ -43,7 +44,7 @@ export function AdminLessonManager() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/lessons");
+    const res = await fetch(appPath("/api/admin/lessons"));
     const data = await res.json();
     setLoading(false);
     if (res.ok) setItems(data.items ?? []);
@@ -57,7 +58,7 @@ export function AdminLessonManager() {
   }, [load]);
 
   async function toggleHide(id: string, hide: boolean) {
-    const res = await fetch("/api/admin/lessons", {
+    const res = await fetch(appPath("/api/admin/lessons"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -78,7 +79,7 @@ export function AdminLessonManager() {
     setGeneratingId(lessonId);
     setMessage("");
     try {
-      const res = await fetch("/api/ai/generate-lesson-checks", {
+      const res = await fetch(appPath("/api/ai/generate-lesson-checks"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lessonId, count: 4 }),
@@ -117,7 +118,7 @@ export function AdminLessonManager() {
       .map((s) => s.trim())
       .filter(Boolean);
     const difficulty = Number(difficultyRaw);
-    const res = await fetch("/api/admin/lessons", {
+    const res = await fetch(appPath("/api/admin/lessons"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

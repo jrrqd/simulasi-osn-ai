@@ -46,10 +46,12 @@ export function AuthForm({
   return (
     <form onSubmit={onSubmit} className="panel mx-auto w-full max-w-md space-y-4 rounded-3xl p-6">
       <h1 className="display text-3xl">
-        {mode === "login" ? "Masuk" : "Buat akun"}
+        {mode === "login" ? "Masuk" : "Daftar gratis"}
       </h1>
       <p className="text-sm text-[var(--muted)]">
-        Progress dan pengaturan AI tersimpan per akun.
+        {mode === "login"
+          ? "Progress dan pengaturan AI tersimpan per akun."
+          : "Tanpa biaya. Progress dan pengaturan AI tersimpan per akun."}
       </p>
       {mode === "register" && (
         <input

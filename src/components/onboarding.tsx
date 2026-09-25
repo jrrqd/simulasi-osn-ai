@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, ClipboardList, Timer } from "lucide-react";
@@ -39,7 +40,7 @@ export function OnboardingClient() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/profile", {
+      const res = await fetch(appPath("/api/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completeOnboarding: true, phase }),

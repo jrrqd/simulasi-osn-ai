@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useState } from "react";
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
@@ -51,7 +52,7 @@ export function ProblemSolver({
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/attempts", {
+      const res = await fetch(appPath("/api/attempts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

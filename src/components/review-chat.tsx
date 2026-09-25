@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { appPath } from "@/lib/app-path";
 import { AssistantMessageBubble } from "@/components/assistant-message";
 import {
   AssistantTypingIndicator,
@@ -19,7 +20,7 @@ export function ReviewChat({
   const [input, setInput] = useState("");
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
-      api: "/api/ai/chat",
+      api: appPath("/api/ai/chat"),
       body: { problemId, studentAnswer },
     }),
   });

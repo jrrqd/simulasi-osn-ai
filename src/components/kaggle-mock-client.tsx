@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useMemo, useState } from "react";
 import { Countdown } from "@/components/countdown";
 import { CompetitionWorkspace } from "@/components/competition-workspace";
@@ -99,7 +100,7 @@ export function KaggleMockClient({
   async function start() {
     setStarting(true);
     setError("");
-    const response = await fetch("/api/mocks", {
+    const response = await fetch(appPath("/api/mocks"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mockId }),
@@ -142,7 +143,7 @@ export function KaggleMockClient({
     setSubmitting(true);
     setError("");
     try {
-      const response = await fetch("/api/mocks", {
+      const response = await fetch(appPath("/api/mocks"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

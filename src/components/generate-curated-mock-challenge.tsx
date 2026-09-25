@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TOPIC_LABELS, TRACKS } from "@/lib/content/types";
@@ -67,7 +68,7 @@ export function GenerateCuratedMockChallenge() {
         : "LLM sedang menyusun paket dari bank curated…",
     );
     try {
-      const res = await fetch("/api/ai/generate-curated-mock", {
+      const res = await fetch(appPath("/api/ai/generate-curated-mock"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

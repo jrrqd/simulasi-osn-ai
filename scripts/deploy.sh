@@ -13,6 +13,7 @@ set -euo pipefail
 REMOTE="${REMOTE:-ubuntu@43.134.182.44}"
 BUILD=/opt/osnai-build
 APP=/var/www/osnai
+ROOT_PAGE=/var/www/radr-root
 DEPLOY_TAG="${DEPLOY_TAG:-deploy/production}"
 RSYNC_EXCLUDES=(
   --exclude node_modules
@@ -32,7 +33,7 @@ echo "==> Syncing source to ${REMOTE}:${BUILD}"
 rsync -az --delete "${RSYNC_EXCLUDES[@]}" ./ "$REMOTE:$BUILD/"
 
 echo "==> Installing deps and building on remote"
-ssh "$REMOTE" "cd $BUILD && npm ci && npm run build"
+ssh "$REMOTE" "cd $BUILD && npm ci && set -a && sudo grep -v '^#' /etc/osnai/env | sudo tee /tmp/osnai-build.env > /dev/null && . /tmp/osnai-build.env && sudo rm -f /tmp/osnai-build.env && set +a && NEXT_PUBLIC_BASE_PATH=/simosnai npm run build"
 
 echo "==> Promoting ${BUILD} -> ${APP}"
 ssh "$REMOTE" "\
@@ -41,6 +42,23 @@ ssh "$REMOTE" "\
   sudo rsync -az --delete $BUILD/public/ $APP/public/ && \
   sudo mkdir -p $APP/figures && \
   sudo chown -R osnai:osnai $APP"
+
+echo "==> Syncing domain root page and nginx config"
+ssh "$REMOTE" "\
+  sudo mkdir -p $ROOT_PAGE && \
+  sudo cp $BUILD/deploy/root/index.html $ROOT_PAGE/index.html && \
+  sudo cp $BUILD/deploy/nginx-osnai.conf /etc/nginx/sites-available/osnai && \
+  sudo nginx -t && \
+  sudo systemctl reload nginx"
+
+echo "==> Installing news refresh timer (06:00 Asia/Jakarta)"
+ssh "$REMOTE" "\
+  sudo cp $BUILD/deploy/osnai-news.service /etc/systemd/system/osnai-news.service && \
+  sudo cp $BUILD/deploy/osnai-news.timer /etc/systemd/system/osnai-news.timer && \
+  sudo timedatectl set-timezone Asia/Jakarta || true && \
+  sudo systemctl daemon-reload && \
+  sudo systemctl enable --now osnai-news.timer && \
+  sudo systemctl start osnai-news.service || true"
 
 echo "==> Restarting osnai.service"
 ssh "$REMOTE" "sudo systemctl restart osnai && sleep 3 && systemctl is-active osnai"

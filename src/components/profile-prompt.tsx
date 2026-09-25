@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -43,7 +44,7 @@ export function ProfilePrompt({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (!enabled || onMockRoute || !ready || dismissed) return;
     let cancelled = false;
-    fetch("/api/profile")
+    fetch(appPath("/api/profile"))
       .then(async (res) => {
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || "Gagal memuat profil");
@@ -86,7 +87,7 @@ export function ProfilePrompt({ enabled }: { enabled: boolean }) {
     setError("");
     try {
       const payload: Record<string, string> = { [field]: value.trim() };
-      const res = await fetch("/api/profile", {
+      const res = await fetch(appPath("/api/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -105,7 +106,7 @@ export function ProfilePrompt({ enabled }: { enabled: boolean }) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/profile", {
+      const res = await fetch(appPath("/api/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snoozeProfilePrompt: true }),

@@ -1,6 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthForm } from "@/components/auth-form";
 import { SiteHeader } from "@/components/site-header";
+
+export const metadata: Metadata = {
+  title: "Daftar gratis",
+  description:
+    "Buat akun Simulasi OSN AI gratis. Tidak ada biaya daftar — mulai latihan EKKA/OSN AI 2026 untuk pelajar Indonesia.",
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "Daftar gratis · Simulasi OSN AI 2026",
+    description:
+      "Akun gratis untuk materi, bank soal, simulasi berwaktu, dan pelacak performa OSN AI 2026.",
+  },
+};
 
 export default function RegisterPage() {
   return (

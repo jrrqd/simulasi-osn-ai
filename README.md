@@ -115,7 +115,7 @@ Salin `.env.example` → `.env.local`. Ringkasan:
 | `USE_PGLITE` | ✓ (dev) | `true` = embedded DB; `false` + `DATABASE_URL` untuk Postgres |
 | `BETTER_AUTH_SECRET` | ✓ | Secret session auth |
 | `CREDENTIALS_ENCRYPTION_KEY` | ✓ | 64 hex chars (`openssl rand -hex 32`) untuk enkripsi BYOK |
-| `BETTER_AUTH_URL` | ✓ | URL publik app (mis. `http://localhost:3000`) |
+| `BETTER_AUTH_URL` | ✓ | Origin saja, tanpa subpath (mis. `http://localhost:3000` atau `https://radr.nxtdev.xyz`) |
 | `NEXT_PUBLIC_APP_URL` | ✓ | Sama, untuk link client |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | ✓ | Seed admin pertama; admin lain dipromosikan lewat Admin → Users |
 | `AUTH_INSECURE_COOKIES` | opsional | `true` hanya untuk akses HTTP lokal/Tailscale (cookie non-Secure) |

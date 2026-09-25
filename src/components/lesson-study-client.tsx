@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useMemo, useState } from "react";
 import {
   LessonChecks,
@@ -51,7 +52,7 @@ export function LessonStudyClient({
     setGenerating(true);
     setGenError("");
     try {
-      const res = await fetch("/api/ai/generate-lesson-checks", {
+      const res = await fetch(appPath("/api/ai/generate-lesson-checks"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lessonId, count: 4 }),

@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { user } from "@/db/schema";
 import { shouldBypassRateLimits } from "@/lib/ai/access-policy";
+import { getAccessMatrix } from "@/lib/access/matrix";
 import { loadUserAccess } from "@/lib/user/load-user-access";
 import type { UserAccess } from "@/lib/user/user-type";
 
@@ -61,7 +62,7 @@ export async function rateLimitForUser(
   access?: UserAccess | null,
 ): Promise<boolean> {
   const resolved = access ?? (await loadUserAccess(userId));
-  if (resolved && shouldBypassRateLimits(resolved)) {
+  if (resolved && shouldBypassRateLimits(resolved, await getAccessMatrix())) {
     return true;
   }
   return rateLimit(`${key}:${userId}`, limit, windowMs);

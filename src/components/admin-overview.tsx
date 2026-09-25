@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -34,8 +35,8 @@ export function AdminOverview() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/admin/users").then((res) => res.json()),
-      fetch("/api/admin/settings/ai").then((res) => res.json()),
+      fetch(appPath("/api/admin/users")).then((res) => res.json()),
+      fetch(appPath("/api/admin/settings/ai")).then((res) => res.json()),
     ]).then(([usersData, aiData]) => {
       setUsers(usersData.users ?? []);
       setSharedAi(aiData);

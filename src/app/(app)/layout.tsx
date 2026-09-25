@@ -4,6 +4,7 @@ import { AppSectionSubnav } from "@/components/section-subnav";
 import { SiteHeader } from "@/components/site-header";
 import { OnboardingGate } from "@/components/onboarding";
 import { ProfilePrompt } from "@/components/profile-prompt";
+import { userCanUseAiAssistant } from "@/components/feature-gate";
 import { getDb } from "@/db";
 import { user } from "@/db/schema";
 import { getSession } from "@/lib/session";
@@ -19,6 +20,7 @@ export default async function AppShell({
   let needsOnboarding = false;
   let showProfilePrompt = false;
   let isAdmin = session?.user?.role === "admin";
+  let showAdminAssistant = false;
 
   if (session?.user) {
     const db = await getDb();
@@ -30,6 +32,9 @@ export default async function AppShell({
     if (role === "student") {
       needsOnboarding = !row?.onboardingCompletedAt;
       showProfilePrompt = Boolean(row?.onboardingCompletedAt);
+    }
+    if (isAdmin) {
+      showAdminAssistant = await userCanUseAiAssistant(session.user.id);
     }
   }
 
@@ -43,7 +48,7 @@ export default async function AppShell({
       <AppSectionSubnav />
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       <ProfilePrompt enabled={showProfilePrompt} />
-      {isAdmin ? <AdminAssistant /> : null}
+      {showAdminAssistant ? <AdminAssistant /> : null}
     </div>
   );
 }

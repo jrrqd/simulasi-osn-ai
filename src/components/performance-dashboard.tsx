@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useState } from "react";
 import {
   Bar,
@@ -88,7 +89,7 @@ export function PerformanceDashboard() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/performance")
+    fetch(appPath("/api/performance"))
       .then(async (r) => {
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || "Gagal memuat");

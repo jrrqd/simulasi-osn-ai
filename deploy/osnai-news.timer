@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily 06:00 Asia/Jakarta refresh of Simulasi OSN AI news hub
+
+[Timer]
+OnCalendar=*-*-* 06:00:00 Asia/Jakarta
+Persistent=true
+Unit=osnai-news.service
+
+[Install]
+WantedBy=timers.target

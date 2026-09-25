@@ -20,18 +20,59 @@ const mono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+const SITE_TITLE = "Simulasi OSN AI 2026 Gratis | Persiapan EKKA";
+const SITE_DESCRIPTION =
+  "Gratis (Rp0) untuk pelajar Indonesia. Persiapan EKKA/OSN AI 2026: materi silabus 5 area, bank soal, simulasi berwaktu, dan pelacak performa tanpa biaya.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   ),
-  title: "Simulasi OSN AI 2026",
-  description:
-    "Platform latihan EKKA/OSN AI: materi, simulasi berwaktu, pelacak performa, dan tutor AI.",
+  title: {
+    default: SITE_TITLE,
+    template: `%s · ${SITE_TITLE}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: "Simulasi OSN AI",
+  keywords: [
+    "simulasi OSN AI",
+    "OSN AI 2026",
+    "EKKA",
+    "gratis",
+    "free",
+    "pelajar Indonesia",
+    "olimpiade sains nasional AI",
+    "bank soal OSN AI",
+    "tryout OSN AI",
+    "persiapan OSN AI",
+  ],
+  category: "education",
   icons: { icon: "/favicon.svg" },
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
   openGraph: {
-    title: "Simulasi OSN AI 2026",
-    description:
-      "Persiapan seleksi EKKA dengan mastery tracking & AI challenges.",
+    type: "website",
+    locale: "id_ID",
+    siteName: SITE_TITLE,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: "/hero-atmosphere.png",
+        alt: "Simulasi OSN AI 2026 gratis untuk pelajar Indonesia",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: ["/hero-atmosphere.png"],
   },
 };

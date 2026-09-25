@@ -314,6 +314,24 @@ const SCHEMA_DDL = `
     UPDATE generated_mocks
       SET penalty_minutes_per_wrong = 1
       WHERE penalty_minutes_per_wrong = 20;
+    CREATE TABLE IF NOT EXISTS news_items (
+      id text PRIMARY KEY,
+      canonical_url text NOT NULL UNIQUE,
+      title text NOT NULL,
+      source_name text NOT NULL,
+      source_host text NOT NULL,
+      summary text NOT NULL,
+      keyword text NOT NULL,
+      published_at timestamptz,
+      fetched_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS news_items_published_idx ON news_items(published_at);
+    CREATE INDEX IF NOT EXISTS news_items_host_title_idx ON news_items(source_host, title);
+    CREATE TABLE IF NOT EXISTS access_policies (
+      tier text PRIMARY KEY,
+      features jsonb NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
 `;
 
 async function createDb(): Promise<AppDb> {

@@ -1,29 +1,30 @@
 import type { MetadataRoute } from "next";
+import { publicSiteUrl } from "@/lib/seo-public";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "https://radr.nxtdev.xyz";
+const SITE_URL = publicSiteUrl();
+
+/** Stable date for crawlers; bump when public copy or URL set changes. */
+const LAST_MODIFIED = new Date("2026-09-25T18:00:00+07:00");
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
-
   return [
     {
       url: `${SITE_URL}/`,
-      lastModified: now,
+      lastModified: LAST_MODIFIED,
       changeFrequency: "weekly",
       priority: 1.0,
     },
     {
-      url: `${SITE_URL}/register`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
+      url: `${SITE_URL}/berita`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: "daily",
+      priority: 0.85,
     },
     {
-      url: `${SITE_URL}/login`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.4,
+      url: `${SITE_URL}/register`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
   ];
 }

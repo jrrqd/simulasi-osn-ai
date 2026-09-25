@@ -1,11 +1,12 @@
-import { and, count, eq, gte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { generatedMocks } from "@/db/schema";
 import {
   isSimulasiQuotaGated,
   type EffectiveAiSource,
 } from "@/lib/ai/access-policy";
+import { getAccessMatrix } from "@/lib/access/matrix";
 import type { UserAccess } from "@/lib/user/user-type";
+import { and, count, eq, gte } from "drizzle-orm";
 
 /** Free shared-LLM users get this many simulasi generations per WIB day. */
 export const FREE_SIMULASI_DAILY_LIMIT = 1;
@@ -67,7 +68,8 @@ export async function getSimulasiQuota(
   settings: EffectiveAiSource | null | undefined,
   now: Date = new Date(),
 ): Promise<SimulasiQuota> {
-  const gated = isSimulasiQuotaGated(access, settings);
+  const matrix = await getAccessMatrix();
+  const gated = isSimulasiQuotaGated(access, settings, matrix);
   const used = await countSimulasiToday(userId, now);
   const resetsAt = nextDayAsiaJakarta(now).toISOString();
 

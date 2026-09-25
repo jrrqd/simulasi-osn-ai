@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { X } from "lucide-react";
+import { appPath } from "@/lib/app-path";
 import { AssistantMessageBubble } from "@/components/assistant-message";
 import {
   AssistantTypingIndicator,
@@ -41,7 +42,7 @@ function PracticeAssistantInner() {
   const { messages, sendMessage, status, error, setMessages } = useChat({
     id: chatId,
     transport: new DefaultChatTransport({
-      api: "/api/ai/practice-assistant",
+      api: appPath("/api/ai/practice-assistant"),
       body: {
         problemId: problemId || undefined,
         track: !problemId && track ? track : undefined,

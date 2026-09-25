@@ -1,3 +1,5 @@
+import { appPath } from "@/lib/app-path";
+
 export type AssistantPet = "none" | "cat" | "dog";
 
 export const ASSISTANT_PETS: {
@@ -6,8 +8,8 @@ export const ASSISTANT_PETS: {
   src?: string;
 }[] = [
   { value: "none", label: "Tidak ada (ikon default)" },
-  { value: "cat", label: "Jacky", src: "/pets/cat.gif" },
-  { value: "dog", label: "Ichi", src: "/pets/dog.webp" },
+  { value: "cat", label: "Jacky", src: "/pets/cat.gif?v=2" },
+  { value: "dog", label: "Ichi", src: "/pets/dog.webp?v=2" },
 ];
 
 export function parseAssistantPet(raw: unknown): AssistantPet {
@@ -16,5 +18,6 @@ export function parseAssistantPet(raw: unknown): AssistantPet {
 }
 
 export function assistantPetSrc(pet: AssistantPet): string | null {
-  return ASSISTANT_PETS.find((p) => p.value === pet)?.src ?? null;
+  const raw = ASSISTANT_PETS.find((p) => p.value === pet)?.src;
+  return raw ? appPath(raw) : null;
 }

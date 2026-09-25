@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, X } from "lucide-react";
@@ -132,14 +133,14 @@ export function AdminUserManager() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/users");
+    const res = await fetch(appPath("/api/admin/users"));
     const data = await res.json();
     setUsers(data.users ?? []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetch("/api/admin/users")
+    fetch(appPath("/api/admin/users"))
       .then((res) => res.json())
       .then((data) => {
         setUsers(data.users ?? []);
@@ -199,7 +200,7 @@ export function AdminUserManager() {
       return;
     }
     const res = await fetch(
-      `/api/admin/users?userId=${encodeURIComponent(item.id)}`,
+      appPath(`/api/admin/users?userId=${encodeURIComponent(item.id)}`),
       { method: "DELETE" },
     );
     const data = await res.json();
@@ -399,7 +400,7 @@ function UserEditor({
     event.preventDefault();
     setSaving(true);
     setError("");
-    const res = await fetch("/api/admin/users", {
+    const res = await fetch(appPath("/api/admin/users"), {
       method: user ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

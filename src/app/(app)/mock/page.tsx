@@ -13,6 +13,7 @@ import {
   labelDifficultyModeBand,
   parseDifficultyMode,
 } from "@/lib/ai/difficulty";
+import { gateFeature } from "@/components/feature-gate";
 
 function MockRow({
   mock,
@@ -70,6 +71,9 @@ function MockRow({
 }
 
 export default async function MockListPage() {
+  const denied = await gateFeature("mock_curated");
+  if (denied) return denied;
+
   const user = await requireUser();
   const mocks = await listAllMocks();
   const progressById = await getUserMockProgress(

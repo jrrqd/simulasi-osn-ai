@@ -1,5 +1,6 @@
 "use client";
 
+import { appPath } from "@/lib/app-path";
 import { useEffect, useRef, useState } from "react";
 import {
   Bar,
@@ -244,7 +245,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
   const sessionConfirmRef = useRef<HTMLDivElement | null>(null);
 
   const loadReport = () => {
-    fetch(`/api/admin/users?userId=${encodeURIComponent(userId)}`)
+    fetch(appPath(`/api/admin/users?userId=${encodeURIComponent(userId)}`))
       .then(async (response) => {
         const raw = await response.text();
         let body: Report & { error?: string };
@@ -280,7 +281,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
     setPhaseMessage("");
     setResetError("");
     try {
-      const response = await fetch("/api/admin/users", {
+      const response = await fetch(appPath("/api/admin/users"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, phase: next }),
@@ -349,7 +350,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
     setResetError("");
     setResetMessage("");
     try {
-      const response = await fetch("/api/admin/users/reset-mock-sessions", {
+      const response = await fetch(appPath("/api/admin/users/reset-mock-sessions"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -378,7 +379,7 @@ export function AdminUserReport({ userId }: { userId: string }) {
     setResetError("");
     setResetMessage("");
     try {
-      const response = await fetch("/api/admin/users/delete-mock-session", {
+      const response = await fetch(appPath("/api/admin/users/delete-mock-session"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
