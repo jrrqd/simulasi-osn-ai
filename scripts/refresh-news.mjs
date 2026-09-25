@@ -2,7 +2,8 @@
 /**
  * Daily news refresh for /berita (06:00 Asia/Jakarta via systemd timer).
  *
- * Fetches Google News RSS for: osn ai, osn informatika, ioai, ekka.
+ * Fetches Google News RSS for: osn ai, osn informatika, ioai, ekka,
+ * toki, tim olimpiade komputer indonesia.
  * Stores title + short snippet + canonical URL only (no full article body).
  * Skips duplicate canonical URLs and same-host duplicate titles.
  *
@@ -13,7 +14,14 @@
 import { createHash, randomBytes } from "node:crypto";
 import postgres from "postgres";
 
-const KEYWORDS = ["osn ai", "osn informatika", "ioai", "ekka"];
+const KEYWORDS = [
+  "osn ai",
+  "osn informatika",
+  "ioai",
+  "ekka",
+  "toki",
+  "tim olimpiade komputer indonesia",
+];
 const SUMMARY_MAX = 280;
 const TRACKING = new Set([
   "utm_source",

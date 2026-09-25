@@ -28,7 +28,7 @@ const BODY = `# Simulasi OSN AI
 ## Public pages
 
 - Home: ${SITE_URL}/ — overview, FAQ, countdown, changelog
-- News hub: ${SITE_URL}/berita — short snippets of EKKA / OSN AI / IOAI / OSN Informatika press with links to original publishers (updated daily 06:00 Asia/Jakarta)
+- News hub: ${SITE_URL}/berita — short snippets of EKKA / OSN AI / IOAI / OSN Informatika / TOKI press with links to original publishers (updated daily 06:00 Asia/Jakarta)
 - Register: ${SITE_URL}/register — free account
 - This file: ${SITE_URL}/llms.txt
 - Sitemap: ${SITE_URL}/sitemap.xml

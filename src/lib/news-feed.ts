@@ -8,6 +8,8 @@ export const NEWS_KEYWORDS = [
   "osn informatika",
   "ioai",
   "ekka",
+  "toki",
+  "tim olimpiade komputer indonesia",
 ] as const;
 
 export type NewsKeyword = (typeof NEWS_KEYWORDS)[number];

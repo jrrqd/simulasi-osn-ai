@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Berita EKKA dan OSN AI",
   description:
-    "Cuplikan berita pendidikan tentang EKKA, OSN AI, OSN Informatika, dan IOAI. Rangkuman singkat dengan tautan ke sumber asli.",
+    "Cuplikan berita pendidikan tentang EKKA, OSN AI, OSN Informatika, IOAI, dan TOKI. Rangkuman singkat dengan tautan ke sumber asli.",
   robots: { index: true, follow: true },
   openGraph: {
     title: "Berita EKKA dan OSN AI 2026",
@@ -101,7 +101,7 @@ export default async function BeritaPage() {
         url: `${SITE_URL}/berita`,
         name: "Berita EKKA dan OSN AI 2026",
         description:
-          "Cuplikan dan rangkuman berita tentang EKKA, OSN AI, OSN Informatika, dan IOAI, dengan tautan ke sumber asli.",
+          "Cuplikan dan rangkuman berita tentang EKKA, OSN AI, OSN Informatika, IOAI, dan TOKI, dengan tautan ke sumber asli.",
         inLanguage: "id",
         isAccessibleForFree: true,
         dateModified: new Date().toISOString(),
@@ -156,9 +156,10 @@ export default async function BeritaPage() {
         </h1>
         <p className="mt-4 text-[var(--muted)]">
           Halaman ini merangkum cuplikan berita pendidikan terkait seleksi EKKA,
-          OSN AI, OSN Informatika, dan IOAI. Isi lengkap tetap di situs penerbit
-          — kami tidak menyalin artikel. Saat berita baru masuk, cuplikan lama
-          pindah ke bagian Berita sebelumnya.
+          OSN AI, OSN Informatika, IOAI, dan TOKI (Tim Olimpiade Komputer
+          Indonesia). Isi lengkap tetap di situs penerbit — kami tidak menyalin
+          artikel. Saat berita baru masuk, cuplikan lama pindah ke bagian Berita
+          sebelumnya.
         </p>
 
         {items.length === 0 ? (
