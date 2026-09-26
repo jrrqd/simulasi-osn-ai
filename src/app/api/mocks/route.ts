@@ -336,7 +336,14 @@ export async function PATCH(req: NextRequest) {
     const incoming = (answers ?? {}) as Record<string, unknown>;
     const current = (session.answers as Record<string, unknown>) ?? {};
     const merged: Record<string, unknown> = { ...current };
+    const mockProblems = await resolveProblemsForMock(session.mockId);
+    const notebookIds = new Set(
+      mockProblems
+        .filter((problem) => problem.answerType === "notebook_submission")
+        .map((problem) => problem.id),
+    );
     for (const [pid, value] of Object.entries(incoming)) {
+      if (notebookIds.has(pid)) continue;
       if (penaltyState[pid]?.solved || penaltyState[pid]?.lockedAt) {
         continue;
       }
@@ -405,6 +412,15 @@ export async function PUT(req: NextRequest) {
       ? body.answers
       : session.answers;
   const answers = (submittedAnswers ?? {}) as Record<string, unknown>;
+  const storedAnswers = (session.answers ?? {}) as Record<string, unknown>;
+  for (const problem of problems) {
+    if (problem.answerType !== "notebook_submission") continue;
+    if (storedAnswers[problem.id] === undefined) {
+      delete answers[problem.id];
+    } else {
+      answers[problem.id] = storedAnswers[problem.id];
+    }
+  }
   const codeResultsRaw =
     body.codeResults && typeof body.codeResults === "object"
       ? (body.codeResults as Record<string, CodeSpecRunResult>)

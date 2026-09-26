@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { topicMastery } from "@/db/schema";
 import { requireApiUser, rateLimitForUser } from "@/lib/api";
+import { assertApiFeature } from "@/lib/access/assert";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
 import { generateLessonChecks } from "@/lib/ai/generate-lesson-checks";
 import { getLesson } from "@/lib/content/load";
@@ -11,6 +12,8 @@ import { getLessonCheckQuestions } from "@/lib/lesson-checks";
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+  const featureDenied = await assertApiFeature(authResult.user.id, "study");
+  if (featureDenied) return featureDenied;
 
   if (
     !(await rateLimitForUser(
@@ -63,7 +66,16 @@ export async function POST(req: NextRequest) {
       modelId: settings.modelId,
     });
     const all = await getLessonCheckQuestions(lessonId);
-    return Response.json({ checks, allChecks: all });
+    const strip = (q: (typeof all)[number]) => {
+      const { answer, explanation, ...rest } = q;
+      void answer;
+      void explanation;
+      return rest;
+    };
+    return Response.json({
+      checks: checks.map(strip),
+      allChecks: all.map(strip),
+    });
   } catch (e) {
     console.error("[generate-lesson-checks]", e);
     return Response.json(

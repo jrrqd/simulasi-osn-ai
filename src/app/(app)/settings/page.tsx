@@ -1,6 +1,8 @@
 import { requireUser } from "@/lib/session";
 import { PageHeader } from "@/components/page-header";
 import { PhaseSettings } from "@/components/phase-settings";
+import { AccountPrivacy } from "@/components/account-privacy";
+import { SettingsAccountSummary } from "@/components/settings-account-summary";
 
 export default async function SettingsPage() {
   const user = await requireUser();
@@ -8,15 +10,15 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Pengaturan"
-        description="Akun dan tahap kompetisi."
+        description="Akun, akses fasilitas, dan tahap kompetisi."
       />
-      <div className="panel rounded-3xl p-5">
-        <h2 className="display text-2xl">Akun</h2>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          {user.name} · {user.email}
-        </p>
-      </div>
+      <SettingsAccountSummary
+        userId={user.id}
+        name={user.name}
+        email={user.email}
+      />
       <PhaseSettings />
+      <AccountPrivacy email={user.email} />
     </div>
   );
 }

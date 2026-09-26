@@ -1,4 +1,4 @@
-import { mkdir, writeFile, access } from "node:fs/promises";
+import { mkdir, realpath, writeFile, access } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { generateImage } from "@/lib/ai/image-provider";
@@ -95,15 +95,41 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
+/** Problem and figure ids used in URLs and on-disk paths. */
+export const SAFE_CONTENT_ID = /^[a-zA-Z0-9_-]{1,80}$/;
+
+export function isSafeContentId(value: string) {
+  return SAFE_CONTENT_ID.test(value);
+}
+
+function staysUnderRoot(root: string, target: string) {
+  const rel = path.relative(root, target);
+  return (
+    rel !== "" &&
+    rel !== ".." &&
+    !rel.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(rel)
+  );
+}
+
 /**
  * Find an existing on-disk raster for a figure id (any supported ext).
- * Returns absolute path or null.
+ * Returns a realpath that stays inside the figures directory, or null.
  */
 export async function findRasterFigureFile(
   problemId: string,
   figureId: string,
 ): Promise<{ absolutePath: string; contentType: string } | null> {
-  const dir = path.join(getFiguresDir(), problemId);
+  if (!isSafeContentId(problemId) || !isSafeContentId(figureId)) return null;
+
+  const root = path.resolve(getFiguresDir());
+  let realRoot: string;
+  try {
+    realRoot = await realpath(root);
+  } catch {
+    return null;
+  }
+
   const candidates: { ext: string; contentType: string }[] = [
     { ext: "png", contentType: "image/png" },
     { ext: "jpg", contentType: "image/jpeg" },
@@ -112,10 +138,17 @@ export async function findRasterFigureFile(
     { ext: "gif", contentType: "image/gif" },
   ];
   for (const c of candidates) {
-    const absolutePath = path.join(dir, `${figureId}.${c.ext}`);
-    if (await fileExists(absolutePath)) {
-      return { absolutePath, contentType: c.contentType };
+    const candidate = path.resolve(root, problemId, `${figureId}.${c.ext}`);
+    if (!staysUnderRoot(root, candidate)) continue;
+    if (!(await fileExists(candidate))) continue;
+    let realFile: string;
+    try {
+      realFile = await realpath(candidate);
+    } catch {
+      continue;
     }
+    if (!staysUnderRoot(realRoot, realFile)) continue;
+    return { absolutePath: realFile, contentType: c.contentType };
   }
   return null;
 }
@@ -126,10 +159,20 @@ async function persistImageBytes(params: {
   bytes: Buffer;
   contentType?: string | null;
 }): Promise<{ relativeUrl: string; ext: string }> {
+  if (
+    !isSafeContentId(params.problemId) ||
+    !isSafeContentId(params.figureId)
+  ) {
+    throw new Error("Id gambar tidak valid");
+  }
   const ext = sniffExt(params.bytes, params.contentType);
-  const dir = path.join(getFiguresDir(), params.problemId);
+  const root = path.resolve(getFiguresDir());
+  const dir = path.resolve(root, params.problemId);
+  const absolutePath = path.resolve(dir, `${params.figureId}.${ext}`);
+  if (!staysUnderRoot(root, absolutePath)) {
+    throw new Error("Path gambar di luar direktori yang diizinkan");
+  }
   await mkdir(dir, { recursive: true });
-  const absolutePath = path.join(dir, `${params.figureId}.${ext}`);
   if (!(await fileExists(absolutePath))) {
     await writeFile(absolutePath, params.bytes);
   }

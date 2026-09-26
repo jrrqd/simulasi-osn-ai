@@ -6,7 +6,7 @@ import {
   LessonChecks,
   LessonSideQuestLink,
 } from "@/components/lesson-checks";
-import type { CheckQuestion } from "@/lib/content/types";
+import type { PublicCheckQuestion } from "@/components/lesson-checks";
 import type { LessonTocItem } from "@/lib/lesson-toc";
 import Link from "next/link";
 
@@ -27,7 +27,7 @@ export function LessonStudyClient({
   track: string;
   topic: string;
   bodyHtmlIds: LessonTocItem[];
-  initialQuestions: CheckQuestion[];
+  initialQuestions: PublicCheckQuestion[];
   initialChecksPassed: Record<string, boolean>;
   initiallyCompleted: boolean;
   initialSrs: Record<

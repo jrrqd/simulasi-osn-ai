@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { convertToModelMessages, streamText, UIMessage } from "ai";
 import { requireApiUser, rateLimitForUser } from "@/lib/api";
+import { assertApiFeature } from "@/lib/access/assert";
+import { isProblemAnswerLocked } from "@/lib/content/answer-lock";
 import {
   REVIEW_SYSTEM_PROMPT,
   createUserProvider,
@@ -11,6 +13,11 @@ import { resolveProblem } from "@/lib/content/shared";
 export async function POST(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+  const featureDenied = await assertApiFeature(
+    authResult.user.id,
+    "ai_assistant",
+  );
+  if (featureDenied) return featureDenied;
   if (!(await rateLimitForUser(authResult.user.id, "chat", 30))) {
     return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
   }
@@ -23,6 +30,15 @@ export async function POST(req: NextRequest) {
   const problem = await resolveProblem(problemId);
   if (!problem) {
     return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+  }
+  if (await isProblemAnswerLocked(authResult.user.id, problem.id)) {
+    return Response.json(
+      {
+        error:
+          "Soal ini masih terkunci di simulasi yang belum kamu kumpulkan.",
+      },
+      { status: 409 },
+    );
   }
 
   const settings = await getEffectiveAiSettings(authResult.user.id);

@@ -1,6 +1,8 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
+import { rateLimit } from "@/lib/api";
 import { trakteerPayments, user } from "@/db/schema";
 import {
   grantVipMembership,
@@ -23,6 +25,20 @@ function extractEmail(message: string | null | undefined): string | null {
   return match?.[0]?.toLowerCase() ?? null;
 }
 
+function tokenMatches(provided: string, expected: string) {
+  const actualHash = createHash("sha256").update(provided).digest();
+  const expectedHash = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(actualHash, expectedHash);
+}
+
+function clientIp(req: NextRequest) {
+  return (
+    req.headers.get("x-real-ip")?.trim() ||
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown"
+  );
+}
+
 function isSuccessPayload(body: Record<string, unknown>): boolean {
   const status = String(body.status ?? "").toLowerCase();
   const type = String(body.type ?? body.event ?? "").toLowerCase();
@@ -37,13 +53,16 @@ function isSuccessPayload(body: Record<string, unknown>): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(`trakteer:${clientIp(req)}`, 30, 60_000)) {
+    return Response.json({ error: "Too many requests" }, { status: 429 });
+  }
   const expected = process.env.TRAKTEER_WEBHOOK_TOKEN?.trim();
   if (!expected) {
     console.error("[trakteer] TRAKTEER_WEBHOOK_TOKEN not configured");
     return Response.json({ error: "Webhook not configured" }, { status: 503 });
   }
-  const token = req.headers.get("x-webhook-token")?.trim();
-  if (!token || token !== expected) {
+  const token = req.headers.get("x-webhook-token")?.trim() ?? "";
+  if (!token || !tokenMatches(token, expected)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -121,12 +140,11 @@ export async function POST(req: NextRequest) {
       supporterMessage: message || null,
       raw: body,
     });
-    console.warn("[trakteer] no user for email", email, orderId);
+    console.warn("[trakteer] no user for payment", orderId);
     return Response.json({
       ok: true,
       orphan: true,
       reason: "user_not_found",
-      email,
     });
   }
 
@@ -149,7 +167,6 @@ export async function POST(req: NextRequest) {
 
   return Response.json({
     ok: true,
-    userId: account.id,
     vipExpiresAt: granted.ok ? granted.vipExpiresAt.toISOString() : null,
   });
 }

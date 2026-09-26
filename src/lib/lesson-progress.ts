@@ -23,17 +23,6 @@ function normalizeChecks(
   return out;
 }
 
-function allChecksPassed(
-  lessonId: string,
-  checksPassed: Record<string, boolean>,
-): boolean {
-  const lesson = getLesson(lessonId);
-  if (!lesson) return false;
-  const ids = lesson.checkQuestions.map((q) => q.id);
-  if (ids.length === 0) return false;
-  return ids.every((id) => checksPassed[id] === true);
-}
-
 export async function getUserLessonProgress(
   userId: string,
 ): Promise<Map<string, LessonProgressRow>> {
@@ -86,9 +75,7 @@ export async function upsertLessonProgress(input: {
   };
 
   const shouldComplete =
-    input.complete === true ||
-    existing?.status === "completed" ||
-    allChecksPassed(input.lessonId, mergedChecks);
+    input.complete === true || existing?.status === "completed";
 
   const now = new Date();
   const status = shouldComplete ? "completed" : "in_progress";

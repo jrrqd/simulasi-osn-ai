@@ -10,6 +10,7 @@ import {
   readJudge0Config,
 } from "@/lib/grading/judge0";
 import type { CodeSpecRunResult } from "@/lib/scoring/index";
+import { isProblemAnswerLocked } from "@/lib/content/answer-lock";
 
 export const runtime = "nodejs";
 
@@ -27,13 +28,8 @@ export async function POST(req: NextRequest) {
   const problemId = String(body.problemId ?? "");
   const durationMs = Number(body.durationMs ?? 0);
   const submitted = body.answer;
-  const competitionResult =
-    body.competitionResult && typeof body.competitionResult === "object"
-      ? (body.competitionResult as import("@/lib/scoring").CompetitionRunResult)
-      : undefined;
-  // body.codeSpecResult intentionally ignored — codeSpec grading always
-  // runs server-side from the submitted code so the client cannot tamper
-  // with the score.
+  // body.codeSpecResult and body.competitionResult are ignored. Code is
+  // graded by Judge0. Notebook scores only come from /api/competition/submit.
 
   const problem = await resolveProblem(problemId);
   const source = problem?.source === "ai" || problemId.startsWith("ai-")
@@ -41,6 +37,21 @@ export async function POST(req: NextRequest) {
     : "curated";
   if (!problem) {
     return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+  }
+  if (problem.answerType === "notebook_submission") {
+    return Response.json(
+      { error: "Nilai kompetisi hanya lewat unggahan di workspace." },
+      { status: 400 },
+    );
+  }
+  if (await isProblemAnswerLocked(authResult.user.id, problem.id)) {
+    return Response.json(
+      {
+        error:
+          "Soal ini masih terkunci di simulasi yang belum kamu kumpulkan.",
+      },
+      { status: 409 },
+    );
   }
 
   let codeSpecResult: CodeSpecRunResult | undefined;
@@ -93,10 +104,6 @@ export async function POST(req: NextRequest) {
       expectedFormat: problem.expectedFormat,
       legacy: problem.legacy,
       codeSpecResult,
-      competitionResult:
-        problem.answerType === "notebook_submission"
-          ? competitionResult
-          : undefined,
     });
     result = { ...r, earned: r.score * weight, max: weight, details: {} };
   }

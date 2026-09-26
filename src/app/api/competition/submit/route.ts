@@ -21,6 +21,8 @@ import {
 } from "@/lib/exam/penalty";
 import { extractSubmissionCsvFromNotebook } from "@/lib/notebook/build-starter-notebook";
 import { recordAttempt } from "@/lib/attempts";
+import { stampCompetitionAnswer } from "@/lib/scoring/competition-stamp";
+import { isProblemAnswerLocked } from "@/lib/content/answer-lock";
 import type { Problem } from "@/lib/content/types";
 
 function penaltySummaryPayload(state: ReturnType<typeof normalizePenaltyState>) {
@@ -212,6 +214,7 @@ export async function POST(req: NextRequest) {
       durationMs: Number.isFinite(durationMs) ? durationMs : 0,
     });
 
+    const locked = await isProblemAnswerLocked(auth.user.id, problem.id);
     return Response.json({
       ok: true,
       mode: "practice",
@@ -219,7 +222,7 @@ export async function POST(req: NextRequest) {
       correct: isCorrect,
       score: score01,
       competitionResult,
-      solution: problem.solution,
+      solution: locked ? undefined : problem.solution,
     });
   }
 
@@ -267,7 +270,7 @@ export async function POST(req: NextRequest) {
   );
 
   const answerPayload = {
-    kind: "competition_submission",
+    kind: "competition_submission" as const,
     metricValue: grade.metricValue,
     score: grade.score,
     metricLabel: grade.metricLabel,
@@ -276,6 +279,13 @@ export async function POST(req: NextRequest) {
     rowCount: grade.rowCount,
     gradedBy: grade.gradedBy,
     at: new Date().toISOString(),
+    stamp: stampCompetitionAnswer(problemId, {
+      score: grade.score,
+      metricValue: grade.metricValue,
+      metricLabel: grade.metricLabel,
+      rowCount: grade.rowCount,
+      gradedBy: grade.gradedBy,
+    }),
   };
 
   const mergedAnswers = {

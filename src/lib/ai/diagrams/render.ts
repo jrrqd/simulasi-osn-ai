@@ -522,9 +522,6 @@ export function getFigureFromPayload(
     if (!item || typeof item !== "object") continue;
     const fig = item as Partial<ProblemFigure>;
     if (fig.id !== figureId) continue;
-    if (typeof fig.svg === "string" && fig.svg.includes("<svg")) {
-      return fig as ProblemFigure;
-    }
     const diagram = diagramSpecSchema.safeParse(fig.diagram);
     if (diagram.success) {
       return {

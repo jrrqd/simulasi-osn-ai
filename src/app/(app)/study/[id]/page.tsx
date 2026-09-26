@@ -85,7 +85,10 @@ export default async function LessonPage({
         track={lesson.track}
         topic={lesson.topic}
         bodyHtmlIds={toc}
-        initialQuestions={questions}
+        initialQuestions={questions.map(
+          ({ answer: _answer, explanation: _explanation, ...question }) =>
+            question,
+        )}
         initialChecksPassed={progress?.checksPassed ?? {}}
         initiallyCompleted={completed}
         initialSrs={initialSrs}

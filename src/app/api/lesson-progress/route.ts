@@ -10,6 +10,7 @@ import {
   recordCheckAttempt,
 } from "@/lib/lesson-checks";
 import { recordAttempt } from "@/lib/attempts";
+import { scoreCheckQuestion } from "@/lib/scoring";
 
 export async function GET(req: Request) {
   const authResult = await requireApiUser(req);
@@ -38,9 +39,8 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => null)) as {
     lessonId?: unknown;
-    checksPassed?: unknown;
     complete?: unknown;
-    checkResult?: { questionId?: unknown; correct?: unknown };
+    submission?: { questionId?: unknown; answer?: unknown };
   } | null;
 
   if (!body || typeof body.lessonId !== "string" || !body.lessonId.trim()) {
@@ -52,51 +52,58 @@ export async function POST(req: Request) {
     return Response.json({ error: "Modul tidak ditemukan" }, { status: 404 });
   }
 
-  let checksPassed: Record<string, boolean> | undefined;
-  if (body.checksPassed != null) {
-    if (
-      typeof body.checksPassed !== "object" ||
-      Array.isArray(body.checksPassed)
-    ) {
-      return Response.json({ error: "checksPassed tidak valid" }, { status: 400 });
-    }
-    checksPassed = {};
-    for (const [k, v] of Object.entries(
-      body.checksPassed as Record<string, unknown>,
-    )) {
-      if (typeof v === "boolean") checksPassed[k] = v;
-    }
-  }
-
   let srs: {
     questionId: string;
     wrongStreak: number;
     dueAt: string;
   } | null = null;
+  let grade: {
+    questionId: string;
+    correct: boolean;
+    formatHint?: string;
+    explanation: string;
+    answer: string;
+  } | null = null;
 
   try {
-    const checkResult = body.checkResult;
-    if (
-      checkResult &&
-      typeof checkResult.questionId === "string" &&
-      typeof checkResult.correct === "boolean"
-    ) {
-      const questions = await getLessonCheckQuestions(body.lessonId);
-      const q = questions.find((x) => x.id === checkResult.questionId);
+    const questions = await getLessonCheckQuestions(body.lessonId);
+    const existing = (await getUserLessonProgress(authResult.user.id)).get(
+      body.lessonId,
+    );
+    const checksPassed: Record<string, boolean> = {
+      ...(existing?.checksPassed ?? {}),
+    };
+
+    const submission = body.submission;
+    if (submission && typeof submission.questionId === "string") {
+      const q = questions.find((x) => x.id === submission.questionId);
+      if (!q) {
+        return Response.json(
+          { error: "Soal cek konsep tidak ditemukan" },
+          { status: 404 },
+        );
+      }
+      const result = scoreCheckQuestion(q, submission.answer);
+      checksPassed[q.id] = result.correct;
+      grade = {
+        questionId: q.id,
+        correct: result.correct,
+        formatHint: result.formatHint,
+        explanation: q.explanation,
+        answer: String(q.answer),
+      };
       const row = await recordCheckAttempt({
         userId: authResult.user.id,
         lessonId: body.lessonId,
-        questionId: checkResult.questionId,
-        correct: checkResult.correct,
+        questionId: q.id,
+        correct: result.correct,
       });
       srs = {
         questionId: row.questionId,
         wrongStreak: row.wrongStreak,
         dueAt: row.dueAt.toISOString(),
       };
-
-      // Feed topic mastery when correct (lightweight telemetry)
-      if (checkResult.correct && q) {
+      if (result.correct) {
         await recordAttempt({
           userId: authResult.user.id,
           problemId: `lesson-check:${body.lessonId}:${q.id}`,
@@ -114,25 +121,28 @@ export async function POST(req: Request) {
       }
     }
 
-    const row = await upsertLessonProgress({
+    const allPassed =
+      questions.length > 0 &&
+      questions.every((q) => checksPassed[q.id] === true);
+    const progress = await upsertLessonProgress({
       userId: authResult.user.id,
       lessonId: body.lessonId,
       checksPassed,
-      complete: body.complete === true,
+      complete:
+        questions.length === 0
+          ? body.complete === true
+          : allPassed,
     });
-
-    // Auto-complete when all current checks passed
-    const allChecks = await getLessonCheckQuestions(body.lessonId);
-    const passedMap = row.checksPassed;
-    const allPassed =
-      allChecks.length > 0 && allChecks.every((q) => passedMap[q.id] === true);
-    let progress = row;
-    if (allPassed && row.status !== "completed") {
-      progress = await upsertLessonProgress({
-        userId: authResult.user.id,
-        lessonId: body.lessonId,
-        complete: true,
-      });
+    if (body.complete === true && questions.length > 0 && !allPassed) {
+      return Response.json(
+        {
+          error:
+            "Selesaikan semua cek konsep dengan benar sebelum menandai level selesai.",
+          progress,
+          grade,
+        },
+        { status: 400 },
+      );
     }
 
     const attemptsMap = await getUserCheckAttempts(
@@ -142,6 +152,7 @@ export async function POST(req: Request) {
 
     return Response.json({
       progress,
+      grade,
       srs,
       srsByQuestion: Object.fromEntries(
         [...attemptsMap.entries()].map(([id, a]) => [

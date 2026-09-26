@@ -3,26 +3,8 @@ import { defaultProblemWeight, isCodingProblem } from "@/lib/content/types";
 import {
   scoreAnswer,
   type CodeSpecRunResult,
-  type CompetitionRunResult,
 } from "@/lib/scoring/index";
-
-function competitionResultFromAnswer(
-  submitted: unknown,
-): CompetitionRunResult | null {
-  if (!submitted || typeof submitted !== "object") return null;
-  const row = submitted as Record<string, unknown>;
-  if (typeof row.score !== "number") return null;
-  return {
-    metricValue: Number(row.metricValue) || 0,
-    score: Number(row.score) || 0,
-    metricLabel: String(row.metricLabel || "Metric"),
-    log: String(row.log || ""),
-    summary: typeof row.summary === "string" ? row.summary : undefined,
-    rowCount: Number(row.rowCount) || 0,
-    gradedBy:
-      row.gradedBy === "llm_assisted" ? "llm_assisted" : "deterministic",
-  };
-}
+import { readStampedCompetitionResult } from "@/lib/scoring/competition-stamp";
 
 export type MockScoreSummary = {
   earnedWeight: number;
@@ -96,7 +78,7 @@ export function scoreMockProblems(params: {
     const submitted = answers[p.id];
     const competitionResult =
       p.answerType === "notebook_submission"
-        ? competitionResultFromAnswer(submitted)
+        ? readStampedCompetitionResult(p.id, submitted)
         : null;
     const unanswered =
       p.answerType === "notebook_submission"

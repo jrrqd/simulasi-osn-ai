@@ -1,37 +1,48 @@
 import { readFile } from "node:fs/promises";
+import { NextRequest } from "next/server";
+import { requireApiUser } from "@/lib/api";
 import { getGeneratedProblem } from "@/lib/content/shared";
 import { getFigureFromPayload } from "@/lib/ai/diagrams";
-import { findRasterFigureFile } from "@/lib/ai/materialize-images";
+import {
+  findRasterFigureFile,
+  isSafeContentId,
+} from "@/lib/ai/materialize-images";
+
+const PRIVATE_CACHE = "private, no-store";
 
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   ctx: { params: Promise<{ problemId: string; figureId: string }> },
 ) {
+  const auth = await requireApiUser(req);
+  if ("error" in auth) return auth.error;
+
   const { problemId, figureId } = await ctx.params;
-  if (!problemId || !figureId) {
+  const pid = decodeURIComponent(problemId);
+  const fid = decodeURIComponent(figureId);
+  if (!isSafeContentId(pid) || !isSafeContentId(fid)) {
     return new Response("Not found", { status: 404 });
   }
 
-  // Prefer on-disk raster (MiniMax image-01 / persisted downloads).
-  const raster = await findRasterFigureFile(problemId, figureId);
+  const raster = await findRasterFigureFile(pid, fid);
   if (raster) {
     const bytes = await readFile(raster.absolutePath);
     return new Response(bytes, {
       status: 200,
       headers: {
         "Content-Type": raster.contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": PRIVATE_CACHE,
+        "X-Content-Type-Options": "nosniff",
       },
     });
   }
 
-  // Fall back to inline SVG diagram specs stored in the problem payload.
-  const problem = await getGeneratedProblem(problemId);
+  const problem = await getGeneratedProblem(pid);
   if (!problem) {
     return new Response("Not found", { status: 404 });
   }
 
-  const fig = getFigureFromPayload(problem, figureId);
+  const fig = getFigureFromPayload(problem, fid);
   if (!fig?.svg) {
     return new Response("Not found", { status: 404 });
   }
@@ -40,7 +51,8 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
-      "Cache-Control": "public, max-age=86400, immutable",
+      "Cache-Control": PRIVATE_CACHE,
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

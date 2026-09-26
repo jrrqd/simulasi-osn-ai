@@ -1,4 +1,4 @@
-import { and, count, eq, gte } from "drizzle-orm";
+import { and, count, eq, gte, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { assistantChatEvents } from "@/db/schema";
@@ -137,4 +137,66 @@ export async function recordAssistantChat(
     source,
     createdAt: new Date(),
   });
+}
+
+function userLockKey(userId: string) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < userId.length; i++) {
+    hash ^= userId.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash | 0;
+}
+
+/**
+ * Count and insert one assistant chat under a transaction-scoped advisory lock
+ * so parallel requests cannot all pass a stale remaining-quota check.
+ * Returns a 429 response when the free daily cap is already used.
+ */
+export async function reserveAssistantChat(
+  userId: string,
+  source: AssistantChatSource,
+  access: UserAccess,
+  settings: EffectiveAiSource | null | undefined,
+): Promise<Response | null> {
+  const matrix = await getAccessMatrix();
+  const gated = !shouldBypassAiAssistantQuota(access, settings, matrix);
+  const now = new Date();
+  const since = startOfDayAsiaJakarta(now);
+  const resetsAt = nextDayAsiaJakarta(now).toISOString();
+  const db = await getDb();
+
+  let blocked: Response | null = null;
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(481516234, ${userLockKey(userId)})`,
+    );
+    const [row] = await tx
+      .select({ value: count() })
+      .from(assistantChatEvents)
+      .where(
+        and(
+          eq(assistantChatEvents.userId, userId),
+          gte(assistantChatEvents.createdAt, since),
+        ),
+      );
+    const used = Number(row?.value ?? 0);
+    if (gated && used >= FREE_AI_ASSISTANT_DAILY_LIMIT) {
+      blocked = aiAssistantQuotaExceededResponse({
+        used,
+        limit: FREE_AI_ASSISTANT_DAILY_LIMIT,
+        remaining: 0,
+        resetsAt,
+        gated: true,
+      });
+      return;
+    }
+    await tx.insert(assistantChatEvents).values({
+      id: nanoid(),
+      userId,
+      source,
+      createdAt: now,
+    });
+  });
+  return blocked;
 }

@@ -5,8 +5,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import type { CheckQuestion } from "@/lib/content/types";
+
+export type PublicCheckQuestion = Omit<CheckQuestion, "answer" | "explanation">;
 import { NumericInput } from "@/components/numeric-input";
-import { scoreCheckQuestion } from "@/lib/scoring";
 
 type SrsSnapshot = {
   questionId: string;
@@ -14,11 +15,18 @@ type SrsSnapshot = {
   dueAt?: string;
 };
 
+type GradeResult = {
+  questionId: string;
+  correct: boolean;
+  formatHint?: string;
+  explanation: string;
+  answer: string;
+};
+
 async function saveProgress(body: {
   lessonId: string;
-  checksPassed?: Record<string, boolean>;
   complete?: boolean;
-  checkResult?: { questionId: string; correct: boolean };
+  submission?: { questionId: string; answer: string };
 }) {
   const res = await fetch(appPath("/api/lesson-progress"), {
     method: "POST",
@@ -33,6 +41,7 @@ async function saveProgress(body: {
       checksPassed: Record<string, boolean>;
     };
     srs?: SrsSnapshot;
+    grade?: GradeResult | null;
   };
 }
 
@@ -47,7 +56,7 @@ export function LessonChecks({
   generating = false,
 }: {
   lessonId: string;
-  questions: CheckQuestion[];
+  questions: PublicCheckQuestion[];
   initialChecksPassed?: Record<string, boolean>;
   initiallyCompleted?: boolean;
   initialSrs?: Record<string, SrsSnapshot>;
@@ -73,6 +82,9 @@ export function LessonChecks({
     return init;
   });
   const [formatHints, setFormatHints] = useState<Record<string, string>>({});
+  const [feedback, setFeedback] = useState<
+    Record<string, { explanation: string; answer: string }>
+  >({});
   const [completed, setCompleted] = useState(initiallyCompleted);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -92,23 +104,44 @@ export function LessonChecks({
     [questions, checksPassed],
   );
 
-  async function persist(
-    nextChecks: Record<string, boolean>,
-    complete?: boolean,
-    checkResult?: { questionId: string; correct: boolean },
-  ) {
+  async function persist(input: {
+    complete?: boolean;
+    submission?: { questionId: string; answer: string };
+  }) {
     setSaving(true);
     setError("");
     try {
       const data = await saveProgress({
         lessonId,
-        checksPassed: nextChecks,
-        complete,
-        checkResult,
+        complete: input.complete,
+        submission: input.submission,
       });
       setChecksPassed(data.progress.checksPassed);
       if (data.progress.status === "completed") setCompleted(true);
-      if (data.srs && checkResult) {
+      if (data.grade) {
+        const graded = data.grade;
+        setRevealed((r) => ({ ...r, [graded.questionId]: true }));
+        setFeedback((f) => ({
+          ...f,
+          [graded.questionId]: {
+            explanation: graded.explanation,
+            answer: graded.answer,
+          },
+        }));
+        if (graded.formatHint) {
+          setFormatHints((h) => ({
+            ...h,
+            [graded.questionId]: graded.formatHint!,
+          }));
+        } else {
+          setFormatHints((h) => {
+            const next = { ...h };
+            delete next[graded.questionId];
+            return next;
+          });
+        }
+      }
+      if (data.srs && input.submission) {
         setWrongStreak((w) => ({
           ...w,
           [data.srs!.questionId]: data.srs!.wrongStreak,
@@ -121,29 +154,9 @@ export function LessonChecks({
     }
   }
 
-  async function handleCheck(q: CheckQuestion) {
-    const submitted = answers[q.id] ?? "";
-    const result = scoreCheckQuestion(q, submitted);
-    setRevealed((r) => ({ ...r, [q.id]: true }));
-    if (result.formatHint) {
-      setFormatHints((h) => ({ ...h, [q.id]: result.formatHint! }));
-    } else {
-      setFormatHints((h) => {
-        const next = { ...h };
-        delete next[q.id];
-        return next;
-      });
-    }
-    const next = { ...checksPassed, [q.id]: result.correct };
-    setChecksPassed(next);
-    if (!result.correct) {
-      setWrongStreak((w) => ({ ...w, [q.id]: (w[q.id] ?? 0) + 1 }));
-    } else {
-      setWrongStreak((w) => ({ ...w, [q.id]: 0 }));
-    }
-    await persist(next, undefined, {
-      questionId: q.id,
-      correct: result.correct,
+  async function handleCheck(q: PublicCheckQuestion) {
+    await persist({
+      submission: { questionId: q.id, answer: answers[q.id] ?? "" },
     });
   }
 
@@ -154,7 +167,7 @@ export function LessonChecks({
   }
 
   async function handleComplete() {
-    await persist(checksPassed, true);
+    await persist({ complete: true });
   }
 
   if (questions.length === 0) {
@@ -252,10 +265,7 @@ export function LessonChecks({
         {visibleQuestions.map((q) => {
           const show = revealed[q.id];
           const storedOk = checksPassed[q.id] === true;
-          const result = show
-            ? scoreCheckQuestion(q, answers[q.id] ?? "")
-            : null;
-          const ok = show ? Boolean(result?.correct) : storedOk;
+          const ok = storedOk;
           const streak = wrongStreak[q.id] ?? 0;
           const hintIndex = Math.min(streak, q.hints?.length ?? 0) - 1;
           const hint =
@@ -332,9 +342,9 @@ export function LessonChecks({
                     {ok
                       ? "Benar. "
                       : show
-                        ? `Kurang tepat (kunci: ${String(q.answer)}). `
+                        ? `Kurang tepat (kunci: ${feedback[q.id]?.answer ?? ""}). `
                         : ""}
-                    {ok || show ? q.explanation : null}
+                    {feedback[q.id]?.explanation ?? ""}
                   </p>
                   {formatHints[q.id] ? (
                     <p className="text-[var(--bad)]">{formatHints[q.id]}</p>
@@ -384,7 +394,9 @@ export function LessonChecks({
           <p className="text-sm text-[var(--muted)]">
             {completed
               ? "Checklist sudah dicentang. Lanjut side quest jika mau."
-              : "Tandai selesai setelah baca, atau jawab semua cek konsep dengan benar."}
+              : questions.length > 0
+                ? "Jawab semua cek konsep dengan benar untuk menyelesaikan level."
+                : "Tandai selesai setelah membaca modul."}
           </p>
           {error ? <p className="mt-1 text-sm text-[var(--bad)]">{error}</p> : null}
         </div>
@@ -397,7 +409,10 @@ export function LessonChecks({
           <button
             type="button"
             className="btn btn-primary"
-            disabled={saving}
+            disabled={
+              saving ||
+              (questions.length > 0 && passedCount < questions.length)
+            }
             onClick={() => void handleComplete()}
           >
             {saving ? "Menyimpan…" : "Selesai level"}

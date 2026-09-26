@@ -7,8 +7,8 @@ export default async function SettingsUpgradePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Upgrade VIP"
-        description="Bayar Rp 50.000 via Trakteer untuk VIP 30 hari — asisten AI tanpa batas kuota."
+        title="Upgrade"
+        description="Aktifkan atau perpanjang VIP lewat Trakteer — asisten AI dan generate simulasi tanpa kuota harian."
       />
       <SettingsUpgradeClient userEmail={user.email} />
     </div>

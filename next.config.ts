@@ -10,7 +10,31 @@ const BUILD_ID = (() => {
   }
 })();
 
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  "https://www.googletagmanager.com",
+  "https://edge-cdn.trakteer.id",
+  ...(process.env.NODE_ENV === "production" ? [] : ["'unsafe-eval'"]),
+].join(" ");
+
+// Keep in sync with deploy/nginx-osnai.conf (location /simosnai).
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  `script-src ${scriptSrc}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://www.google-analytics.com https://www.googletagmanager.com https://edge-cdn.trakteer.id",
+  "font-src 'self' data:",
+  "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://edge-cdn.trakteer.id https://trakteer.id",
+  "frame-src https://trakteer.id https://*.trakteer.id",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: CONTENT_SECURITY_POLICY },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "settings-account-upgrade-ui",
+    at: "2026-09-26T13:40:00+07:00",
+    tag: "Akun",
+    title: "Jenis akun di Pengaturan + Upgrade VIP",
+    story:
+      "Pengaturan menampilkan jenis akun dan akses fasilitas. Halaman Upgrade diselaraskan dengan desain app — bayar Rp 50.000 untuk VIP 30 hari via Trakteer. Juga ekspor/hapus data akun, dan penguncian kunci jawaban soal yang masih dipakai simulasi aktif.",
+    href: "/settings",
+  },
+  {
     id: "vip-trakteer-assistant-quota",
     at: "2026-09-26T12:10:00+07:00",
     tag: "Akun",

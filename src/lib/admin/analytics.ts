@@ -98,7 +98,7 @@ export async function buildAdminAssistantContext(focusUserId?: string) {
     .slice(0, 8)
     .map(
       (s) =>
-        `- ${s.name} <${s.email}> · avg skor mock ${Math.round(s.avgLifetimeScore * 100)}% · ${s.attemptsCount} attempt · mock selesai ${s.mocksCompleted} · terakhir aktif ${s.lastActiveAt.toISOString()}`,
+        `- ${s.name} · avg skor mock ${Math.round(s.avgLifetimeScore * 100)}% · ${s.attemptsCount} attempt · mock selesai ${s.mocksCompleted} · terakhir aktif ${s.lastActiveAt.toISOString()}`,
     )
     .join("\n");
 
@@ -181,9 +181,9 @@ export async function buildAdminAssistantContext(focusUserId?: string) {
       focusBlock = `
 FOKUS PENGGUNA (halaman laporan yang sedang dibuka admin):
 Nama: ${summary.name}
-Email: ${summary.email}
+Id: ${summary.id}
 Role: ${summary.role}
-Profil: sekolah=${summary.schoolName ?? "—"}, kelas=${summary.grade ?? "—"}, kota=${summary.city ?? "—"}
+Kelas: ${summary.grade ?? "—"}
 Rata-rata skor mock (lifetime): ${Math.round(summary.avgLifetimeScore * 100)}%
 Attempt: ${summary.attemptsCount}
 Waktu latihan: ${formatMinutes(summary.practiceTimeMs)}

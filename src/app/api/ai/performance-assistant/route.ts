@@ -2,10 +2,7 @@ import { NextRequest } from "next/server";
 import { convertToModelMessages, streamText, UIMessage } from "ai";
 import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { assertApiFeature } from "@/lib/access/assert";
-import {
-  assertAiAssistantAllowed,
-  recordAssistantChat,
-} from "@/lib/ai/assistant-quota";
+import { reserveAssistantChat } from "@/lib/ai/assistant-quota";
 import { loadUserAccess } from "@/lib/user/load-user-access";
 import {
   PERFORMANCE_ASSISTANT_SYSTEM_PROMPT,
@@ -44,13 +41,13 @@ export async function POST(req: NextRequest) {
   if (!access) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const quotaDenied = await assertAiAssistantAllowed(
+  const quotaDenied = await reserveAssistantChat(
     authResult.user.id,
+    "performance",
     access,
     settings,
   );
   if (quotaDenied) return quotaDenied;
-  await recordAssistantChat(authResult.user.id, "performance");
 
   const model = createUserProvider({
     baseUrl: settings.baseUrl,
