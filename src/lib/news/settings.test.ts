@@ -6,6 +6,7 @@ import {
   normalizeKeywords,
   normalizeIntervalHours,
   normalizeAnchorHourWib,
+  normalizeAnchorWeekdayWib,
 } from "@/lib/news/settings";
 
 test("normalizeKeywords trims, lowercases, dedupes", () => {
@@ -15,8 +16,9 @@ test("normalizeKeywords trims, lowercases, dedupes", () => {
   ]);
 });
 
-test("normalizeIntervalHours falls back to 24", () => {
+test("normalizeIntervalHours accepts weekly 168", () => {
   assert.equal(normalizeIntervalHours(6), 6);
+  assert.equal(normalizeIntervalHours(168), 168);
   assert.equal(normalizeIntervalHours(3), 24);
 });
 
@@ -24,6 +26,12 @@ test("normalizeAnchorHourWib clamps", () => {
   assert.equal(normalizeAnchorHourWib(6), 6);
   assert.equal(normalizeAnchorHourWib(-1), 0);
   assert.equal(normalizeAnchorHourWib(30), 23);
+});
+
+test("normalizeAnchorWeekdayWib clamps", () => {
+  assert.equal(normalizeAnchorWeekdayWib(1), 1);
+  assert.equal(normalizeAnchorWeekdayWib(-2), 0);
+  assert.equal(normalizeAnchorWeekdayWib(9), 6);
 });
 
 test("isNewsRefreshDue daily at anchor", () => {
@@ -50,7 +58,48 @@ test("isNewsRefreshDue daily at anchor", () => {
   );
 });
 
+test("isNewsRefreshDue weekly on matching weekday+hour", () => {
+  // 2026-09-28 is Senin; 06:00 WIB = 2026-09-27 23:00 UTC
+  const mondaySix = new Date("2026-09-27T23:00:00.000Z");
+  assert.equal(
+    isNewsRefreshDue({
+      enabled: true,
+      intervalHours: 168,
+      anchorHourWib: 6,
+      anchorWeekdayWib: 1,
+      now: mondaySix,
+    }),
+    true,
+  );
+  // Same Monday but 07:00 WIB
+  const mondaySeven = new Date("2026-09-28T00:00:00.000Z");
+  assert.equal(
+    isNewsRefreshDue({
+      enabled: true,
+      intervalHours: 168,
+      anchorHourWib: 6,
+      anchorWeekdayWib: 1,
+      now: mondaySeven,
+    }),
+    false,
+  );
+  // Sunday 06:00 WIB
+  const sundaySix = new Date("2026-09-26T23:00:00.000Z");
+  assert.equal(
+    isNewsRefreshDue({
+      enabled: true,
+      intervalHours: 168,
+      anchorHourWib: 6,
+      anchorWeekdayWib: 1,
+      now: sundaySix,
+    }),
+    false,
+  );
+});
+
 test("describeNewsSchedule", () => {
   assert.match(describeNewsSchedule(24, 6), /06:00/);
   assert.match(describeNewsSchedule(12, 6), /12 jam/);
+  assert.match(describeNewsSchedule(168, 6, 1), /Senin/);
+  assert.match(describeNewsSchedule(168, 6, 1), /minggu/);
 });

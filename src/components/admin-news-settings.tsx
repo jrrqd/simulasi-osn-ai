@@ -9,6 +9,7 @@ type NewsSettings = {
   keywords: string[];
   intervalHours: number;
   anchorHourWib: number;
+  anchorWeekdayWib: number;
   scheduleLabel?: string;
   lastRefreshAt?: string | null;
   lastRefreshOk?: boolean | null;
@@ -21,6 +22,17 @@ const INTERVAL_OPTIONS = [
   { value: 6, label: "Setiap 6 jam" },
   { value: 12, label: "Setiap 12 jam" },
   { value: 24, label: "Setiap hari" },
+  { value: 168, label: "Setiap minggu" },
+] as const;
+
+const WEEKDAY_OPTIONS = [
+  { value: 0, label: "Minggu" },
+  { value: 1, label: "Senin" },
+  { value: 2, label: "Selasa" },
+  { value: 3, label: "Rabu" },
+  { value: 4, label: "Kamis" },
+  { value: 5, label: "Jumat" },
+  { value: 6, label: "Sabtu" },
 ] as const;
 
 function formatWib(iso: string | null | undefined): string {
@@ -41,6 +53,7 @@ export function AdminNewsSettings() {
   const [keywordsText, setKeywordsText] = useState("");
   const [intervalHours, setIntervalHours] = useState(24);
   const [anchorHourWib, setAnchorHourWib] = useState(6);
+  const [anchorWeekdayWib, setAnchorWeekdayWib] = useState(1);
   const [enabled, setEnabled] = useState(true);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,6 +63,7 @@ export function AdminNewsSettings() {
     setKeywordsText((data.keywords ?? []).join("\n"));
     setIntervalHours(data.intervalHours ?? 24);
     setAnchorHourWib(data.anchorHourWib ?? 6);
+    setAnchorWeekdayWib(data.anchorWeekdayWib ?? 1);
     setEnabled(data.enabled !== false);
   }, []);
 
@@ -82,6 +96,7 @@ export function AdminNewsSettings() {
         keywords,
         intervalHours,
         anchorHourWib,
+        anchorWeekdayWib,
         enabled,
       }),
     });
@@ -123,6 +138,8 @@ export function AdminNewsSettings() {
       <p className="text-sm text-[var(--muted)]">Memuat pengaturan berita…</p>
     );
   }
+
+  const isWeekly = intervalHours >= 168;
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_0.75fr]">
@@ -172,6 +189,40 @@ export function AdminNewsSettings() {
               ))}
             </select>
           </label>
+          {isWeekly ? (
+            <label className="block space-y-1 text-sm">
+              <span>Hari acuan (WIB)</span>
+              <select
+                className="input"
+                value={anchorWeekdayWib}
+                onChange={(e) => setAnchorWeekdayWib(Number(e.target.value))}
+              >
+                {WEEKDAY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className="block space-y-1 text-sm">
+              <span>Jam acuan (WIB)</span>
+              <select
+                className="input"
+                value={anchorHourWib}
+                onChange={(e) => setAnchorHourWib(Number(e.target.value))}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>
+                    {String(h).padStart(2, "0")}:00
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+
+        {isWeekly ? (
           <label className="block space-y-1 text-sm">
             <span>Jam acuan (WIB)</span>
             <select
@@ -186,7 +237,7 @@ export function AdminNewsSettings() {
               ))}
             </select>
           </label>
-        </div>
+        ) : null}
 
         <p className="rounded-xl border border-[var(--line)] bg-[rgba(255,252,246,0.5)] px-3 py-2 text-sm text-[var(--muted)]">
           Jadwal:{" "}

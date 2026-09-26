@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     scheduleLabel: describeNewsSchedule(
       settings.intervalHours,
       settings.anchorHourWib,
+      settings.anchorWeekdayWib,
     ),
   });
 }
@@ -35,6 +36,7 @@ export async function PUT(req: NextRequest) {
       keywords: body.keywords,
       intervalHours: body.intervalHours,
       anchorHourWib: body.anchorHourWib,
+      anchorWeekdayWib: body.anchorWeekdayWib,
       enabled: body.enabled !== false,
       updatedBy: authResult.user.id,
     });
@@ -44,6 +46,7 @@ export async function PUT(req: NextRequest) {
       scheduleLabel: describeNewsSchedule(
         settings.intervalHours,
         settings.anchorHourWib,
+        settings.anchorWeekdayWib,
       ),
     });
   } catch (err) {
@@ -80,6 +83,7 @@ export async function POST(req: NextRequest) {
       scheduleLabel: describeNewsSchedule(
         settings.intervalHours,
         settings.anchorHourWib,
+        settings.anchorWeekdayWib,
       ),
     });
   } catch (err) {

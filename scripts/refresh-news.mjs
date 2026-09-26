@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS news_feed_settings (
   keywords jsonb NOT NULL,
   interval_hours integer NOT NULL DEFAULT 24,
   anchor_hour_wib integer NOT NULL DEFAULT 6,
+  anchor_weekday_wib integer NOT NULL DEFAULT 1,
   enabled boolean NOT NULL DEFAULT true,
   last_refresh_at timestamptz,
   last_refresh_ok boolean,
@@ -59,6 +60,8 @@ CREATE TABLE IF NOT EXISTS news_feed_settings (
   updated_by text,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE news_feed_settings
+  ADD COLUMN IF NOT EXISTS anchor_weekday_wib integer NOT NULL DEFAULT 1;
 `;
 
 function normalizeKeywords(raw) {
@@ -91,17 +94,36 @@ function currentHourWib(now = new Date()) {
   return hour === 24 ? 0 : hour;
 }
 
-function isDue({ enabled, intervalHours, anchorHourWib }, now = new Date()) {
+function currentWeekdayWib(now = new Date()) {
+  const wd = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jakarta",
+    weekday: "short",
+  }).format(now);
+  const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[wd] ?? 1;
+}
+
+function isDue(
+  { enabled, intervalHours, anchorHourWib, anchorWeekdayWib },
+  now = new Date(),
+) {
   if (!enabled) return false;
   const hour = currentHourWib(now);
   const interval = Math.max(1, Math.trunc(intervalHours) || 24);
   const anchor = ((Math.trunc(anchorHourWib) % 24) + 24) % 24;
+  if (interval >= 168) {
+    const weekday = Math.min(
+      6,
+      Math.max(0, Math.trunc(Number(anchorWeekdayWib) || 1)),
+    );
+    return currentWeekdayWib(now) === weekday && hour === anchor;
+  }
   return (hour - anchor + 24) % interval === 0;
 }
 
 async function loadSettings(sql) {
   const rows = await sql`
-    SELECT keywords, interval_hours, anchor_hour_wib, enabled
+    SELECT keywords, interval_hours, anchor_hour_wib, anchor_weekday_wib, enabled
     FROM news_feed_settings WHERE id = 'default' LIMIT 1
   `;
   if (!rows.length) {
@@ -109,20 +131,27 @@ async function loadSettings(sql) {
       keywords: [...DEFAULT_KEYWORDS],
       intervalHours: 24,
       anchorHourWib: 6,
+      anchorWeekdayWib: 1,
       enabled: true,
     };
   }
   const row = rows[0];
   const keywords = normalizeKeywords(row.keywords);
   const intervalRaw = Number(row.interval_hours);
-  const intervalHours = [1, 6, 12, 24].includes(intervalRaw) ? intervalRaw : 24;
+  const intervalHours = [1, 6, 12, 24, 168].includes(intervalRaw)
+    ? intervalRaw
+    : 24;
   let anchor = Number(row.anchor_hour_wib);
   if (!Number.isFinite(anchor)) anchor = 6;
   anchor = Math.min(23, Math.max(0, Math.trunc(anchor)));
+  let weekday = Number(row.anchor_weekday_wib);
+  if (!Number.isFinite(weekday)) weekday = 1;
+  weekday = Math.min(6, Math.max(0, Math.trunc(weekday)));
   return {
     keywords: keywords.length ? keywords : [...DEFAULT_KEYWORDS],
     intervalHours,
     anchorHourWib: anchor,
+    anchorWeekdayWib: weekday,
     enabled: row.enabled !== false,
   };
 }
@@ -131,13 +160,14 @@ async function recordResult(sql, ok, message) {
   const settings = await loadSettings(sql);
   await sql`
     INSERT INTO news_feed_settings (
-      id, keywords, interval_hours, anchor_hour_wib, enabled,
+      id, keywords, interval_hours, anchor_hour_wib, anchor_weekday_wib, enabled,
       last_refresh_at, last_refresh_ok, last_refresh_message, updated_at
     ) VALUES (
       'default',
       ${sql.json(settings.keywords)},
       ${settings.intervalHours},
       ${settings.anchorHourWib},
+      ${settings.anchorWeekdayWib},
       ${settings.enabled},
       ${new Date()},
       ${ok},
@@ -300,7 +330,9 @@ async function main() {
           enabled: settings.enabled,
           intervalHours: settings.intervalHours,
           anchorHourWib: settings.anchorHourWib,
+          anchorWeekdayWib: settings.anchorWeekdayWib,
           hourWib: currentHourWib(),
+          weekdayWib: currentWeekdayWib(),
         }),
       );
       return;

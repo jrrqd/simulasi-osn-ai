@@ -332,6 +332,7 @@ const SCHEMA_DDL = `
       keywords jsonb NOT NULL,
       interval_hours integer NOT NULL DEFAULT 24,
       anchor_hour_wib integer NOT NULL DEFAULT 6,
+      anchor_weekday_wib integer NOT NULL DEFAULT 1,
       enabled boolean NOT NULL DEFAULT true,
       last_refresh_at timestamptz,
       last_refresh_ok boolean,
@@ -339,6 +340,8 @@ const SCHEMA_DDL = `
       updated_by text,
       updated_at timestamptz NOT NULL DEFAULT now()
     );
+    ALTER TABLE news_feed_settings
+      ADD COLUMN IF NOT EXISTS anchor_weekday_wib integer NOT NULL DEFAULT 1;
     CREATE TABLE IF NOT EXISTS access_policies (
       tier text PRIMARY KEY,
       features jsonb NOT NULL,
