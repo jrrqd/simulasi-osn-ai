@@ -32,6 +32,8 @@ export const user = pgTable("user", {
   phase: text("phase").notNull().default("pre-seleksi"),
   /** Student tier: free | vip | test (ignored for admins) */
   userType: text("user_type").notNull().default("free"),
+  /** When paid VIP membership ends (null = not a timed VIP / test / admin). */
+  vipExpiresAt: timestamp("vip_expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -470,4 +472,30 @@ export const accessPolicies = pgTable("access_policies", {
     .$type<Record<string, boolean>>()
     .notNull(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+/** One row per user message that consumed an AI-assistant quota slot. */
+export const assistantChatEvents = pgTable(
+  "assistant_chat_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("assistant_chat_events_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
+
+/** Idempotent Trakteer payment ledger for VIP grants. */
+export const trakteerPayments = pgTable("trakteer_payments", {
+  orderId: text("order_id").primaryKey(),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  amountIdr: integer("amount_idr").notNull(),
+  supporterMessage: text("supporter_message"),
+  raw: jsonb("raw").$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });

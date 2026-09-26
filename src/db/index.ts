@@ -51,6 +51,7 @@ const SCHEMA_DDL = `
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS assistant_pet text NOT NULL DEFAULT 'cat';
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'pre-seleksi';
     ALTER TABLE "user" ADD COLUMN IF NOT EXISTS user_type text NOT NULL DEFAULT 'free';
+    ALTER TABLE "user" ADD COLUMN IF NOT EXISTS vip_expires_at timestamptz;
     CREATE TABLE IF NOT EXISTS session (
       id text PRIMARY KEY,
       expires_at timestamptz NOT NULL,
@@ -346,6 +347,22 @@ const SCHEMA_DDL = `
       tier text PRIMARY KEY,
       features jsonb NOT NULL,
       updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS assistant_chat_events (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      source text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS assistant_chat_events_user_created_idx
+      ON assistant_chat_events(user_id, created_at);
+    CREATE TABLE IF NOT EXISTS trakteer_payments (
+      order_id text PRIMARY KEY,
+      user_id text REFERENCES "user"(id) ON DELETE SET NULL,
+      amount_idr integer NOT NULL,
+      supporter_message text,
+      raw jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
     );
 `;
 

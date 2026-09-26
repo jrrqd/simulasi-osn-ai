@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "vip-trakteer-assistant-quota",
+    at: "2026-09-26T12:10:00+07:00",
+    tag: "Akun",
+    title: "Kuota asisten AI + VIP Trakteer",
+    story:
+      "Akun gratis mendapat 5 chat asisten AI per hari (reset 00:00 WIB). Upgrade VIP Rp 50.000 / 30 hari via Trakteer di Pengaturan → Upgrade — pembayaran otomatis aktifkan VIP. Juga ada lupa/reset password lewat email.",
+    href: "/settings/upgrade",
+  },
+  {
     id: "final-ekka-2026-day-presets",
     at: "2026-08-30T18:20:00+07:00",
     tag: "Simulasi",

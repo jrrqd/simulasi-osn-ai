@@ -25,4 +25,6 @@ test("DEFAULT_ACCESS_MATRIX matches pre-matrix product rules", () => {
   assert.equal(DEFAULT_ACCESS_MATRIX.free.ai_assistant, true);
   assert.equal(DEFAULT_ACCESS_MATRIX.vip.ai_assistant, true);
   assert.equal(DEFAULT_ACCESS_MATRIX.admin.ai_assistant, true);
+  assert.equal(DEFAULT_ACCESS_MATRIX.free.bypass_ai_assistant_quota, false);
+  assert.equal(DEFAULT_ACCESS_MATRIX.vip.bypass_ai_assistant_quota, true);
 });

@@ -3,6 +3,11 @@ import { convertToModelMessages, streamText, UIMessage } from "ai";
 import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { assertApiFeature } from "@/lib/access/assert";
 import {
+  assertAiAssistantAllowed,
+  recordAssistantChat,
+} from "@/lib/ai/assistant-quota";
+import { loadUserAccess } from "@/lib/user/load-user-access";
+import {
   PRACTICE_ASSISTANT_SYSTEM_PROMPT,
   createUserProvider,
 } from "@/lib/ai/provider";
@@ -120,6 +125,18 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+
+  const access = await loadUserAccess(authResult.user.id);
+  if (!access) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const quotaDenied = await assertAiAssistantAllowed(
+    authResult.user.id,
+    access,
+    settings,
+  );
+  if (quotaDenied) return quotaDenied;
+  await recordAssistantChat(authResult.user.id, "practice");
 
   const model = createUserProvider({
     baseUrl: settings.baseUrl,

@@ -15,16 +15,24 @@ import {
   assistantFabButtonClass,
   useAssistantPet,
 } from "@/components/assistant-fab";
+import {
+  AssistantChatError,
+  AssistantQuotaLabel,
+  assistantChatFetch,
+  useAssistantQuota,
+} from "@/components/assistant-quota-ui";
 
 export function PerformanceAssistant() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const pet = useAssistantPet();
+  const { quota, refresh } = useAssistantQuota(open);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
     id: "performance-assistant",
     transport: new DefaultChatTransport({
       api: appPath("/api/ai/performance-assistant"),
+      fetch: assistantChatFetch,
     }),
   });
 
@@ -34,6 +42,7 @@ export function PerformanceAssistant() {
     const text = input;
     setInput("");
     await sendMessage({ text });
+    refresh();
   }
 
   return (
@@ -48,6 +57,7 @@ export function PerformanceAssistant() {
               <h2 className="display text-lg leading-tight">
                 Tanya kesiapanmu
               </h2>
+              <AssistantQuotaLabel quota={quota} />
             </div>
             <button
               type="button"
@@ -82,9 +92,7 @@ export function PerformanceAssistant() {
             {shouldShowAssistantTyping(status, messages) ? (
               <AssistantTypingIndicator />
             ) : null}
-            {error && (
-              <p className="text-sm text-[var(--bad)]">{error.message}</p>
-            )}
+            <AssistantChatError error={error} />
           </div>
 
           <form

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
@@ -78,6 +79,16 @@ export function AuthForm({
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
+      {mode === "login" && (
+        <p className="text-right text-sm">
+          <Link
+            href="/forgot-password"
+            className="text-[var(--accent)] underline"
+          >
+            Lupa password?
+          </Link>
+        </p>
+      )}
       {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
       <button className="btn btn-primary w-full" disabled={loading} type="submit">
         {loading ? "Memproses…" : mode === "login" ? "Masuk" : "Daftar"}

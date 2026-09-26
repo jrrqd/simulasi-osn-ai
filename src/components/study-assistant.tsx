@@ -16,12 +16,19 @@ import {
   assistantFabButtonClass,
   useAssistantPet,
 } from "@/components/assistant-fab";
+import {
+  AssistantChatError,
+  AssistantQuotaLabel,
+  assistantChatFetch,
+  useAssistantQuota,
+} from "@/components/assistant-quota-ui";
 
 export function StudyAssistant() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const pet = useAssistantPet();
+  const { quota, refresh } = useAssistantQuota(open);
 
   const lessonId = useMemo(() => {
     const match = pathname?.match(/^\/study\/([^/?#]+)/);
@@ -33,6 +40,7 @@ export function StudyAssistant() {
     transport: new DefaultChatTransport({
       api: appPath("/api/ai/study-assistant"),
       body: { lessonId: lessonId || undefined },
+      fetch: assistantChatFetch,
     }),
   });
 
@@ -47,6 +55,7 @@ export function StudyAssistant() {
     const text = input;
     setInput("");
     await sendMessage({ text });
+    refresh();
   }
 
   return (
@@ -59,6 +68,7 @@ export function StudyAssistant() {
                 Asisten belajar
               </p>
               <h2 className="display text-lg leading-tight">Tanya materi</h2>
+              <AssistantQuotaLabel quota={quota} />
             </div>
             <button
               type="button"
@@ -88,9 +98,7 @@ export function StudyAssistant() {
             {shouldShowAssistantTyping(status, messages) ? (
               <AssistantTypingIndicator />
             ) : null}
-            {error && (
-              <p className="text-sm text-[var(--bad)]">{error.message}</p>
-            )}
+            <AssistantChatError error={error} />
           </div>
 
           <form

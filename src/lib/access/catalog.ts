@@ -16,6 +16,7 @@ export const ACCESS_FEATURE_IDS = [
   "mock_curated",
   "generate_simulasi",
   "ai_assistant",
+  "bypass_ai_assistant_quota",
   "bypass_simulasi_quota",
   "bypass_rate_limits",
   "admin_panel",
@@ -57,6 +58,12 @@ export const ACCESS_FEATURES: AccessFeatureDef[] = [
     label: "Asisten AI",
     description:
       "Tombol asisten mengambang di Belajar, Latihan, dan Performa (serta asisten admin).",
+  },
+  {
+    id: "bypass_ai_assistant_quota",
+    label: "Tanpa kuota asisten AI",
+    description:
+      "Lewati batas 5 chat/hari untuk asisten AI (akun gratis tetap terbatas; reset 00:00 WIB).",
   },
   {
     id: "bypass_simulasi_quota",
@@ -104,6 +111,7 @@ export const DEFAULT_ACCESS_MATRIX: AccessMatrix = {
     "mock_curated",
     "generate_simulasi",
     "ai_assistant",
+    "bypass_ai_assistant_quota",
     "bypass_simulasi_quota",
   ]),
   test: flags([
@@ -112,6 +120,7 @@ export const DEFAULT_ACCESS_MATRIX: AccessMatrix = {
     "mock_curated",
     "generate_simulasi",
     "ai_assistant",
+    "bypass_ai_assistant_quota",
     "bypass_simulasi_quota",
     "bypass_rate_limits",
   ]),

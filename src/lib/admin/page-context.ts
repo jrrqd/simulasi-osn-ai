@@ -42,6 +42,7 @@ function routeLabel(pathname: string): string {
   if (pathname === "/settings") return "Pengaturan";
   if (pathname === "/settings/pet") return "Pengaturan · Pet";
   if (pathname === "/settings/byok") return "Pengaturan · BYOK";
+  if (pathname === "/settings/upgrade") return "Pengaturan · Upgrade";
   if (pathname.startsWith("/review/")) return "Review soal + tutor";
   if (pathname === "/onboarding") return "Onboarding";
   if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
@@ -209,6 +210,12 @@ export async function buildAdminPageContext(
   if (pathname === "/settings/byok") {
     lines.push(
       "Pengaturan API key pribadi (BYOK) siswa. Admin boleh menjelaskan opsi, jangan minta secret/password.",
+    );
+  }
+
+  if (pathname === "/settings/upgrade") {
+    lines.push(
+      "Halaman upgrade VIP: bayar via Trakteer Rp 50.000 / 30 hari. Siswa harus menulis email akun di pesan dukungan Trakteer.",
     );
   }
 

@@ -52,6 +52,35 @@ export async function getAuth() {
       emailAndPassword: {
         enabled: true,
         minPasswordLength: 8,
+        sendResetPassword: async ({ user, url }) => {
+          const { sendPasswordResetEmail } = await import("@/lib/email/send");
+          sendPasswordResetEmail({
+            to: user.email,
+            name: user.name,
+            url,
+          });
+        },
+      },
+      databaseHooks: {
+        user: {
+          create: {
+            after: async (createdUser) => {
+              // Skip welcome for the bootstrap admin seed.
+              const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+              if (
+                adminEmail &&
+                createdUser.email?.toLowerCase() === adminEmail
+              ) {
+                return;
+              }
+              const { sendWelcomeEmail } = await import("@/lib/email/send");
+              void sendWelcomeEmail({
+                to: createdUser.email,
+                name: createdUser.name,
+              });
+            },
+          },
+        },
       },
       session: {
         expiresIn: 60 * 60 * 24 * 30,

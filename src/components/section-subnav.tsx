@@ -34,6 +34,7 @@ const PERFORMANCE_LINKS: SectionSubnavLink[] = [
 
 const SETTINGS_LINKS: SectionSubnavLink[] = [
   { href: "/settings", label: "Umum", exact: true },
+  { href: "/settings/upgrade", label: "Upgrade" },
   { href: "/settings/pet", label: "Pet" },
   { href: "/settings/byok", label: "BYOK" },
 ];

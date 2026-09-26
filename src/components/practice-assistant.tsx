@@ -16,6 +16,12 @@ import {
   assistantFabButtonClass,
   useAssistantPet,
 } from "@/components/assistant-fab";
+import {
+  AssistantChatError,
+  AssistantQuotaLabel,
+  assistantChatFetch,
+  useAssistantQuota,
+} from "@/components/assistant-quota-ui";
 
 function PracticeAssistantInner() {
   const pathname = usePathname();
@@ -23,11 +29,11 @@ function PracticeAssistantInner() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const pet = useAssistantPet();
+  const { quota, refresh } = useAssistantQuota(open);
 
   const problemId = useMemo(() => {
     const match = pathname?.match(/^\/practice\/([^/?#]+)/);
     const id = match?.[1] ?? "";
-    // Section tabs are not problem routes.
     if (id === "generate" || id === "ioai") return "";
     return id;
   }, [pathname]);
@@ -48,6 +54,7 @@ function PracticeAssistantInner() {
         track: !problemId && track ? track : undefined,
         topic: !problemId && topic ? topic : undefined,
       },
+      fetch: assistantChatFetch,
     }),
   });
 
@@ -62,6 +69,7 @@ function PracticeAssistantInner() {
     const text = input;
     setInput("");
     await sendMessage({ text });
+    refresh();
   }
 
   return (
@@ -76,6 +84,7 @@ function PracticeAssistantInner() {
               <h2 className="display text-lg leading-tight">
                 {problemId ? "Hint side quest" : "Coach side quest"}
               </h2>
+              <AssistantQuotaLabel quota={quota} />
             </div>
             <button
               type="button"
@@ -124,9 +133,7 @@ function PracticeAssistantInner() {
             {shouldShowAssistantTyping(status, messages) ? (
               <AssistantTypingIndicator />
             ) : null}
-            {error && (
-              <p className="text-sm text-[var(--bad)]">{error.message}</p>
-            )}
+            <AssistantChatError error={error} />
           </div>
 
           <form
