@@ -14,6 +14,7 @@ const adminLinks = [
   { href: "/admin/problems", label: "Bank soal" },
   { href: "/admin/mocks", label: "Bank simulasi" },
   { href: "/admin/countdown", label: "Countdown" },
+  { href: "/admin/news", label: "Berita" },
   { href: "/admin/ai", label: "LLM Bersama" },
 ];
 

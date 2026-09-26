@@ -1,20 +1,18 @@
 #!/usr/bin/env node
 /**
- * Daily news refresh for /berita (06:00 Asia/Jakarta via systemd timer).
+ * News refresh for /berita (systemd timer checks hourly; schedule from DB).
  *
- * Fetches Google News RSS for: osn ai, osn informatika, ioai, ekka,
- * toki, tim olimpiade komputer indonesia.
- * Stores title + short snippet + canonical URL only (no full article body).
- * Skips duplicate canonical URLs and same-host duplicate titles.
+ * Reads keywords + interval from news_feed_settings (falls back to defaults).
+ * Skip when not due unless FORCE=1 or --force.
  *
- * Usage: node scripts/refresh-news.mjs
+ * Usage: node scripts/refresh-news.mjs [--force]
  * Env: DATABASE_URL (required in production). Loads nothing from .env itself —
  * systemd EnvironmentFile=/etc/osnai/env supplies it on the VPS.
  */
 import { createHash, randomBytes } from "node:crypto";
 import postgres from "postgres";
 
-const KEYWORDS = [
+const DEFAULT_KEYWORDS = [
   "osn ai",
   "osn informatika",
   "ioai",
@@ -49,7 +47,109 @@ CREATE TABLE IF NOT EXISTS news_items (
 );
 CREATE INDEX IF NOT EXISTS news_items_published_idx ON news_items(published_at);
 CREATE INDEX IF NOT EXISTS news_items_host_title_idx ON news_items(source_host, title);
+CREATE TABLE IF NOT EXISTS news_feed_settings (
+  id text PRIMARY KEY DEFAULT 'default',
+  keywords jsonb NOT NULL,
+  interval_hours integer NOT NULL DEFAULT 24,
+  anchor_hour_wib integer NOT NULL DEFAULT 6,
+  enabled boolean NOT NULL DEFAULT true,
+  last_refresh_at timestamptz,
+  last_refresh_ok boolean,
+  last_refresh_message text,
+  updated_by text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 `;
+
+function normalizeKeywords(raw) {
+  const list = Array.isArray(raw)
+    ? raw
+    : typeof raw === "string"
+      ? raw.split(/[\n,]+/)
+      : [];
+  const seen = new Set();
+  const out = [];
+  for (const item of list) {
+    const k = String(item ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+    if (!k || k.length > 120 || seen.has(k)) continue;
+    seen.add(k);
+    out.push(k);
+  }
+  return out;
+}
+
+function currentHourWib(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jakarta",
+    hour: "numeric",
+    hour12: false,
+  }).formatToParts(now);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  return hour === 24 ? 0 : hour;
+}
+
+function isDue({ enabled, intervalHours, anchorHourWib }, now = new Date()) {
+  if (!enabled) return false;
+  const hour = currentHourWib(now);
+  const interval = Math.max(1, Math.trunc(intervalHours) || 24);
+  const anchor = ((Math.trunc(anchorHourWib) % 24) + 24) % 24;
+  return (hour - anchor + 24) % interval === 0;
+}
+
+async function loadSettings(sql) {
+  const rows = await sql`
+    SELECT keywords, interval_hours, anchor_hour_wib, enabled
+    FROM news_feed_settings WHERE id = 'default' LIMIT 1
+  `;
+  if (!rows.length) {
+    return {
+      keywords: [...DEFAULT_KEYWORDS],
+      intervalHours: 24,
+      anchorHourWib: 6,
+      enabled: true,
+    };
+  }
+  const row = rows[0];
+  const keywords = normalizeKeywords(row.keywords);
+  const intervalRaw = Number(row.interval_hours);
+  const intervalHours = [1, 6, 12, 24].includes(intervalRaw) ? intervalRaw : 24;
+  let anchor = Number(row.anchor_hour_wib);
+  if (!Number.isFinite(anchor)) anchor = 6;
+  anchor = Math.min(23, Math.max(0, Math.trunc(anchor)));
+  return {
+    keywords: keywords.length ? keywords : [...DEFAULT_KEYWORDS],
+    intervalHours,
+    anchorHourWib: anchor,
+    enabled: row.enabled !== false,
+  };
+}
+
+async function recordResult(sql, ok, message) {
+  const settings = await loadSettings(sql);
+  await sql`
+    INSERT INTO news_feed_settings (
+      id, keywords, interval_hours, anchor_hour_wib, enabled,
+      last_refresh_at, last_refresh_ok, last_refresh_message, updated_at
+    ) VALUES (
+      'default',
+      ${sql.json(settings.keywords)},
+      ${settings.intervalHours},
+      ${settings.anchorHourWib},
+      ${settings.enabled},
+      ${new Date()},
+      ${ok},
+      ${String(message).slice(0, 500)},
+      ${new Date()}
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      last_refresh_at = EXCLUDED.last_refresh_at,
+      last_refresh_ok = EXCLUDED.last_refresh_ok,
+      last_refresh_message = EXCLUDED.last_refresh_message
+  `;
+}
 
 function id() {
   return randomBytes(12).toString("hex");
@@ -179,6 +279,8 @@ async function fetchKeyword(keyword) {
 }
 
 async function main() {
+  const force =
+    process.env.FORCE === "1" || process.argv.includes("--force");
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl || databaseUrl.startsWith("pglite:")) {
     console.error("DATABASE_URL (Postgres) is required for refresh-news");
@@ -188,6 +290,26 @@ async function main() {
   const sql = postgres(databaseUrl, { max: 2 });
   try {
     await sql.unsafe(DDL);
+    const settings = await loadSettings(sql);
+
+    if (!force && !isDue(settings)) {
+      console.log(
+        JSON.stringify({
+          ok: true,
+          skippedSchedule: true,
+          enabled: settings.enabled,
+          intervalHours: settings.intervalHours,
+          anchorHourWib: settings.anchorHourWib,
+          hourWib: currentHourWib(),
+        }),
+      );
+      return;
+    }
+
+    if (!settings.enabled && !force) {
+      console.log(JSON.stringify({ ok: true, skippedDisabled: true }));
+      return;
+    }
 
     // Re-sanitize summaries already stored with entity-encoded / truncated HTML.
     const existing = await sql`
@@ -206,8 +328,9 @@ async function main() {
     let inserted = 0;
     let skipped = 0;
     const errors = [];
+    const keywords = settings.keywords;
 
-    for (const keyword of KEYWORDS) {
+    for (const keyword of keywords) {
       let items = [];
       try {
         items = await fetchKeyword(keyword);
@@ -237,10 +360,10 @@ async function main() {
           continue;
         }
 
-        const existing = await sql`
+        const existingRow = await sql`
           SELECT id FROM news_items WHERE canonical_url = ${canonicalUrl} LIMIT 1
         `;
-        if (existing.length) {
+        if (existingRow.length) {
           skipped += 1;
           continue;
         }
@@ -279,12 +402,17 @@ async function main() {
       }
     }
 
+    const summaryMsg = `inserted=${inserted} skipped=${skipped} errors=${errors.length}`;
+    await recordResult(sql, errors.length === 0, summaryMsg);
+
     console.log(
       JSON.stringify({
         ok: true,
         inserted,
         skipped,
         errors,
+        keywords: keywords.length,
+        force,
         fingerprint: createHash("sha1")
           .update(String(Date.now()))
           .digest("hex")

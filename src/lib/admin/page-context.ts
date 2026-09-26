@@ -22,6 +22,7 @@ function routeLabel(pathname: string): string {
   if (pathname.startsWith("/admin/users/")) return "Admin · Laporan pengguna";
   if (pathname === "/admin/access") return "Admin · Akses per tipe akun";
   if (pathname === "/admin/ai") return "Admin · LLM Bersama";
+  if (pathname === "/admin/news") return "Admin · Berita";
   if (pathname === "/admin/countdown") return "Admin · Countdown seleksi";
   if (pathname === "/admin/problems") return "Admin · Bank soal";
   if (pathname === "/admin/mocks") return "Admin · Bank simulasi";

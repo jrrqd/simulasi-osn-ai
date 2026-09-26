@@ -2,17 +2,15 @@ import { desc, eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
 import { newsItems } from "@/db/schema";
+import {
+  DEFAULT_NEWS_KEYWORDS,
+  getNewsFeedSettings,
+} from "@/lib/news/settings";
 
-export const NEWS_KEYWORDS = [
-  "osn ai",
-  "osn informatika",
-  "ioai",
-  "ekka",
-  "toki",
-  "tim olimpiade komputer indonesia",
-] as const;
+/** @deprecated Prefer getNewsFeedSettings().keywords — kept as compile-time default list. */
+export const NEWS_KEYWORDS = DEFAULT_NEWS_KEYWORDS;
 
-export type NewsKeyword = (typeof NEWS_KEYWORDS)[number];
+export type NewsKeyword = (typeof NEWS_KEYWORDS)[number] | string;
 
 export type NewsItemRow = {
   id: string;
@@ -200,8 +198,16 @@ export type RefreshNewsResult = {
   perKeyword: Record<string, { fetched: number; inserted: number }>;
 };
 
-export async function refreshNewsFromRss(): Promise<RefreshNewsResult> {
+export async function refreshNewsFromRss(
+  keywordOverride?: string[],
+): Promise<RefreshNewsResult> {
   const db = await getDb();
+  const settings = await getNewsFeedSettings();
+  const keywords =
+    keywordOverride && keywordOverride.length > 0
+      ? keywordOverride
+      : settings.keywords;
+
   const result: RefreshNewsResult = {
     inserted: 0,
     skipped: 0,
@@ -209,7 +215,7 @@ export async function refreshNewsFromRss(): Promise<RefreshNewsResult> {
     perKeyword: {},
   };
 
-  for (const keyword of NEWS_KEYWORDS) {
+  for (const keyword of keywords) {
     result.perKeyword[keyword] = { fetched: 0, inserted: 0 };
     let items: ParsedRssItem[] = [];
     try {

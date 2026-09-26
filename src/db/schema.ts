@@ -443,6 +443,24 @@ export const newsItems = pgTable(
   ],
 );
 
+/** Singleton admin config for /berita RSS keywords + refresh cadence. */
+export const newsFeedSettings = pgTable("news_feed_settings", {
+  id: text("id").primaryKey().default("default"),
+  keywords: jsonb("keywords").$type<string[]>().notNull(),
+  /** Hours between refreshes: 1 | 6 | 12 | 24. */
+  intervalHours: integer("interval_hours").notNull().default(24),
+  /** WIB hour (0–23) that anchors the schedule (e.g. 6 → 06:00 WIB). */
+  anchorHourWib: integer("anchor_hour_wib").notNull().default(6),
+  enabled: boolean("enabled").notNull().default(true),
+  lastRefreshAt: timestamp("last_refresh_at"),
+  lastRefreshOk: boolean("last_refresh_ok"),
+  lastRefreshMessage: text("last_refresh_message"),
+  updatedBy: text("updated_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 /** Per-tier facility flags (free | vip | test | admin). JSON: Record<featureId, boolean>. */
 export const accessPolicies = pgTable("access_policies", {
   tier: text("tier").primaryKey(),

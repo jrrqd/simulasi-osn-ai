@@ -327,6 +327,18 @@ const SCHEMA_DDL = `
     );
     CREATE INDEX IF NOT EXISTS news_items_published_idx ON news_items(published_at);
     CREATE INDEX IF NOT EXISTS news_items_host_title_idx ON news_items(source_host, title);
+    CREATE TABLE IF NOT EXISTS news_feed_settings (
+      id text PRIMARY KEY DEFAULT 'default',
+      keywords jsonb NOT NULL,
+      interval_hours integer NOT NULL DEFAULT 24,
+      anchor_hour_wib integer NOT NULL DEFAULT 6,
+      enabled boolean NOT NULL DEFAULT true,
+      last_refresh_at timestamptz,
+      last_refresh_ok boolean,
+      last_refresh_message text,
+      updated_by text,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
     CREATE TABLE IF NOT EXISTS access_policies (
       tier text PRIMARY KEY,
       features jsonb NOT NULL,

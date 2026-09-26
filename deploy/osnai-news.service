@@ -11,6 +11,7 @@ WorkingDirectory=/opt/osnai-build
 EnvironmentFile=/etc/osnai/env
 Environment=NODE_ENV=production
 # Prefer local node_modules (postgres) from the build tree.
+# Schedule (keywords + interval) lives in news_feed_settings; timer fires hourly.
 ExecStart=/usr/bin/node /opt/osnai-build/scripts/refresh-news.mjs
 Nice=10
 TimeoutStartSec=180
