@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "trakteer-webhook-auto-vip-harden",
+    at: "2026-09-26T13:55:00+07:00",
+    tag: "Akun",
+    title: "VIP Trakteer otomatis lebih andal",
+    story:
+      "Webhook Trakteer sekarang mengenali format tip resmi (transaction_id, type tip, harga Rp …) dan mengaktifkan VIP 30 hari otomatis bila nominal ≥ Rp 50.000 serta email akun ada di pesan dukungan.",
+    href: "/settings/upgrade",
+  },
+  {
     id: "settings-account-upgrade-ui",
     at: "2026-09-26T13:40:00+07:00",
     tag: "Akun",

@@ -320,9 +320,31 @@ export async function POST(req: NextRequest) {
     });
     const createdUser = created.user;
     const db = await getDb();
+    if (userType === "vip") {
+      const { grantVipMembership } = await import("@/lib/user/set-user-type");
+      await db
+        .update(user)
+        .set({ role, updatedAt: new Date() })
+        .where(eq(user.id, createdUser.id));
+      const granted = await grantVipMembership(createdUser.id);
+      if (!granted.ok) {
+        return Response.json({ error: granted.error }, { status: 400 });
+      }
+      return Response.json(
+        {
+          user: {
+            ...createdUser,
+            role,
+            userType: "vip",
+            vipExpiresAt: granted.vipExpiresAt,
+          },
+        },
+        { status: 201 },
+      );
+    }
     await db
       .update(user)
-      .set({ role, userType, updatedAt: new Date() })
+      .set({ role, userType, vipExpiresAt: null, updatedAt: new Date() })
       .where(eq(user.id, createdUser.id));
     return Response.json(
       { user: { ...createdUser, role, userType } },
@@ -366,8 +388,21 @@ export async function PATCH(req: NextRequest) {
   }
   if (body.role === "admin") {
     data.userType = "free";
+    data.vipExpiresAt = null;
   } else if (isUserType(body.userType)) {
-    data.userType = body.userType;
+    if (body.userType === "vip") {
+      // Timed VIP via grant helper (sets vip_expires_at).
+      const { grantVipMembership } = await import("@/lib/user/set-user-type");
+      const granted = await grantVipMembership(userId);
+      if (!granted.ok) {
+        return Response.json({ error: granted.error }, { status: 400 });
+      }
+      // Continue with other fields (name/email/phase/password) without
+      // overwriting userType/vipExpiresAt from a plain patch.
+    } else {
+      data.userType = body.userType;
+      data.vipExpiresAt = null;
+    }
   }
   if (
     body.phase === "pre-seleksi" ||

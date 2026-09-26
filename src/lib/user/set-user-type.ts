@@ -32,13 +32,15 @@ export async function setUserType(
       error: "Akun admin tidak memakai tier siswa; ubah role lewat Pengguna",
     };
   }
+  if (userType === "vip") {
+    return grantVipMembership(userId, VIP_DURATION_DAYS);
+  }
+
   const patch: Partial<typeof user.$inferInsert> = {
     userType,
+    vipExpiresAt: null,
     updatedAt: new Date(),
   };
-  if (userType !== "vip") {
-    patch.vipExpiresAt = null;
-  }
   await db.update(user).set(patch).where(eq(user.id, userId));
   return { ok: true, userType };
 }
