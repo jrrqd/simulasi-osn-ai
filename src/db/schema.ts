@@ -499,3 +499,27 @@ export const trakteerPayments = pgTable("trakteer_payments", {
   raw: jsonb("raw").$type<Record<string, unknown>>().notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+/** Light ADR-style notes from Study/Practice assistants (hybrid /teach). */
+export const assistantLearningRecords = pgTable(
+  "assistant_learning_records",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    topic: text("topic"),
+    lessonId: text("lesson_id"),
+    problemId: text("problem_id"),
+    status: text("status").notNull(),
+    note: text("note").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("assistant_learning_records_user_created_idx").on(
+      t.userId,
+      t.createdAt,
+    ),
+  ],
+);

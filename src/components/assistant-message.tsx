@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Markdown } from "@/components/markdown";
+import { stripLearningRecordMarkers } from "@/lib/ai/learning-record-marker";
 
 type TextPart = { type: string; text?: string };
 
@@ -14,7 +15,7 @@ export function assistantMessageText(parts: readonly TextPart[]) {
         typeof part.text === "string" &&
         part.text.length > 0,
     )
-    .map((part) => part.text)
+    .map((part) => stripLearningRecordMarkers(part.text))
     .join("\n\n")
     .trim();
 }
@@ -49,7 +50,12 @@ export function AssistantMessageBubble({
     >
       {parts.map((part, i) =>
         part.type === "text" && part.text ? (
-          <Markdown key={i} content={part.text} />
+          <Markdown
+            key={i}
+            content={
+              isUser ? part.text : stripLearningRecordMarkers(part.text)
+            }
+          />
         ) : null,
       )}
       {!isUser && text ? (

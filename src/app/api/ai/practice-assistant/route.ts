@@ -3,6 +3,11 @@ import { convertToModelMessages, streamText, UIMessage } from "ai";
 import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { assertApiFeature } from "@/lib/access/assert";
 import { reserveAssistantChat } from "@/lib/ai/assistant-quota";
+import { TEACH_CHAT_SKILL } from "@/lib/ai/skills/teach-chat";
+import {
+  loadTeachingMemoryContext,
+  persistLearningRecordFromAssistantText,
+} from "@/lib/ai/teaching-memory";
 import { loadUserAccess } from "@/lib/user/load-user-access";
 import {
   PRACTICE_ASSISTANT_SYSTEM_PROMPT,
@@ -141,12 +146,37 @@ export async function POST(req: NextRequest) {
     modelId: settings.modelId,
   });
 
-  const context = await buildPracticeContext({ problemId, track, topic });
+  const problem = problemId ? await resolveProblem(problemId) : null;
+  const topicHint = problem?.topic ?? topic;
+  const [context, memory] = await Promise.all([
+    buildPracticeContext({ problemId, track, topic }),
+    loadTeachingMemoryContext(authResult.user.id, {
+      problemId,
+      topicHint,
+    }),
+  ]);
+
   const result = streamText({
     model,
-    system: `${PRACTICE_ASSISTANT_SYSTEM_PROMPT}\n\n${context}`,
+    system: `${PRACTICE_ASSISTANT_SYSTEM_PROMPT}\n\n${TEACH_CHAT_SKILL}\n\n${context}\n\n${memory}`,
     messages: await convertToModelMessages(messages),
     abortSignal: AbortSignal.timeout(180_000),
+    async onFinish({ text }) {
+      try {
+        await persistLearningRecordFromAssistantText({
+          userId: authResult.user.id,
+          source: "practice",
+          text,
+          problemId,
+          topicFallback: topicHint,
+        });
+      } catch (err) {
+        console.warn(
+          "[practice-assistant] learning record persist skipped:",
+          err,
+        );
+      }
+    },
   });
 
   return result.toUIMessageStreamResponse();

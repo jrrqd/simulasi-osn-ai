@@ -364,6 +364,19 @@ const SCHEMA_DDL = `
       raw jsonb NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS assistant_learning_records (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      source text NOT NULL,
+      topic text,
+      lesson_id text,
+      problem_id text,
+      status text NOT NULL,
+      note text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS assistant_learning_records_user_created_idx
+      ON assistant_learning_records(user_id, created_at);
 `;
 
 async function createDb(): Promise<AppDb> {

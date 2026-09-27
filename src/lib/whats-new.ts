@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "teach-hybrid-fab-assistants",
+    at: "2026-09-27T20:25:00+07:00",
+    tag: "Belajar",
+    title: "Asisten Belajar & Latihan lebih pedagogis",
+    story:
+      "Floating asisten di Belajar dan Latihan memakai pola mengajar ZPD (langkah singkat, cek pemahaman, sitasi modul) dan menyimpan catatan belajar ringan supaya percakapan berikutnya melanjutkan dari yang sudah paham.",
+    href: "/study",
+  },
+  {
     id: "trakteer-webhook-auto-vip-harden",
     at: "2026-09-26T13:55:00+07:00",
     tag: "Akun",
