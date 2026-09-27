@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "berita-ekka-relevance-filter",
+    at: "2026-09-27T20:50:00+07:00",
+    tag: "Berita",
+    title: "Berita EKKA lebih relevan",
+    story:
+      "Cuplikan berita yang kebawa keyword “ekka” tapi tidak terkait Eksebisi Kompetisi Kecerdasan Artifisial (misalnya berita daerah/film) disaring dan dihapus dari hub /berita.",
+    href: "/berita",
+  },
+  {
     id: "teach-me-study-page",
     at: "2026-09-27T20:35:00+07:00",
     tag: "Belajar",

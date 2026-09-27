@@ -6,6 +6,7 @@ import {
   DEFAULT_NEWS_KEYWORDS,
   getNewsFeedSettings,
 } from "@/lib/news/settings";
+import { isRelevantOlympiadNews } from "@/lib/news/relevance";
 
 /** @deprecated Prefer getNewsFeedSettings().keywords — kept as compile-time default list. */
 export const NEWS_KEYWORDS = DEFAULT_NEWS_KEYWORDS;
@@ -246,6 +247,11 @@ export async function refreshNewsFromRss(
         continue;
       }
 
+      if (!isRelevantOlympiadNews(title, summary, keyword)) {
+        result.skipped += 1;
+        continue;
+      }
+
       const existingUrl = await db
         .select({ id: newsItems.id })
         .from(newsItems)
@@ -321,12 +327,16 @@ export async function listLatestNews(
   limit = LIST_LIMIT,
 ): Promise<NewsItemRow[]> {
   const db = await getDb();
+  // Over-fetch then filter — keyword "ekka" historically pulled off-topic rows.
   const rows = await db
     .select()
     .from(newsItems)
     .orderBy(desc(newsItems.publishedAt), desc(newsItems.fetchedAt))
-    .limit(limit);
-  return rows.map(mapNewsRow);
+    .limit(Math.max(limit * 4, 48));
+  return rows
+    .filter((r) => isRelevantOlympiadNews(r.title, r.summary, r.keyword))
+    .slice(0, limit)
+    .map(mapNewsRow);
 }
 
 /**
@@ -345,9 +355,11 @@ export async function listPreviousNews(options?: {
     .select()
     .from(newsItems)
     .orderBy(desc(newsItems.publishedAt), desc(newsItems.fetchedAt))
-    .offset(offset)
-    .limit(limit);
-  return rows.map(mapNewsRow);
+    .limit(Math.max(offset + limit, 80) * 3);
+  const relevant = rows.filter((r) =>
+    isRelevantOlympiadNews(r.title, r.summary, r.keyword),
+  );
+  return relevant.slice(offset, offset + limit).map(mapNewsRow);
 }
 
 export { LIST_LIMIT as NEWS_LIST_LIMIT, PREVIOUS_LIMIT as NEWS_PREVIOUS_LIMIT };
