@@ -40,7 +40,11 @@ test("stripLearningRecordMarkers removes markers anywhere", () => {
 });
 
 test("TEACH_CHAT_SKILL exports a non-empty string", async () => {
-  const { TEACH_CHAT_SKILL } = await import("@/lib/ai/skills/teach-chat");
+  const { TEACH_CHAT_SKILL, TEACH_ME_SESSION_SKILL } = await import(
+    "@/lib/ai/skills/teach-chat"
+  );
   assert.ok(TEACH_CHAT_SKILL.includes("ZPD") || TEACH_CHAT_SKILL.includes("proksimal"));
   assert.ok(TEACH_CHAT_SKILL.includes("[[LR|"));
+  assert.ok(TEACH_ME_SESSION_SKILL.includes("Mode sesi Teach me"));
+  assert.ok(TEACH_ME_SESSION_SKILL.includes("[[LR|"));
 });

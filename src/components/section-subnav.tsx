@@ -13,6 +13,7 @@ export type SectionSubnavLink = {
 
 const STUDY_LINKS: SectionSubnavLink[] = [
   { href: "/study", label: "Tutorial", exact: true },
+  { href: "/study/teach", label: "Teach me" },
   { href: "/study/resources", label: "Knowledge Hub" },
 ];
 
@@ -70,7 +71,8 @@ export function SectionSubnav({
       return (
         pathname === "/study" ||
         (pathname.startsWith("/study/") &&
-          !pathname.startsWith("/study/resources"))
+          !pathname.startsWith("/study/resources") &&
+          !pathname.startsWith("/study/teach"))
       );
     }
     if (link.href === "/practice") {

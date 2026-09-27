@@ -29,6 +29,8 @@ function routeLabel(pathname: string): string {
   if (pathname === "/admin/lessons") return "Admin · Modul belajar";
   if (pathname === "/admin/resources") return "Admin · Referensi IOAI";
   if (pathname === "/study") return "Belajar · Daftar modul";
+  if (pathname === "/study/teach") return "Belajar · Teach me";
+  if (pathname === "/study/resources") return "Belajar · Knowledge Hub";
   if (pathname.startsWith("/study/")) return "Belajar · Modul";
   if (pathname === "/practice") return "Latihan · Bank soal";
   if (pathname === "/practice/generate") return "Latihan · Generate";
@@ -77,7 +79,7 @@ export async function buildAdminPageContext(
   }
 
   const lessonId = pathname.match(/^\/study\/([^/?#]+)/)?.[1];
-  if (lessonId) {
+  if (lessonId && lessonId !== "resources" && lessonId !== "teach") {
     const lesson = getLesson(lessonId);
     if (lesson) {
       lines.push(
@@ -88,6 +90,12 @@ export async function buildAdminPageContext(
     } else {
       lines.push(`Modul id=${lessonId} (tidak ditemukan di silabus)`);
     }
+  } else if (pathname === "/study/teach") {
+    lines.push(
+      "Admin melihat halaman Teach me (sesi mengajar privat berbasis skill /teach).",
+    );
+  } else if (pathname === "/study/resources") {
+    lines.push("Admin melihat Knowledge Hub (referensi IOAI/resource bank).");
   } else if (pathname === "/study") {
     lines.push(
       "Admin melihat indeks modul belajar (track A–D).",

@@ -21,7 +21,8 @@ export type AssistantChatSource =
   | "study"
   | "practice"
   | "performance"
-  | "admin";
+  | "admin"
+  | "teach";
 
 export type AiAssistantQuota = {
   used: number;

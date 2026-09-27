@@ -11,7 +11,7 @@ import {
 import { TOPIC_LABELS } from "@/lib/content/types";
 import { PHASE_LABELS, parsePhase } from "@/lib/user/phase";
 
-export type LearningRecordSource = "study" | "practice";
+export type LearningRecordSource = "study" | "practice" | "teach";
 
 export {
   parseLearningRecordMarker,
@@ -54,12 +54,45 @@ export async function appendLearningRecord(input: {
 /**
  * Soft mission + recent learning records for Study/Practice system prompts.
  */
+export async function listRecentLearningRecords(
+  userId: string,
+  limit = 12,
+): Promise<
+  {
+    id: string;
+    source: string;
+    status: string;
+    note: string;
+    topic: string | null;
+    lessonId: string | null;
+    createdAt: Date;
+  }[]
+> {
+  const db = await getDb();
+  return db
+    .select({
+      id: assistantLearningRecords.id,
+      source: assistantLearningRecords.source,
+      status: assistantLearningRecords.status,
+      note: assistantLearningRecords.note,
+      topic: assistantLearningRecords.topic,
+      lessonId: assistantLearningRecords.lessonId,
+      createdAt: assistantLearningRecords.createdAt,
+    })
+    .from(assistantLearningRecords)
+    .where(eq(assistantLearningRecords.userId, userId))
+    .orderBy(desc(assistantLearningRecords.createdAt))
+    .limit(limit);
+}
+
 export async function loadTeachingMemoryContext(
   userId: string,
   opts: {
     lessonId?: string;
     problemId?: string;
     topicHint?: string;
+    /** Soft mission from Teach me page (why / success criteria). */
+    mission?: string;
   } = {},
 ): Promise<string> {
   const db = await getDb();
@@ -96,6 +129,15 @@ export async function loadTeachingMemoryContext(
     "## Memori belajar siswa (lanjutkan dari sini; jangan ulangi yang sudah paham tanpa perlu)",
     `Misi / tahap kompetisi: ${PHASE_LABELS[phase]} (${phase}).`,
   ];
+
+  const mission = opts.mission?.trim();
+  if (mission) {
+    lines.push(`Misi sesi Teach me (dari siswa): ${mission.slice(0, 400)}`);
+  } else {
+    lines.push(
+      "Misi sesi Teach me belum diisi — wawancara singkat tujuan belajar dulu jika ini sesi Teach me.",
+    );
+  }
 
   if (focusParts.length) {
     lines.push(`Fokus sesi ini: ${focusParts.join(" · ")}.`);

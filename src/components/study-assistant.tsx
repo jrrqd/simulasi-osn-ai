@@ -23,16 +23,21 @@ import {
   useAssistantQuota,
 } from "@/components/assistant-quota-ui";
 
+const STUDY_STATIC_SEGMENTS = new Set(["resources", "teach"]);
+
 export function StudyAssistant() {
   const pathname = usePathname();
+  const onTeachPage = Boolean(pathname?.startsWith("/study/teach"));
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const pet = useAssistantPet();
-  const { quota, refresh } = useAssistantQuota(open);
+  const { quota, refresh } = useAssistantQuota(open && !onTeachPage);
 
   const lessonId = useMemo(() => {
     const match = pathname?.match(/^\/study\/([^/?#]+)/);
-    return match?.[1] ?? "";
+    const seg = match?.[1] ?? "";
+    if (!seg || STUDY_STATIC_SEGMENTS.has(seg)) return "";
+    return seg;
   }, [pathname]);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
@@ -57,6 +62,8 @@ export function StudyAssistant() {
     await sendMessage({ text });
     refresh();
   }
+
+  if (onTeachPage) return null;
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">

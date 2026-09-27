@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "teach-me-study-page",
+    at: "2026-09-27T20:35:00+07:00",
+    tag: "Belajar",
+    title: "Teach me di menu Belajar",
+    story:
+      "Halaman Teach me baru: pilih track/topik, isi misi belajar, lalu sesi mengajar privat (satu unit per giliran + cek pemahaman) dengan memori belajar lintas sesi — skill /teach yang sama dipakai asisten FAB.",
+    href: "/study/teach",
+  },
+  {
     id: "teach-hybrid-fab-assistants",
     at: "2026-09-27T20:25:00+07:00",
     tag: "Belajar",
