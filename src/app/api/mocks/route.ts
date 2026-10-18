@@ -8,6 +8,7 @@ import { rateLimit } from "@/lib/api";
 import {
   listAllMocks,
   resolveMock,
+  resolveProblem,
   resolveProblemsForMock,
 } from "@/lib/content/shared";
 import {
@@ -194,8 +195,10 @@ export async function PATCH(req: NextRequest) {
       );
     }
     const problemId = String(body.problemId ?? "");
-    const problems = await resolveProblemsForMock(session.mockId);
-    const problem = problems.find((p) => p.id === problemId);
+    if (!mockMeta?.problemIds.includes(problemId)) {
+      return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
+    }
+    const problem = await resolveProblem(problemId);
     if (!problem) {
       return Response.json({ error: "Soal tidak ditemukan" }, { status: 404 });
     }

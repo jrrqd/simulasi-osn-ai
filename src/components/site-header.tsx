@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BrainCircuit } from "lucide-react";
@@ -27,12 +26,7 @@ export function SiteHeader({
   userRole?: string | null;
 }) {
   const router = useRouter();
-  const pathnameFromHook = usePathname() ?? "";
-  const [pathname, setPathname] = useState("");
-
-  useEffect(() => {
-    setPathname(pathnameFromHook);
-  }, [pathnameFromHook]);
+  const pathname = usePathname() ?? "";
 
   const adminActive = pathname.startsWith("/admin");
 

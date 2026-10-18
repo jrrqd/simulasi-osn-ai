@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireApiUser } from "@/lib/api";
 import { listSharedProblems } from "@/lib/content/shared";
 
+/** List metadata only — never includes answer/solution/stem/testCases. */
 export async function GET(req: NextRequest) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;

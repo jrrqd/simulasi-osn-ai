@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { cache } from "react";
 import { getDb } from "@/db";
 import { accessPolicies } from "@/db/schema";
 import {
@@ -16,7 +16,8 @@ const globalForAccess = globalThis as typeof globalThis & {
   __osnaiAccessMatrixCache?: { matrix: AccessMatrix; at: number };
 };
 
-const CACHE_TTL_MS = 30_000;
+/** Process-wide TTL; React.cache() also dedupes within one render tree. */
+const CACHE_TTL_MS = 15_000;
 
 export function tierForAccess(access: UserAccess): AccessTier {
   return access.isAdmin ? "admin" : access.userType;
@@ -26,7 +27,7 @@ export function invalidateAccessMatrixCache() {
   globalForAccess.__osnaiAccessMatrixCache = undefined;
 }
 
-export async function getAccessMatrix(): Promise<AccessMatrix> {
+export const getAccessMatrix = cache(async (): Promise<AccessMatrix> => {
   const cached = globalForAccess.__osnaiAccessMatrixCache;
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
     return cached.matrix;
@@ -46,7 +47,7 @@ export async function getAccessMatrix(): Promise<AccessMatrix> {
     at: Date.now(),
   };
   return matrix;
-}
+});
 
 export async function saveAccessMatrix(
   input: Partial<Record<AccessTier, Partial<AccessFeatureFlags>>>,

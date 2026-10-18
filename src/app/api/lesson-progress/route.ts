@@ -1,4 +1,4 @@
-import { requireApiUser } from "@/lib/api";
+import { requireApiUser, rateLimit } from "@/lib/api";
 import {
   getUserLessonProgress,
   upsertLessonProgress,
@@ -36,6 +36,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+  if (!rateLimit(`lesson-progress:${authResult.user.id}`, 60, 60_000)) {
+    return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
+  }
 
   const body = (await req.json().catch(() => null)) as {
     lessonId?: unknown;

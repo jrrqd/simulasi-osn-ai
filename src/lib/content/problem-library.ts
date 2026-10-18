@@ -84,25 +84,68 @@ export async function listVisibleCuratedProblems(params?: {
 export async function resolvePracticeProblem(
   id: string,
 ): Promise<Problem | null> {
-  const override = await getProblemOverride(id);
-  if (override?.hidden) return null;
-  if (override?.payload) {
-    return {
-      ...override.payload,
-      id,
-      source: override.payload.source ?? "curated",
-    };
-  }
+  const map = await resolvePracticeProblemsByIds([id]);
+  return map.get(id) ?? null;
+}
+
+/**
+ * Batch-resolve problems (overrides + generated + curated) in two queries
+ * instead of N serial round-trips.
+ */
+export async function resolvePracticeProblemsByIds(
+  ids: string[],
+): Promise<Map<string, Problem>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const out = new Map<string, Problem>();
+  if (unique.length === 0) return out;
 
   const db = await getDb();
-  const gen = await db.query.generatedProblems.findFirst({
-    where: eq(generatedProblems.id, id),
-  });
-  if (gen) {
-    return gen.payload as Problem;
+  const [overrideRows, genRows] = await Promise.all([
+    db
+      .select()
+      .from(problemOverrides)
+      .where(inArray(problemOverrides.id, unique)),
+    db
+      .select()
+      .from(generatedProblems)
+      .where(inArray(generatedProblems.id, unique)),
+  ]);
+
+  const overrides = new Map(
+    overrideRows.map((row) => [
+      row.id,
+      {
+        id: row.id,
+        payload: (row.payload as Problem | null) ?? null,
+        hidden: row.hidden,
+      },
+    ]),
+  );
+  const generated = new Map(
+    genRows.map((row) => [row.id, row.payload as Problem]),
+  );
+
+  for (const id of unique) {
+    const ov = overrides.get(id);
+    if (ov?.hidden) continue;
+    if (ov?.payload) {
+      out.set(id, {
+        ...ov.payload,
+        id,
+        source: ov.payload.source ?? "curated",
+      });
+      continue;
+    }
+    const gen = generated.get(id);
+    if (gen) {
+      out.set(id, gen);
+      continue;
+    }
+    const curated = getProblem(id);
+    if (curated) out.set(id, curated);
   }
 
-  return getProblem(id) ?? null;
+  return out;
 }
 
 export async function countVisibleAiProblems(params?: {

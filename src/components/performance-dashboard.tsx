@@ -84,19 +84,30 @@ function formatAvgMockScore(totals: Perf["totals"]) {
   return `${totals.avgScorePoints.toFixed(1)}/${Math.round(totals.avgMaxPoints)} · ${Math.round(totals.avgLifetimeScore * 100)}%`;
 }
 
-export function PerformanceDashboard() {
-  const [data, setData] = useState<Perf | null>(null);
+export function PerformanceDashboard({
+  initialData,
+}: {
+  initialData?: Perf | null;
+} = {}) {
+  const [data, setData] = useState<Perf | null>(initialData ?? null);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (initialData) return;
+    let cancelled = false;
     fetch(appPath("/api/performance"))
       .then(async (r) => {
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || "Gagal memuat");
-        setData(j);
+        if (!cancelled) setData(j);
       })
-      .catch((e) => setError(e.message));
-  }, []);
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialData]);
 
   if (error) return <p className="text-[var(--bad)]">{error}</p>;
   if (!data) return <p className="text-[var(--muted)]">Memuat performa…</p>;

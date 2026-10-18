@@ -37,9 +37,31 @@ export async function requireApiAdmin(req: Request) {
 }
 
 const buckets = new Map<string, { count: number; reset: number }>();
+const MAX_BUCKETS = 5_000;
+let lastEvictAt = 0;
+
+function evictExpiredBuckets(now: number) {
+  // Throttle eviction so hot paths stay cheap.
+  if (now - lastEvictAt < 30_000 && buckets.size < MAX_BUCKETS) return;
+  lastEvictAt = now;
+  for (const [key, value] of buckets) {
+    if (now > value.reset) buckets.delete(key);
+  }
+  // Hard cap: drop oldest-ish keys if still oversized after expiry sweep.
+  if (buckets.size > MAX_BUCKETS) {
+    const overflow = buckets.size - MAX_BUCKETS;
+    let removed = 0;
+    for (const key of buckets.keys()) {
+      buckets.delete(key);
+      removed += 1;
+      if (removed >= overflow) break;
+    }
+  }
+}
 
 export function rateLimit(key: string, limit = 20, windowMs = 60_000) {
   const now = Date.now();
+  evictExpiredBuckets(now);
   const cur = buckets.get(key);
   if (!cur || now > cur.reset) {
     buckets.set(key, { count: 1, reset: now + windowMs });
@@ -66,4 +88,12 @@ export async function rateLimitForUser(
     return true;
   }
   return rateLimit(`${key}:${userId}`, limit, windowMs);
+}
+
+/** Strip control chars / quotes for Content-Disposition filenames. */
+export function safeContentDispositionFilename(name: string): string {
+  return name
+    .replace(/[\r\n"]/g, "")
+    .replace(/[^\w.\-()+ ]+/g, "_")
+    .slice(0, 120) || "download";
 }

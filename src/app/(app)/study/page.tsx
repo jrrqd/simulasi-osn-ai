@@ -18,6 +18,17 @@ export default async function StudyPage() {
   const overallPct =
     totalLevels === 0 ? 0 : Math.round((completedLevels / totalLevels) * 100);
 
+  const continueLesson =
+    lessons.find((l) => progressMap.get(l.id)?.status === "in_progress") ??
+    lessons.find((l) => progressMap.get(l.id)?.status !== "completed") ??
+    null;
+  const continueTrackLessons = continueLesson
+    ? lessons.filter((l) => l.track === continueLesson.track)
+    : [];
+  const continueLevelIndex = continueLesson
+    ? continueTrackLessons.findIndex((l) => l.id === continueLesson.id)
+    : -1;
+
   return (
     <div className="space-y-6">
       <div>
@@ -40,6 +51,33 @@ export default async function StudyPage() {
           </div>
         </div>
       </div>
+
+      {continueLesson && completedLevels < totalLevels ? (
+        <div className="panel flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[rgba(15,110,86,0.22)] bg-[rgba(15,110,86,0.06)] p-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+              Lanjut belajar
+            </p>
+            <p className="display mt-1 text-2xl">{continueLesson.title}</p>
+            <p className="text-sm text-[var(--muted)]">
+              Track {continueLesson.track}
+              {continueLevelIndex >= 0
+                ? ` · Level ${continueLevelIndex + 1}`
+                : ""}
+              {" · "}
+              {progressMap.get(continueLesson.id)?.status === "in_progress"
+                ? "Sedang dikerjakan"
+                : "Belum dimulai"}
+            </p>
+          </div>
+          <Link
+            href={`/study/${continueLesson.id}`}
+            className="btn btn-primary"
+          >
+            Lanjutkan
+          </Link>
+        </div>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2">
         {Object.entries(TRACKS).map(([id, meta]) => {
           const trackLessons = lessons.filter((l) => l.track === id);

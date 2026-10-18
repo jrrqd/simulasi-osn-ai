@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mockSessions, submissionEvents } from "@/db/schema";
-import { requireApiUser } from "@/lib/api";
+import { requireApiUser, rateLimitForUser } from "@/lib/api";
 import { getEffectiveAiSettings } from "@/lib/ai/settings";
 import { llmAssistCompetitionCsv } from "@/lib/ai/grade-competition-submission";
 import { resolveProblem, resolveMock } from "@/lib/content/shared";
@@ -33,9 +33,12 @@ function penaltySummaryPayload(state: ReturnType<typeof normalizePenaltyState>) 
   };
 }
 
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
 async function readSubmissionPayload(form: FormData): Promise<{
   submissionCsv: string | null;
   notebookJson: string | null;
+  error?: string;
 }> {
   const submissionFile = form.get("submission");
   const notebookFile = form.get("notebook");
@@ -43,9 +46,23 @@ async function readSubmissionPayload(form: FormData): Promise<{
   let notebookJson: string | null = null;
 
   if (submissionFile instanceof File && submissionFile.size > 0) {
+    if (submissionFile.size > MAX_UPLOAD_BYTES) {
+      return {
+        submissionCsv: null,
+        notebookJson: null,
+        error: "File submission terlalu besar (maks. 5 MB).",
+      };
+    }
     submissionCsv = await submissionFile.text();
   }
   if (notebookFile instanceof File && notebookFile.size > 0) {
+    if (notebookFile.size > MAX_UPLOAD_BYTES) {
+      return {
+        submissionCsv: null,
+        notebookJson: null,
+        error: "File notebook terlalu besar (maks. 5 MB).",
+      };
+    }
     notebookJson = await notebookFile.text();
     if (!submissionCsv) {
       submissionCsv = extractSubmissionCsvFromNotebook(notebookJson);
@@ -118,6 +135,12 @@ async function runGrade(params: {
 export async function POST(req: NextRequest) {
   const auth = await requireApiUser(req);
   if ("error" in auth) return auth.error;
+  if (!(await rateLimitForUser(auth.user.id, "competition-submit", 20, 60_000))) {
+    return Response.json(
+      { error: "Terlalu banyak unggahan. Coba lagi sebentar." },
+      { status: 429 },
+    );
+  }
 
   const contentType = req.headers.get("content-type") ?? "";
   if (!contentType.includes("multipart/form-data")) {
@@ -156,7 +179,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { submissionCsv, notebookJson } = await readSubmissionPayload(form);
+  const { submissionCsv, notebookJson, error: uploadError } =
+    await readSubmissionPayload(form);
+  if (uploadError) {
+    return Response.json({ error: uploadError }, { status: 413 });
+  }
   if (!submissionCsv && !notebookJson) {
     return Response.json(
       { error: "Lampirkan submission.csv dan/atau notebook .ipynb" },

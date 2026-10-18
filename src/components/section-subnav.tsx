@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -57,12 +57,7 @@ export function SectionSubnav({
   variant?: "student" | "admin";
   icon?: ReactNode;
 }) {
-  const pathnameFromHook = usePathname() ?? "";
-  const [pathname, setPathname] = useState("");
-
-  useEffect(() => {
-    setPathname(pathnameFromHook);
-  }, [pathnameFromHook]);
+  const pathname = usePathname() ?? "";
 
   if (hidden) return null;
 
@@ -133,12 +128,7 @@ export function SectionSubnav({
 }
 
 export function AppSectionSubnav() {
-  const pathnameFromHook = usePathname() ?? "";
-  const [pathname, setPathname] = useState("");
-
-  useEffect(() => {
-    setPathname(pathnameFromHook);
-  }, [pathnameFromHook]);
+  const pathname = usePathname() ?? "";
 
   if (pathname.startsWith("/study")) {
     return <SectionSubnav title="Belajar" links={STUDY_LINKS} />;

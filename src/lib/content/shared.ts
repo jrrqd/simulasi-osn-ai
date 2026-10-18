@@ -7,6 +7,7 @@ import {
   countVisibleAiProblems,
   listVisibleAiProblems,
   resolvePracticeProblem,
+  resolvePracticeProblemsByIds,
 } from "@/lib/content/problem-library";
 import {
   listVisibleMocks,
@@ -31,6 +32,17 @@ export async function getGeneratedProblem(id: string): Promise<Problem | null> {
 export async function resolveProblem(id: string): Promise<Problem | null> {
   const p = await resolvePracticeProblem(id);
   return p ? normalizeProblem(p) : null;
+}
+
+export async function resolveProblemsByIds(
+  ids: string[],
+): Promise<Map<string, Problem>> {
+  const raw = await resolvePracticeProblemsByIds(ids);
+  const out = new Map<string, Problem>();
+  for (const [id, p] of raw) {
+    out.set(id, normalizeProblem(p));
+  }
+  return out;
 }
 
 export async function countSharedProblems() {
@@ -62,9 +74,10 @@ export async function resolveProblemsForMock(
 ): Promise<Problem[]> {
   const mock = await resolveMock(mockId);
   if (!mock) return [];
+  const byId = await resolveProblemsByIds(mock.problemIds);
   const problems: Problem[] = [];
   for (const id of mock.problemIds) {
-    const p = await resolveProblem(id);
+    const p = byId.get(id);
     if (p) problems.push(p);
   }
   return problems;

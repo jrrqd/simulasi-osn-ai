@@ -7,7 +7,7 @@ import { TOPIC_LABELS } from "@/lib/content/types";
 import { getUserProblemProgress } from "@/lib/attempts";
 import { FilterChip } from "@/components/choice-chip";
 import { PageHeader } from "@/components/page-header";
-import { PracticeProblemCard } from "@/components/practice-problem-card";
+import { PracticeBankFilters } from "@/components/practice-bank-filters";
 
 export default async function PracticeBankPage({
   searchParams,
@@ -59,22 +59,30 @@ export default async function PracticeBankPage({
       )
     : undefined;
 
+  const sharedItems = shared.map((p) => ({
+    id: p.id,
+    title: p.title,
+    meta: `AI · ${p.track} · ${TOPIC_LABELS[p.topic] ?? p.topic}${
+      p.creatorName ? ` · ${p.creatorName}` : ""
+    }`,
+    difficulty: p.difficulty,
+    progress: progressById.get(p.id),
+  }));
+
+  const curatedItems = curatedVisible.map((p) => ({
+    id: p.id,
+    title: p.title,
+    meta: `${p.track} · ${TOPIC_LABELS[p.topic] ?? p.topic}`,
+    difficulty: p.difficulty,
+    progress: progressById.get(p.id),
+  }));
+
   return (
     <div className="space-y-6">
-      <div>
-        <PageHeader
-          title="Bank soal"
-          description="Side quests curated dan bank AI bersama."
-        />
-        {problemIds.length > 0 ? (
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Progressmu: {doneCount}/{problemIds.length} quest dikerjakan
-            {doneCount > 0
-              ? ` · rata-rata skor terbaik ${avgBestPct}%`
-              : ""}
-          </p>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Bank soal"
+        description="Side quests curated dan bank AI bersama."
+      />
 
       {linkedLesson ? (
         <div className="panel flex flex-wrap items-center justify-between gap-3 rounded-3xl p-4">
@@ -115,46 +123,13 @@ export default async function PracticeBankPage({
         ))}
       </div>
 
-      {shared.length > 0 && (
-        <section className="space-y-3">
-          <div>
-            <h2 className="display text-2xl">Bank soal AI bersama</h2>
-            <p className="text-sm text-[var(--muted)]">
-              Dihasilkan siswa lain (atau kamu) dan bisa dikerjakan siapa saja.
-            </p>
-          </div>
-          <div className="grid gap-3">
-            {shared.map((p) => (
-              <PracticeProblemCard
-                key={p.id}
-                id={p.id}
-                title={p.title}
-                meta={`AI · ${p.track} · ${TOPIC_LABELS[p.topic] ?? p.topic}${
-                  p.creatorName ? ` · ${p.creatorName}` : ""
-                }`}
-                difficulty={p.difficulty}
-                progress={progressById.get(p.id)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="space-y-3">
-        <h2 className="display text-2xl">Bank curated</h2>
-        <div className="grid gap-3">
-          {curatedVisible.map((p) => (
-            <PracticeProblemCard
-              key={p.id}
-              id={p.id}
-              title={p.title}
-              meta={`${p.track} · ${TOPIC_LABELS[p.topic] ?? p.topic}`}
-              difficulty={p.difficulty}
-              progress={progressById.get(p.id)}
-            />
-          ))}
-        </div>
-      </section>
+      <PracticeBankFilters
+        shared={sharedItems}
+        curated={curatedItems}
+        totalCount={problemIds.length}
+        doneCount={doneCount}
+        avgBestPct={avgBestPct}
+      />
     </div>
   );
 }

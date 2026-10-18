@@ -19,31 +19,13 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
-    id: "seo-gsc-canonical-sitemap-fix",
-    at: "2026-10-18T15:50:00+07:00",
+    id: "2026-10-18-platform-perf-ux-security",
+    at: "2026-10-18T17:20:00+07:00",
     tag: "Platform",
-    title: "Perbaikan indeksasi Google Search Console",
+    title: "Performa, UX belajar, keamanan & berita",
     story:
-      "Canonical per halaman (/simosnai, /berita, /register), sitemap tanpa redirect 308, dan robots.txt root 200 OK agar seluruh halaman publik terindeks dengan benar di Google.",
-    href: "/berita",
-  },
-  {
-    id: "admin-overview-user-activity-cards",
-    at: "2026-10-18T15:35:00+07:00",
-    tag: "Admin",
-    title: "Ringkasan admin: pengguna baru & aktivitas",
-    story:
-      "Dashboard Ringkasan menampilkan kartu pendaftar terbaru dan siswa yang terakhir aktif, dengan tautan langsung ke laporan pengguna.",
-    href: "/admin",
-  },
-  {
-    id: "berita-toki-relevance-filter",
-    at: "2026-10-18T11:00:00+07:00",
-    tag: "Berita",
-    title: "Berita TOKI lebih relevan",
-    story:
-      "Keyword “toki” yang menarik berita luar negeri (homonim Vietnam/Jepang dll.) disaring ketat, query RSS diperketat, dan cuplikan tidak relevan dibersihkan dari hub /berita.",
-    href: "/berita",
+      "Bank soal punya cari + filter status; simulasi menambah flag ragu-ragu, status tersimpan, dan shortcut Alt←/→; Belajar punya Lanjut Belajar serta navigasi modul. Backend lebih cepat (cache sesi, batch soal, indeks DB), Performa SSR tanpa waterfall, skeleton navigasi, kunci jawaban & SVG dikunci lebih ketat, plus berita TOKI lebih relevan, kartu aktivitas admin, dan perbaikan indeksasi Google (canonical/sitemap/robots).",
+    href: "/practice",
   },
   {
     id: "berita-ekka-relevance-filter",

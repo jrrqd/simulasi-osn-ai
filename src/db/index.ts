@@ -106,6 +106,8 @@ const SCHEMA_DDL = `
     );
     CREATE INDEX IF NOT EXISTS attempts_user_idx ON attempts(user_id);
     CREATE INDEX IF NOT EXISTS attempts_user_topic_idx ON attempts(user_id, topic);
+    CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS attempts_user_problem_idx ON attempts(user_id, problem_id);
     CREATE TABLE IF NOT EXISTS mock_sessions (
       id text PRIMARY KEY,
       user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
@@ -132,6 +134,8 @@ const SCHEMA_DDL = `
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS last_submit_at timestamptz;
     ALTER TABLE mock_sessions ADD COLUMN IF NOT EXISTS penalty_state jsonb NOT NULL DEFAULT '{}';
     CREATE INDEX IF NOT EXISTS mock_sessions_user_idx ON mock_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS mock_sessions_user_status_started_idx
+      ON mock_sessions(user_id, status, started_at DESC);
     CREATE TABLE IF NOT EXISTS submission_events (
       id text PRIMARY KEY,
       user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,

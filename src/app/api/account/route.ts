@@ -8,11 +8,14 @@ import {
   mockSessions,
   user,
 } from "@/db/schema";
-import { requireApiUser } from "@/lib/api";
+import { requireApiUser, rateLimit } from "@/lib/api";
 
 export async function GET(req: Request) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+  if (!rateLimit(`account-get:${authResult.user.id}`, 20, 60_000)) {
+    return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
+  }
 
   const db = await getDb();
   const userId = authResult.user.id;
@@ -61,6 +64,9 @@ export async function GET(req: Request) {
 export async function DELETE(req: Request) {
   const authResult = await requireApiUser(req);
   if ("error" in authResult) return authResult.error;
+  if (!rateLimit(`account-delete:${authResult.user.id}`, 5, 60_000)) {
+    return Response.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
+  }
 
   const body = (await req.json().catch(() => null)) as {
     email?: unknown;

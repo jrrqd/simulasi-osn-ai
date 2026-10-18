@@ -118,12 +118,20 @@ export function MockExamClient({
   const [penaltyMinutes, setPenaltyMinutes] = useState(0);
   const [totalAttemptsCount, setTotalAttemptsCount] = useState(0);
   const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
+  const [flaggedIds, setFlaggedIds] = useState<Record<string, boolean>>({});
+  const [focusIndex, setFocusIndex] = useState(0);
+  const [saveStatus, setSaveStatus] = useState<
+    "saved" | "saving" | "offline"
+  >("saved");
 
   const answersRef = useRef(answers);
   const codeResultsRef = useRef(codeResults);
   const submittingRef = useRef(submitting);
   const sessionIdRef = useRef(sessionId);
   const penaltyStateRef = useRef(penaltyState);
+  const focusIndexRef = useRef(0);
+
+  const localBackupKey = `mock-answers:${mockId}`;
 
   const hasPythonQuestions = useMemo(
     () => problems.some((p) => needsExamPythonRunner(p)),
@@ -150,6 +158,25 @@ export function MockExamClient({
   useEffect(() => {
     penaltyStateRef.current = penaltyState;
   }, [penaltyState]);
+  useEffect(() => {
+    focusIndexRef.current = focusIndex;
+  }, [focusIndex]);
+
+  function scrollToQuestion(index: number) {
+    const next = Math.max(0, Math.min(problems.length - 1, index));
+    setFocusIndex(next);
+    const el = document.getElementById(`question-${next + 1}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function toggleFlag(problemId: string) {
+    setFlaggedIds((current) => {
+      const next = { ...current };
+      if (next[problemId]) delete next[problemId];
+      else next[problemId] = true;
+      return next;
+    });
+  }
 
   function applyPenaltyPayload(data: {
     penaltyState?: SessionPenaltyState;
@@ -292,6 +319,11 @@ export function MockExamClient({
       await exitFullscreen();
     }
     setResult(data);
+    try {
+      sessionStorage.removeItem(localBackupKey);
+    } catch {
+      /* ignore */
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -328,15 +360,66 @@ export function MockExamClient({
 
   useEffect(() => {
     if (!sessionId) return;
+    try {
+      sessionStorage.setItem(
+        localBackupKey,
+        JSON.stringify({ answers, flaggedIds, sessionId }),
+      );
+    } catch {
+      /* ignore quota */
+    }
     const timer = window.setTimeout(() => {
+      if (!navigator.onLine) {
+        setSaveStatus("offline");
+        return;
+      }
+      setSaveStatus("saving");
       fetch(appPath("/api/mocks"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, answers }),
-      });
+      })
+        .then((r) => {
+          setSaveStatus(
+            !navigator.onLine ? "offline" : r.ok ? "saved" : "offline",
+          );
+        })
+        .catch(() => setSaveStatus("offline"));
     }, 800);
     return () => window.clearTimeout(timer);
-  }, [answers, sessionId]);
+  }, [answers, flaggedIds, sessionId, localBackupKey]);
+
+  useEffect(() => {
+    const onOnline = () => setSaveStatus("saving");
+    const onOffline = () => setSaveStatus("offline");
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sessionId || result) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!event.altKey) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const delta = event.key === "ArrowLeft" ? -1 : 1;
+      const next = Math.max(
+        0,
+        Math.min(problems.length - 1, focusIndexRef.current + delta),
+      );
+      focusIndexRef.current = next;
+      setFocusIndex(next);
+      document
+        .getElementById(`question-${next + 1}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sessionId, result, problems.length]);
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -373,7 +456,32 @@ export function MockExamClient({
     applyPenaltyPayload(data);
     setSessionId(data.sessionId);
     setEndsAt(data.endsAt);
-    setAnswers(data.answers ?? {});
+    let nextAnswers = (data.answers ?? {}) as Record<string, string>;
+    try {
+      const raw = sessionStorage.getItem(localBackupKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          answers?: Record<string, string>;
+          flaggedIds?: Record<string, boolean>;
+          sessionId?: string;
+        };
+        if (
+          parsed.sessionId === data.sessionId &&
+          parsed.answers &&
+          typeof parsed.answers === "object"
+        ) {
+          nextAnswers = { ...nextAnswers, ...parsed.answers };
+        }
+        if (parsed.flaggedIds && typeof parsed.flaggedIds === "object") {
+          setFlaggedIds(parsed.flaggedIds);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    setAnswers(nextAnswers);
+    setFocusIndex(0);
+    setSaveStatus("saved");
   }
 
   if (result) {
@@ -518,13 +626,31 @@ export function MockExamClient({
           <div>
             <h1 className="display text-2xl">{title}</h1>
             <p className="text-xs text-[var(--muted)]">
-              Terjawab {answeredCount}/{problems.length} · tersimpan otomatis
+              Terjawab {answeredCount}/{problems.length}
               {penaltyEnabled
                 ? ` · penalti ${penaltyMinutes} mnt · ${totalAttemptsCount} submit`
                 : ""}
+              {" · "}
+              Alt+← / Alt+→ pindah soal
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                saveStatus === "saved"
+                  ? "bg-[rgba(31,122,76,0.14)] text-[var(--ok)]"
+                  : saveStatus === "saving"
+                    ? "bg-black/[0.06] text-[var(--muted)]"
+                    : "bg-amber-100 text-amber-900"
+              }`}
+              title="Status sinkronisasi jawaban"
+            >
+              {saveStatus === "saved"
+                ? "Tersimpan"
+                : saveStatus === "saving"
+                  ? "Menyimpan…"
+                  : "Offline — jawaban tersimpan lokal"}
+            </span>
             {integrityMode === "strict" && integrity.violationCount > 0 && (
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -571,6 +697,24 @@ export function MockExamClient({
       <div className="grid items-start gap-5 lg:grid-cols-[180px_1fr]">
         <aside className="panel rounded-3xl p-4 lg:sticky lg:top-[160px]">
           <p className="mb-3 text-sm font-semibold">Navigasi soal</p>
+          <div className="mb-3 flex gap-2">
+            <button
+              type="button"
+              className="btn btn-secondary !px-2 !py-1 text-xs"
+              onClick={() => scrollToQuestion(focusIndex - 1)}
+              disabled={focusIndex <= 0}
+            >
+              ← Prev
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary !px-2 !py-1 text-xs"
+              onClick={() => scrollToQuestion(focusIndex + 1)}
+              disabled={focusIndex >= problems.length - 1}
+            >
+              Next →
+            </button>
+          </div>
           <div className="grid grid-cols-5 gap-2 lg:grid-cols-4">
             {problems.map((problem, index) => {
               const locked = Boolean(
@@ -578,30 +722,42 @@ export function MockExamClient({
                   penaltyState[problem.id]?.lockedAt,
               );
               const answered = Boolean(answers[problem.id]?.trim());
+              const flagged = Boolean(flaggedIds[problem.id]);
               return (
-              <a
+              <button
                 key={problem.id}
-                href={`#question-${index + 1}`}
+                type="button"
+                onClick={() => scrollToQuestion(index)}
                 className={`flex h-8 items-center justify-center rounded-lg text-xs ${
                   locked
                     ? "bg-[var(--ok)] text-white"
-                    : answered
-                      ? "bg-[var(--accent)] text-white"
-                      : "bg-white/70 text-[var(--muted)]"
+                    : flagged
+                      ? "bg-amber-400 text-amber-950 ring-2 ring-amber-600/40"
+                      : answered
+                        ? "bg-[var(--accent)] text-white"
+                        : focusIndex === index
+                          ? "bg-white ring-2 ring-[var(--accent)] text-[var(--ink)]"
+                          : "bg-white/70 text-[var(--muted)]"
                 }`}
                 title={
                   locked
                     ? "Accepted"
-                    : penaltyState[problem.id]
-                      ? `${penaltyState[problem.id]!.attempts} attempts`
-                      : undefined
+                    : flagged
+                      ? "Ragu-ragu"
+                      : penaltyState[problem.id]
+                        ? `${penaltyState[problem.id]!.attempts} attempts`
+                        : undefined
                 }
               >
                 {index + 1}
-              </a>
+              </button>
               );
             })}
           </div>
+          <p className="mt-3 text-[10px] leading-snug text-[var(--muted)]">
+            Hijau = terkunci · biru = terjawab · kuning = ragu-ragu · abu =
+            kosong
+          </p>
         </aside>
 
         <div className="space-y-5">
@@ -623,14 +779,28 @@ export function MockExamClient({
                 <h2 className="display text-2xl">
                   {index + 1}. {problem.title}
                 </h2>
-                <span className="shrink-0 rounded-full bg-white/70 px-2 py-1 text-xs text-[var(--muted)]">
-                  {defaultProblemWeight(problem)} poin
-                  {needsCodeSpecRunner(problem) ||
-                  problem.answerType === "python_output"
-                    ? " · coding"
-                    : " · isian"}
-                  {locked ? " · ✓ locked" : ""}
-                </span>
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                      flaggedIds[problem.id]
+                        ? "bg-amber-400 text-amber-950"
+                        : "bg-white/70 text-[var(--muted)] hover:bg-amber-100"
+                    }`}
+                    onClick={() => toggleFlag(problem.id)}
+                    aria-pressed={Boolean(flaggedIds[problem.id])}
+                  >
+                    {flaggedIds[problem.id] ? "★ Ragu-ragu" : "☆ Ragu-ragu"}
+                  </button>
+                  <span className="rounded-full bg-white/70 px-2 py-1 text-xs text-[var(--muted)]">
+                    {defaultProblemWeight(problem)} poin
+                    {needsCodeSpecRunner(problem) ||
+                    problem.answerType === "python_output"
+                      ? " · coding"
+                      : " · isian"}
+                    {locked ? " · ✓ locked" : ""}
+                  </span>
+                </div>
               </div>
               <Markdown content={problem.stem} />
               {needsCodeSpecRunner(problem) && problem.codeSpec ? (

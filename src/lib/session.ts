@@ -1,8 +1,10 @@
+import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 
-export async function getSession() {
+/** Deduped per React request tree (layout + page share one session lookup). */
+export const getSession = cache(async () => {
   try {
     const auth = await getAuth();
     const incoming = await headers();
@@ -39,7 +41,7 @@ export async function getSession() {
     console.error("[getSession]", err);
     return null;
   }
-}
+});
 
 export async function requireUser() {
   const session = await getSession();

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireApiUser } from "@/lib/api";
+import { requireApiUser, safeContentDispositionFilename } from "@/lib/api";
 import { resolveProblem } from "@/lib/content/shared";
 import { buildStarterNotebook } from "@/lib/notebook/build-starter-notebook";
 import { parseCompetitionSpec } from "@/lib/competition/competition-spec";
@@ -30,12 +30,13 @@ export async function GET(
     appUrl,
   });
 
-  const safeName =
+  const safeName = safeContentDispositionFilename(
     problem.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
-      .slice(0, 48) || "competition";
+      .slice(0, 48) || "competition",
+  );
 
   return new Response(notebook, {
     status: 200,

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   attempts,
@@ -93,32 +93,89 @@ export async function GET(req: NextRequest) {
   const db = await getDb();
   const userId = req.nextUrl.searchParams.get("userId");
   const excludeTest = req.nextUrl.searchParams.get("excludeTest") === "true";
-  const [users, allAttempts, allMocks] = await Promise.all([
-    db.select().from(user).orderBy(asc(user.name)),
-    db.select().from(attempts).orderBy(desc(attempts.createdAt)),
-    db.select().from(mockSessions).orderBy(desc(mockSessions.startedAt)),
-  ]);
 
   if (!userId) {
+    const users = await db.select().from(user).orderBy(asc(user.name));
+    const [attemptAggs, mockAggs] = await Promise.all([
+      db
+        .select({
+          userId: attempts.userId,
+          attemptsCount: sql<number>`count(*)::int`,
+          practiceTimeMs: sql<number>`coalesce(sum(${attempts.durationMs}), 0)::int`,
+          lastAttemptAt: sql<Date | null>`max(${attempts.createdAt})`,
+        })
+        .from(attempts)
+        .groupBy(attempts.userId),
+      db
+        .select({
+          userId: mockSessions.userId,
+          mocksCompleted: sql<number>`count(*) filter (where ${mockSessions.status} = 'submitted' and ${mockSessions.score} is not null and ${mockSessions.maxScore} is not null and ${mockSessions.maxScore} > 0)::int`,
+          avgLifetimeScore: sql<number>`coalesce(avg((${mockSessions.score}) / nullif(${mockSessions.maxScore}, 0)) filter (where ${mockSessions.status} = 'submitted' and ${mockSessions.score} is not null and ${mockSessions.maxScore} is not null and ${mockSessions.maxScore} > 0), 0)::float`,
+          avgScorePoints: sql<number>`coalesce(avg(${mockSessions.score}) filter (where ${mockSessions.status} = 'submitted' and ${mockSessions.score} is not null and ${mockSessions.maxScore} is not null and ${mockSessions.maxScore} > 0), 0)::float`,
+          avgMaxPoints: sql<number>`coalesce(avg(${mockSessions.maxScore}) filter (where ${mockSessions.status} = 'submitted' and ${mockSessions.score} is not null and ${mockSessions.maxScore} is not null and ${mockSessions.maxScore} > 0), 0)::float`,
+          lastMockAt: sql<Date | null>`max(${mockSessions.startedAt})`,
+        })
+        .from(mockSessions)
+        .groupBy(mockSessions.userId),
+    ]);
+    const attemptByUser = new Map(attemptAggs.map((r) => [r.userId, r]));
+    const mockByUser = new Map(mockAggs.map((r) => [r.userId, r]));
+
     const summaries = users
       .filter((item) => !(excludeTest && parseUserType(item.userType) === "test"))
-      .map((item) => userSummary(item, allAttempts, allMocks));
-    return Response.json({
-      users: summaries,
-    });
+      .map((item) => {
+        const a = attemptByUser.get(item.id);
+        const m = mockByUser.get(item.id);
+        const lastAttemptAt = a?.lastAttemptAt
+          ? new Date(a.lastAttemptAt)
+          : null;
+        const lastMockAt = m?.lastMockAt ? new Date(m.lastMockAt) : null;
+        const lastActiveAt =
+          lastAttemptAt && lastMockAt
+            ? lastAttemptAt > lastMockAt
+              ? lastAttemptAt
+              : lastMockAt
+            : (lastAttemptAt ?? lastMockAt ?? item.updatedAt);
+        return {
+          id: item.id,
+          name: item.name,
+          email: item.email,
+          role: item.role,
+          userType: parseUserType(item.userType),
+          banned: item.banned,
+          createdAt: item.createdAt,
+          lastActiveAt,
+          attemptsCount: Number(a?.attemptsCount ?? 0),
+          avgLifetimeScore: Number(m?.avgLifetimeScore ?? 0),
+          avgScorePoints: Number(m?.avgScorePoints ?? 0),
+          avgMaxPoints: Number(m?.avgMaxPoints ?? 0),
+          practiceTimeMs: Number(a?.practiceTimeMs ?? 0),
+          mocksCompleted: Number(m?.mocksCompleted ?? 0),
+        };
+      });
+    return Response.json({ users: summaries });
   }
 
-  const selected = users.find((item) => item.id === userId);
+  const selected = await db.query.user.findFirst({
+    where: eq(user.id, userId),
+  });
   if (!selected) {
     return Response.json({ error: "User tidak ditemukan" }, { status: 404 });
   }
 
-  const userAttempts = allAttempts.filter((a) => a.userId === userId);
-  const userMocks = allMocks.filter((m) => m.userId === userId);
-  const mastery = await db
-    .select()
-    .from(topicMastery)
-    .where(eq(topicMastery.userId, userId));
+  const [userAttempts, userMocks, mastery] = await Promise.all([
+    db
+      .select()
+      .from(attempts)
+      .where(eq(attempts.userId, userId))
+      .orderBy(desc(attempts.createdAt)),
+    db
+      .select()
+      .from(mockSessions)
+      .where(eq(mockSessions.userId, userId))
+      .orderBy(desc(mockSessions.startedAt)),
+    db.select().from(topicMastery).where(eq(topicMastery.userId, userId)),
+  ]);
 
   const topicStats = new Map<
     string,
@@ -155,7 +212,7 @@ export async function GET(req: NextRequest) {
     activity.set(dayKey, day);
   }
 
-  const summary = userSummary(selected, allAttempts, allMocks);
+  const summary = userSummary(selected, userAttempts, userMocks);
   const submitted = submittedMockScores(userMocks);
   const sessionScores = submitted.map((m, index) => ({
     index: index + 1,

@@ -103,6 +103,8 @@ export const attempts = pgTable(
   (t) => [
     index("attempts_user_idx").on(t.userId),
     index("attempts_user_topic_idx").on(t.userId, t.topic),
+    index("attempts_user_created_idx").on(t.userId, t.createdAt),
+    index("attempts_user_problem_idx").on(t.userId, t.problemId),
   ],
 );
 
@@ -139,7 +141,14 @@ export const mockSessions = pgTable(
       .notNull()
       .default(false),
   },
-  (t) => [index("mock_sessions_user_idx").on(t.userId)],
+  (t) => [
+    index("mock_sessions_user_idx").on(t.userId),
+    index("mock_sessions_user_status_started_idx").on(
+      t.userId,
+      t.status,
+      t.startedAt,
+    ),
+  ],
 );
 
 /** Per-problem submit log for ICPC-style penalty / tie-breaker. */

@@ -127,12 +127,52 @@ export function normalizeLesson(raw: Lesson): Lesson {
   return { ...raw, checkQuestions: checks };
 }
 
+let lessonsCache: Lesson[] | null = null;
+let lessonsById: Map<string, Lesson> | null = null;
+let problemsCache: Problem[] | null = null;
+let problemsById: Map<string, Problem> | null = null;
+let mocksCache: MockExam[] | null = null;
+let mocksById: Map<string, MockExam> | null = null;
+
+function ensureLessons() {
+  if (!lessonsCache) {
+    lessonsCache = (lessonsData as Lesson[]).map(normalizeLesson);
+    lessonsById = new Map(lessonsCache.map((l) => [l.id, l]));
+  }
+  return { list: lessonsCache, byId: lessonsById! };
+}
+
+function ensureProblems() {
+  if (!problemsCache) {
+    const curated = (problemsData as Problem[]).map((p) =>
+      normalizeProblem({ ...p, source: p.source ?? "curated" }),
+    );
+    const analogs = getIoaiAnalogProblems().map((p) =>
+      normalizeProblem({ ...p, source: p.source ?? "curated" }),
+    );
+    const byId = new Map<string, Problem>();
+    for (const p of curated) byId.set(p.id, p);
+    for (const p of analogs) byId.set(p.id, p);
+    problemsById = byId;
+    problemsCache = Array.from(byId.values());
+  }
+  return { list: problemsCache, byId: problemsById! };
+}
+
+function ensureMocks() {
+  if (!mocksCache) {
+    mocksCache = mocksData as MockExam[];
+    mocksById = new Map(mocksCache.map((m) => [m.id, m]));
+  }
+  return { list: mocksCache, byId: mocksById! };
+}
+
 export function getLessons(): Lesson[] {
-  return (lessonsData as Lesson[]).map(normalizeLesson);
+  return ensureLessons().list;
 }
 
 export function getLesson(id: string) {
-  return getLessons().find((l) => l.id === id);
+  return ensureLessons().byId.get(id);
 }
 
 export function getLessonsForTopic(track: string, topic: string): Lesson[] {
@@ -140,28 +180,19 @@ export function getLessonsForTopic(track: string, topic: string): Lesson[] {
 }
 
 export function getProblems(): Problem[] {
-  const curated = (problemsData as Problem[]).map((p) =>
-    normalizeProblem({ ...p, source: p.source ?? "curated" }),
-  );
-  const analogs = getIoaiAnalogProblems().map((p) =>
-    normalizeProblem({ ...p, source: p.source ?? "curated" }),
-  );
-  const byId = new Map<string, Problem>();
-  for (const p of curated) byId.set(p.id, p);
-  for (const p of analogs) byId.set(p.id, p);
-  return Array.from(byId.values());
+  return ensureProblems().list;
 }
 
 export function getProblem(id: string) {
-  return getProblems().find((p) => p.id === id);
+  return ensureProblems().byId.get(id) ?? null;
 }
 
 export function getMocks(): MockExam[] {
-  return mocksData as MockExam[];
+  return ensureMocks().list;
 }
 
 export function getMock(id: string) {
-  return getMocks().find((m) => m.id === id);
+  return ensureMocks().byId.get(id);
 }
 
 export function getProblemsForMock(mockId: string) {

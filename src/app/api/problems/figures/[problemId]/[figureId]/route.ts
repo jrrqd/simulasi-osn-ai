@@ -7,6 +7,10 @@ import {
   findRasterFigureFile,
   isSafeContentId,
 } from "@/lib/ai/materialize-images";
+import {
+  sanitizeSvgMarkup,
+  SVG_RESPONSE_CSP,
+} from "@/lib/security/svg-sanitize";
 
 const PRIVATE_CACHE = "private, no-store";
 
@@ -47,12 +51,13 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  return new Response(fig.svg, {
+  return new Response(sanitizeSvgMarkup(fig.svg), {
     status: 200,
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
       "Cache-Control": PRIVATE_CACHE,
       "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": SVG_RESPONSE_CSP,
     },
   });
 }
