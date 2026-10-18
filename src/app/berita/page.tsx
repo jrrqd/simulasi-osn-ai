@@ -13,19 +13,23 @@ import { formatDateTimeWib } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
+const SITE_URL = publicSiteUrl();
+
 export const metadata: Metadata = {
   title: "Berita EKKA dan OSN AI",
   description:
     "Cuplikan berita pendidikan tentang EKKA, OSN AI, OSN Informatika, IOAI, dan TOKI. Rangkuman singkat dengan tautan ke sumber asli.",
+  alternates: {
+    canonical: `${SITE_URL}/berita`,
+  },
   robots: { index: true, follow: true },
   openGraph: {
+    url: `${SITE_URL}/berita`,
     title: "Berita EKKA dan OSN AI 2026",
     description:
       "Ringkasan berita relevan untuk persiapan seleksi — baca lengkap di penerbit asal.",
   },
 };
-
-const SITE_URL = publicSiteUrl();
 
 function formatPublished(at: Date | null, fetchedAt: Date): string {
   const d = at ?? fetchedAt;

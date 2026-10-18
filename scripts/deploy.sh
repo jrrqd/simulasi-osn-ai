@@ -48,6 +48,8 @@ ssh "$REMOTE" "\
   sudo mkdir -p $ROOT_PAGE && \
   sudo cp $BUILD/deploy/root/index.html $ROOT_PAGE/index.html && \
   sudo cp $BUILD/deploy/nginx-osnai.conf /etc/nginx/sites-available/osnai && \
+  sudo ln -sf /etc/nginx/sites-available/osnai /etc/nginx/sites-enabled/osnai && \
+  sudo rm -rf /var/cache/nginx/osnai/* && \
   sudo nginx -t && \
   sudo systemctl reload nginx"
 

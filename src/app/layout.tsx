@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Plus_Jakarta_Sans, Source_Serif_4, JetBrains_Mono } from "next/font/google";
+import { publicSiteUrl } from "@/lib/seo-public";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-7FQWW64Z2Q";
+const SITE_URL = publicSiteUrl();
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -25,9 +27,7 @@ const SITE_DESCRIPTION =
   "Gratis (Rp0) untuk pelajar Indonesia. Persiapan EKKA/OSN AI 2026: materi silabus 5 area, bank soal, simulasi berwaktu, dan pelacak performa tanpa biaya.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  ),
+  metadataBase: new URL(`${SITE_URL}/`),
   title: {
     default: SITE_TITLE,
     template: `%s · ${SITE_TITLE}`,
@@ -47,10 +47,7 @@ export const metadata: Metadata = {
     "persiapan OSN AI",
   ],
   category: "education",
-  icons: { icon: "/favicon.svg" },
-  alternates: {
-    canonical: "/",
-  },
+  icons: { icon: `${SITE_URL}/favicon.svg` },
   robots: {
     index: true,
     follow: true,
@@ -59,12 +56,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "id_ID",
+    url: SITE_URL,
     siteName: SITE_TITLE,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: "/hero-atmosphere.png",
+        url: `${SITE_URL}/hero-atmosphere.png`,
         alt: "Simulasi OSN AI 2026 gratis untuk pelajar Indonesia",
       },
     ],
@@ -73,7 +71,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["/hero-atmosphere.png"],
+    images: [`${SITE_URL}/hero-atmosphere.png`],
   },
 };
 

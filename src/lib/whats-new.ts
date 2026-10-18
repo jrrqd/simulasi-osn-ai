@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "seo-gsc-canonical-sitemap-fix",
+    at: "2026-10-18T15:50:00+07:00",
+    tag: "Platform",
+    title: "Perbaikan indeksasi Google Search Console",
+    story:
+      "Canonical per halaman (/simosnai, /berita, /register), sitemap tanpa redirect 308, dan robots.txt root 200 OK agar seluruh halaman publik terindeks dengan benar di Google.",
+    href: "/berita",
+  },
+  {
     id: "admin-overview-user-activity-cards",
     at: "2026-10-18T15:35:00+07:00",
     tag: "Admin",

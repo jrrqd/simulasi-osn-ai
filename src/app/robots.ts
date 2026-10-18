@@ -1,9 +1,22 @@
 import type { MetadataRoute } from "next";
+import { APP_BASE_PATH } from "@/lib/app-path";
 import { publicSiteUrl } from "@/lib/seo-public";
 
 const SITE_URL = publicSiteUrl();
+const BASE = APP_BASE_PATH.replace(/\/$/, "");
 
-const DISALLOW = [
+function withBase(paths: string[]): string[] {
+  if (!BASE) return paths;
+  const out = new Set<string>();
+  for (const p of paths) {
+    out.add(p);
+    out.add(p === "/" ? `${BASE}/` : `${BASE}${p}`);
+    if (p === "/") out.add(BASE);
+  }
+  return [...out];
+}
+
+const DISALLOW = withBase([
   "/api/",
   "/admin",
   "/login",
@@ -14,9 +27,9 @@ const DISALLOW = [
   "/settings",
   "/review",
   "/onboarding",
-];
+]);
 
-const ALLOW = ["/", "/llms.txt", "/register", "/berita"];
+const ALLOW = withBase(["/", "/llms.txt", "/register", "/berita"]);
 
 /** Shared crawl policy for Google/Bing and major AI crawlers (GEO). */
 const RULE = {

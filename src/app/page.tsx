@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { appPath } from "@/lib/app-path";
 import { SiteHeader } from "@/components/site-header";
@@ -14,7 +15,16 @@ import {
 export const dynamic = "force-dynamic";
 
 const SITE_URL = publicSiteUrl();
-const CONTENT_MODIFIED = "2026-09-25T17:30:00+07:00";
+const CONTENT_MODIFIED = "2026-10-18T15:35:00+07:00";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: SITE_URL,
+  },
+  openGraph: {
+    url: SITE_URL,
+  },
+};
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -37,7 +47,7 @@ const jsonLd = {
     {
       "@type": "WebPage",
       "@id": `${SITE_URL}/#webpage`,
-      url: `${SITE_URL}/`,
+      url: SITE_URL,
       name: "Simulasi OSN AI 2026 Gratis",
       isPartOf: { "@id": `${SITE_URL}/#website` },
       about: { "@id": `${SITE_URL}/#app` },
