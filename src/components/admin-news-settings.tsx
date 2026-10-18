@@ -166,11 +166,15 @@ export function AdminNewsSettings() {
             className="input min-h-[160px] font-mono text-sm"
             value={keywordsText}
             onChange={(e) => setKeywordsText(e.target.value)}
-            placeholder={"osn ai\nosn informatika\ntoki"}
+            placeholder={"osn ai\nosn informatika\ntim olimpiade komputer indonesia"}
             required
           />
           <span className="text-xs text-[var(--muted)]">
-            Maks. 30 kata kunci. Duplikat diabaikan (case-insensitive).
+            Maks. 30 kata kunci. Duplikat diabaikan (case-insensitive). Hindari
+            kata kunci tunggal <code className="text-[var(--ink)]">toki</code> —
+            gunakan frasa panjang atau biarkan default; jika tetap memakai
+            <code className="text-[var(--ink)]">toki</code>, filter ketat
+            diterapkan.
           </span>
         </label>
 

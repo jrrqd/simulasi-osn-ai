@@ -70,3 +70,57 @@ test("non-strict keywords pass through", () => {
     true,
   );
 });
+
+test("toki: keeps Indonesian computer olympiad coverage", () => {
+  assert.equal(
+    isRelevantOlympiadNews(
+      "TOKI Siapkan Tim Olimpiade Komputer Indonesia untuk IOAI 2026",
+      "",
+      "toki",
+    ),
+    true,
+  );
+  assert.equal(
+    isRelevantOlympiadNews(
+      "Pelatnas OSN Informatika dibina TOKI",
+      "Seleksi nasional komputer",
+      "toki",
+    ),
+    true,
+  );
+  assert.equal(
+    isRelevantOlympiadNews(
+      "Info lomba di portal toki.id",
+      "",
+      "toki",
+    ),
+    true,
+  );
+});
+
+test("toki: drops unrelated foreign / homonym hits", () => {
+  assert.equal(
+    isRelevantOlympiadNews(
+      "Toki cần được bảo vệ tại công viên ở Hà Nội",
+      "Vietnam wildlife",
+      "toki",
+    ),
+    false,
+  );
+  assert.equal(
+    isRelevantOlympiadNews(
+      "Tokyo zoo celebrates rare toki bird hatch",
+      "Japan nature news",
+      "toki",
+    ),
+    false,
+  );
+  assert.equal(
+    isRelevantOlympiadNews(
+      "Toki fashion week opens in Seoul",
+      "",
+      "toki",
+    ),
+    false,
+  );
+});

@@ -11,13 +11,16 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import postgres from "postgres";
+import {
+  isRelevantOlympiadNews,
+  rssSearchQuery,
+} from "./lib/news-relevance.mjs";
 
 const DEFAULT_KEYWORDS = [
   "osn ai",
   "osn informatika",
   "ioai",
   "ekka",
-  "toki",
   "tim olimpiade komputer indonesia",
 ];
 const SUMMARY_MAX = 280;
@@ -295,7 +298,7 @@ function parseRss(xml) {
 }
 
 async function fetchKeyword(keyword) {
-  const q = encodeURIComponent(keyword);
+  const q = encodeURIComponent(rssSearchQuery(keyword));
   const url = `https://news.google.com/rss/search?q=${q}&hl=id&gl=ID&ceid=ID:id`;
   const res = await fetch(url, {
     headers: {
@@ -343,18 +346,27 @@ async function main() {
       return;
     }
 
-    // Re-sanitize summaries already stored with entity-encoded / truncated HTML.
+    // Drop off-topic rows (e.g. foreign “toki” hits) and re-sanitize summaries.
     const existing = await sql`
-      SELECT id, title, source_name, summary FROM news_items
+      SELECT id, title, source_name, summary, keyword FROM news_items
     `;
     let cleaned = 0;
+    let purged = 0;
     for (const row of existing) {
+      if (
+        !isRelevantOlympiadNews(row.title, row.summary, row.keyword ?? "")
+      ) {
+        await sql`DELETE FROM news_items WHERE id = ${row.id}`;
+        purged += 1;
+        continue;
+      }
       const next = truncateSummary(row.summary, row.title, row.source_name);
       if (next !== row.summary) {
         await sql`UPDATE news_items SET summary = ${next} WHERE id = ${row.id}`;
         cleaned += 1;
       }
     }
+    if (purged) console.log(`[cleanup] purged ${purged} irrelevant items`);
     if (cleaned) console.log(`[cleanup] re-sanitized ${cleaned} summaries`);
 
     let inserted = 0;
@@ -388,6 +400,11 @@ async function main() {
           item.sourceName,
         );
         if (!title || !summary) {
+          skipped += 1;
+          continue;
+        }
+
+        if (!isRelevantOlympiadNews(title, summary, keyword)) {
           skipped += 1;
           continue;
         }

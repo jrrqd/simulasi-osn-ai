@@ -6,7 +6,10 @@ import {
   DEFAULT_NEWS_KEYWORDS,
   getNewsFeedSettings,
 } from "@/lib/news/settings";
-import { isRelevantOlympiadNews } from "@/lib/news/relevance";
+import {
+  isRelevantOlympiadNews,
+  rssSearchQuery,
+} from "@/lib/news/relevance";
 
 /** @deprecated Prefer getNewsFeedSettings().keywords — kept as compile-time default list. */
 export const NEWS_KEYWORDS = DEFAULT_NEWS_KEYWORDS;
@@ -123,7 +126,7 @@ function hostOf(url: string): string {
 }
 
 function googleNewsRssUrl(keyword: string): string {
-  const q = encodeURIComponent(keyword);
+  const q = encodeURIComponent(rssSearchQuery(keyword));
   return `https://news.google.com/rss/search?q=${q}&hl=id&gl=ID&ceid=ID:id`;
 }
 
@@ -199,10 +202,32 @@ export type RefreshNewsResult = {
   perKeyword: Record<string, { fetched: number; inserted: number }>;
 };
 
+/** Remove stored rows that fail the relevance gate (e.g. legacy “toki” noise). */
+export async function purgeIrrelevantNewsItems(): Promise<number> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: newsItems.id,
+      title: newsItems.title,
+      summary: newsItems.summary,
+      keyword: newsItems.keyword,
+    })
+    .from(newsItems);
+  let removed = 0;
+  for (const row of rows) {
+    if (!isRelevantOlympiadNews(row.title, row.summary, row.keyword)) {
+      await db.delete(newsItems).where(eq(newsItems.id, row.id));
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
 export async function refreshNewsFromRss(
   keywordOverride?: string[],
 ): Promise<RefreshNewsResult> {
   const db = await getDb();
+  await purgeIrrelevantNewsItems();
   const settings = await getNewsFeedSettings();
   const keywords =
     keywordOverride && keywordOverride.length > 0

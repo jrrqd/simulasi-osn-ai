@@ -8,7 +8,6 @@ export const DEFAULT_NEWS_KEYWORDS = [
   "osn informatika",
   "ioai",
   "ekka",
-  "toki",
   "tim olimpiade komputer indonesia",
 ] as const;
 

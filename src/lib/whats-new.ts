@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "berita-toki-relevance-filter",
+    at: "2026-10-18T11:00:00+07:00",
+    tag: "Berita",
+    title: "Berita TOKI lebih relevan",
+    story:
+      "Keyword “toki” yang menarik berita luar negeri (homonim Vietnam/Jepang dll.) disaring ketat, query RSS diperketat, dan cuplikan tidak relevan dibersihkan dari hub /berita.",
+    href: "/berita",
+  },
+  {
     id: "berita-ekka-relevance-filter",
     at: "2026-09-27T20:50:00+07:00",
     tag: "Berita",
