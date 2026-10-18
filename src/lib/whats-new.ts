@@ -19,6 +19,15 @@ export type WhatsNewItem = {
  */
 export const WHATS_NEW: WhatsNewItem[] = [
   {
+    id: "admin-overview-user-activity-cards",
+    at: "2026-10-18T15:35:00+07:00",
+    tag: "Admin",
+    title: "Ringkasan admin: pengguna baru & aktivitas",
+    story:
+      "Dashboard Ringkasan menampilkan kartu pendaftar terbaru dan siswa yang terakhir aktif, dengan tautan langsung ke laporan pengguna.",
+    href: "/admin",
+  },
+  {
     id: "berita-toki-relevance-filter",
     at: "2026-10-18T11:00:00+07:00",
     tag: "Berita",

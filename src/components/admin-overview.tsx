@@ -1,6 +1,7 @@
 "use client";
 
 import { appPath } from "@/lib/app-path";
+import { formatDateTimeWib } from "@/lib/datetime";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -16,6 +17,7 @@ type UserSummary = {
   avgMaxPoints: number;
   practiceTimeMs: number;
   mocksCompleted: number;
+  createdAt: string;
   lastActiveAt: string;
 };
 
@@ -23,6 +25,10 @@ function duration(ms: number) {
   const minutes = Math.round(ms / 60_000);
   if (minutes < 60) return `${minutes} menit`;
   return `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
+}
+
+function byNewest(aIso: string, bIso: string) {
+  return new Date(bIso).getTime() - new Date(aIso).getTime();
 }
 
 export function AdminOverview() {
@@ -55,6 +61,22 @@ export function AdminOverview() {
       ),
       active: students.filter((item) => item.attemptsCount > 0).length,
     }),
+    [students],
+  );
+
+  const latestRegistered = useMemo(
+    () =>
+      [...students]
+        .sort((a, b) => byNewest(a.createdAt, b.createdAt))
+        .slice(0, 5),
+    [students],
+  );
+
+  const lastActive = useMemo(
+    () =>
+      [...students]
+        .sort((a, b) => byNewest(a.lastActiveAt, b.lastActiveAt))
+        .slice(0, 5),
     [students],
   );
 
@@ -120,6 +142,64 @@ export function AdminOverview() {
               ))}
             {!students.some((item) => item.mocksCompleted > 0) && (
               <li className="text-[var(--muted)]">Belum ada mock selesai.</li>
+            )}
+          </ul>
+        </div>
+
+        <div className="panel rounded-3xl p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="display text-2xl">Pengguna baru</h2>
+            <Link href="/admin/users" className="btn btn-secondary !py-1.5">
+              Semua
+            </Link>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm">
+            {latestRegistered.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-start justify-between gap-3 border-b border-[var(--line)] py-2"
+              >
+                <div className="min-w-0">
+                  <Link
+                    href={`/admin/users/${item.id}`}
+                    className="font-medium"
+                  >
+                    {item.name}
+                  </Link>
+                  <p className="truncate text-[var(--muted)]">{item.email}</p>
+                </div>
+                <span className="shrink-0 text-[var(--muted)]">
+                  {formatDateTimeWib(item.createdAt)}
+                </span>
+              </li>
+            ))}
+            {latestRegistered.length === 0 && (
+              <li className="text-[var(--muted)]">Belum ada siswa.</li>
+            )}
+          </ul>
+        </div>
+
+        <div className="panel rounded-3xl p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="display text-2xl">Terakhir aktif</h2>
+            <Link href="/admin/users" className="btn btn-secondary !py-1.5">
+              Semua
+            </Link>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm">
+            {lastActive.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-3 border-b border-[var(--line)] py-2"
+              >
+                <Link href={`/admin/users/${item.id}`}>{item.name}</Link>
+                <span className="shrink-0 text-[var(--muted)]">
+                  {formatDateTimeWib(item.lastActiveAt)}
+                </span>
+              </li>
+            ))}
+            {lastActive.length === 0 && (
+              <li className="text-[var(--muted)]">Belum ada aktivitas.</li>
             )}
           </ul>
         </div>
